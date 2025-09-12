@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  */
 
@@ -275,8 +275,8 @@ int hgsl_debugfs_client_init(struct hgsl_priv *priv)
 	snprintf(name, sizeof(name), "%d", priv->pid);
 	ret = debugfs_create_dir(name,
 				hgsl->clients_debugfs);
-	if (IS_ERR(ret)) {
-		pr_warn("Create debugfs proc node failed.\n");
+	if (IS_ERR_OR_NULL(ret)) {
+		LOGW("Create debugfs proc node failed.");
 		priv->debugfs_client = NULL;
 		return PTR_ERR(ret);
 	} else
@@ -300,18 +300,85 @@ void hgsl_debugfs_client_release(struct hgsl_priv *priv)
 	debugfs_remove_recursive(priv->debugfs_client);
 }
 
+static void events_debugfs_print_group(struct seq_file *s,
+		struct hgsl_event_group *group)
+{
+	struct hgsl_event *event;
+	u32 retired;
+
+	spin_lock(&group->lock);
+
+	seq_printf(s, "%s: last=%d\n", group->name,
+		group->processed);
+
+	list_for_each_entry(event, &group->events, node) {
+
+		group->readtimestamp(group->context,
+			GSL_TIMESTAMP_RETIRED, &retired);
+
+		seq_printf(s, "\t%u:%u age=%lums func=%ps [retired=%u]\n",
+			group->context->context_id, event->timestamp,
+			jiffies_to_msecs(jiffies - event->created), event->func,
+			retired);
+	}
+	spin_unlock(&group->lock);
+}
+
+static int events_show(struct seq_file *s, void *unused)
+{
+	struct qcom_hgsl *hgsl = s->private;
+	struct hgsl_event_group *group;
+
+	seq_puts(s, "event groups:\n");
+	seq_puts(s, "--------------\n");
+
+	read_lock(&hgsl->event_groups_lock);
+	list_for_each_entry(group, &hgsl->event_groups, node) {
+		events_debugfs_print_group(s, group);
+		seq_puts(s, "\n");
+	}
+	read_unlock(&hgsl->event_groups_lock);
+
+	return 0;
+}
+DEFINE_SHOW_ATTRIBUTE(events);
+
+void hgsl_debugfs_events_init(struct qcom_hgsl *hgsl)
+{
+	struct dentry *dentry;
+
+	dentry = debugfs_create_file("events", 0444, hgsl->debugfs,
+		hgsl, &events_fops);
+	if (IS_ERR_OR_NULL(dentry))
+		LOGW("Unable to create debugfs for events");
+}
+
 void hgsl_debugfs_init(struct platform_device *pdev)
 {
 	struct qcom_hgsl *hgsl = platform_get_drvdata(pdev);
 	struct dentry *root;
 
 	root = debugfs_create_dir("hgsl", NULL);
-
-	hgsl->debugfs = root;
+	if (IS_ERR_OR_NULL(root)) {
+		LOGW("Unable to create debugfs dir for hgsl");
+		return;
+	}
 	hgsl->clients_debugfs = debugfs_create_dir("clients", root);
+	if (IS_ERR_OR_NULL(hgsl->clients_debugfs)) {
+		LOGW("Unable to create debugfs dir for clients");
+		hgsl->clients_debugfs = NULL;
+		return;
+	}
 
 	hgsl->debugfs_stat = debugfs_create_file("stat", 0444,
 		root, hgsl, &hgsl_stat_fops);
+	if (IS_ERR_OR_NULL(hgsl->debugfs_stat)) {
+		LOGW("Unable to create debugfs state");
+		hgsl->debugfs_stat = NULL;
+	}
+
+	hgsl->debugfs = root;
+	hgsl_debugfs_events_init(hgsl);
 }
 
 void hgsl_debugfs_release(struct platform_device *pdev)

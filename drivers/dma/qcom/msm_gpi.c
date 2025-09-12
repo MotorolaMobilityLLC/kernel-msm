@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/atomic.h>
@@ -1381,6 +1381,12 @@ int gsi_common_tx_tre_optimization(struct gsi_common *gsi, u32 num_xfers, u32 nu
 					   "%s: msg xfer timeout\n", __func__);
 				return timeout;
 			}
+
+			/* GSI HW creates an error during callback, so error check handling here */
+			if (*gsi->err) {
+				GSI_SE_DBG(gsi->ipc, false, gsi->dev, "gsi error\n");
+				return -EIO;
+			}
 		}
 		GSI_SE_DBG(gsi->ipc, false, gsi->dev,
 			   "%s: maxirq_cnt:%d i:%d\n", __func__, max_irq_cnt, i);
@@ -2271,8 +2277,13 @@ static void gpi_process_imed_data_event(struct gpii_chan *gpii_chan,
 			 "Pending TRE: %08x %08x %08x %08x\n",
 			 gpi_tre->dword[0], gpi_tre->dword[1],
 			 gpi_tre->dword[2], gpi_tre->dword[3]);
-		gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
-				      __LINE__);
+		/*
+		 * for multi-ee Rx case, pending event without descriptor
+		 * is expected for last transfer followed by unlock tre
+		 */
+		if (!gpii->unlock_tre_set)
+			gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
+					      __LINE__);
 		return;
 	}
 	gpi_desc = to_gpi_desc(vd);
@@ -2396,8 +2407,13 @@ static void gpi_process_xfer_compl_event(struct gpii_chan *gpii_chan,
 		GPII_ERR(gpii, gpii_chan->chid, "Event: %08x %08x %08x %08x\n",
 			 gpi_ere->dword[0], gpi_ere->dword[1],
 			 gpi_ere->dword[2], gpi_ere->dword[3]);
-		gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
-				      __LINE__);
+		/*
+		 * for multi-ee Rx case, pending event without descriptor
+		 * is expected for last transfer followed by unlock tre
+		 */
+		if (!gpii->unlock_tre_set)
+			gpi_generate_cb_event(gpii_chan, MSM_GPI_QUP_EOT_DESC_MISMATCH,
+					      __LINE__);
 		return;
 	}
 

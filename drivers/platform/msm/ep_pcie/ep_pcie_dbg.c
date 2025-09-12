@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
+
 /*
  * Debugging enhancement in MSM PCIe endpoint driver.
  */
@@ -100,7 +101,7 @@ static void ep_pcie_check_link_state(struct ep_pcie_dev_t *dev)
 		>> PCIE20_PARF_PM_STTS_PM_LINKST_IN_L1SUB_SHIFT]);
 }
 
-static void ep_ep_pcie_phy_dump_pcs_debug_bus(struct ep_pcie_dev_t *dev,
+static void ep_pcie_phy_dump_pcs_debug_bus(struct ep_pcie_dev_t *dev,
 					u32 cntrl4, u32 cntrl5,
 					u32 cntrl6, u32 cntrl7)
 {
@@ -143,7 +144,7 @@ static void ep_ep_pcie_phy_dump_pcs_debug_bus(struct ep_pcie_dev_t *dev,
 		readl_relaxed(dev->phy + PCIE_PHY_DEBUG_BUS_3_STATUS));
 }
 
-static void ep_ep_pcie_phy_dump_pcs_misc_debug_bus(struct ep_pcie_dev_t *dev,
+static void ep_pcie_phy_dump_pcs_misc_debug_bus(struct ep_pcie_dev_t *dev,
 					u32 b0, u32 b1,	u32 b2, u32 b3)
 {
 	ep_pcie_write_reg(dev->phy, PCIE_PHY_MISC_DEBUG_BUS_BYTE0_INDEX, b0);
@@ -198,18 +199,18 @@ static void ep_pcie_phy_dump(struct ep_pcie_dev_t *dev)
 
 	EP_PCIE_DUMP(dev, "PCIe V%d: PCS Debug Signals\n\n", dev->rev);
 
-	ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0x01, 0x02, 0x03, 0x0A);
-	ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0x0E, 0x0F, 0x12, 0x13);
-	ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0x18, 0x19, 0x1A, 0x1B);
-	ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0x1C, 0x1D, 0x1E, 0x1F);
-	ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0x20, 0x21, 0x22, 0x23);
-	ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0, 0, 0, 0);
+	ep_pcie_phy_dump_pcs_debug_bus(dev, 0x01, 0x02, 0x03, 0x0A);
+	ep_pcie_phy_dump_pcs_debug_bus(dev, 0x0E, 0x0F, 0x12, 0x13);
+	ep_pcie_phy_dump_pcs_debug_bus(dev, 0x18, 0x19, 0x1A, 0x1B);
+	ep_pcie_phy_dump_pcs_debug_bus(dev, 0x1C, 0x1D, 0x1E, 0x1F);
+	ep_pcie_phy_dump_pcs_debug_bus(dev, 0x20, 0x21, 0x22, 0x23);
+	ep_pcie_phy_dump_pcs_debug_bus(dev, 0, 0, 0, 0);
 
 	EP_PCIE_DUMP(dev, "PCIe V%d: PCS Misc Debug Signals\n\n", dev->rev);
 
-	ep_ep_pcie_phy_dump_pcs_misc_debug_bus(dev, 0x1, 0x2, 0x3, 0x4);
-	ep_ep_pcie_phy_dump_pcs_misc_debug_bus(dev, 0x5, 0x6, 0x7, 0x8);
-	ep_ep_pcie_phy_dump_pcs_misc_debug_bus(dev, 0, 0, 0, 0);
+	ep_pcie_phy_dump_pcs_misc_debug_bus(dev, 0x1, 0x2, 0x3, 0x4);
+	ep_pcie_phy_dump_pcs_misc_debug_bus(dev, 0x5, 0x6, 0x7, 0x8);
+	ep_pcie_phy_dump_pcs_misc_debug_bus(dev, 0, 0, 0, 0);
 
 	EP_PCIE_DUMP(dev, "PCIe V%d: QSERDES COM Debug Signals\n\n", dev->rev);
 
@@ -255,10 +256,10 @@ static void ep_pcie_phy_dump(struct ep_pcie_dev_t *dev)
 			dev->rev,
 			readl_relaxed(dev->phy + QSERDES_TX_DEBUG_BUS_SEL));
 
-		ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0x30, 0x31, 0x32, 0x33);
+		ep_pcie_phy_dump_pcs_debug_bus(dev, 0x30, 0x31, 0x32, 0x33);
 	}
 
-	ep_ep_pcie_phy_dump_pcs_debug_bus(dev, 0, 0, 0, 0);
+	ep_pcie_phy_dump_pcs_debug_bus(dev, 0, 0, 0, 0);
 
 	EP_PCIE_DUMP(dev, "PCIe V%d: End of PHY debug dump\n\n", dev->rev);
 
@@ -707,7 +708,7 @@ static ssize_t ep_pcie_cmd_debug(struct file *file,
 		dev->dump_conf = false;
 		break;
 	case 23: /* output edma registers */
-		edma_dump();
+		edma_dump(&dev->pdev->dev);
 		break;
 	case 24: /* Dump clock CBCR registers */
 		ep_pcie_clk_dump(dev);

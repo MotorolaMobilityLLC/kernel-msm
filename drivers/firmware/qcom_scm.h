@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2010-2015,2019,2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __QCOM_SCM_INT_H
 #define __QCOM_SCM_INT_H
@@ -251,6 +251,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 #define QCOM_SCM_SMCINVOKE_INVOKE_LEGACY	0x00
 #define QCOM_SCM_SMCINVOKE_INVOKE		0x02
 #define QCOM_SCM_SMCINVOKE_CB_RSP		0x01
+#define QCOM_SCM_SMCINVOKE_DOORBELL_ACK		0x06
 
 /* Feature IDs for QCOM_SCM_INFO_GET_FEAT_VERSION */
 #define QCOM_SCM_TZ_DBG_ETM_FEAT_ID		0x08

@@ -2214,6 +2214,7 @@
   of_get_next_child
   of_get_next_parent
   of_get_parent
+  of_get_pci_domain_nr
   of_get_phy_mode
   of_get_property
   of_get_regulator_init_data
@@ -2325,6 +2326,7 @@
   pci_dev_put
   pci_disable_device
   pci_disable_msi
+  pci_ecam_create
   pci_ecam_map_bus
   pcie_capability_clear_and_set_word
   pcie_capability_read_dword
@@ -3554,6 +3556,7 @@
   __traceiter_android_vh_ufs_send_uic_command
   __traceiter_android_vh_ufs_update_sdev
   __traceiter_android_vh_update_topology_flags_workfn
+  __traceiter_android_vh_vprintk_store
   __traceiter_binder_transaction_received
   __traceiter_cpu_frequency_limits
   __traceiter_cpu_idle
@@ -3708,6 +3711,7 @@
   __tracepoint_android_vh_ufs_send_uic_command
   __tracepoint_android_vh_ufs_update_sdev
   __tracepoint_android_vh_update_topology_flags_workfn
+  __tracepoint_android_vh_vprintk_store
   __tracepoint_binder_transaction_received
   __tracepoint_cpu_frequency_limits
   __tracepoint_cpu_idle
@@ -4182,6 +4186,7 @@
   xa_find_after
   __xa_insert
   xa_load
+  xas_load
   xa_store
   xdp_convert_zc_to_xdp_frame
   xdp_do_flush

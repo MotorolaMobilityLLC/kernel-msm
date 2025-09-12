@@ -405,7 +405,7 @@ static struct latched_seq clear_seq = {
 /* record buffer */
 #define LOG_ALIGN __alignof__(unsigned long)
 #define __LOG_BUF_LEN (1 << CONFIG_LOG_BUF_SHIFT)
-#define LOG_BUF_LEN_MAX (u32)(1 << 31)
+#define LOG_BUF_LEN_MAX ((u32)1 << 31)
 static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 static char *log_buf = __log_buf;
 static u32 log_buf_len = __LOG_BUF_LEN;
@@ -2248,6 +2248,7 @@ int vprintk_store(int facility, int level,
 	r.info->flags = flags & 0x1f;
 	r.info->ts_nsec = ts_nsec;
 	r.info->caller_id = caller_id;
+	trace_android_vh_vprintk_store(r.info->ts_nsec, r.text_buf, r.info->text_len);
 	if (dev_info)
 		memcpy(&r.info->dev_info, dev_info, sizeof(r.info->dev_info));
 

@@ -609,6 +609,7 @@ int habmem_hyp_grant(struct virtual_channel *vchan,
 		int *compressed_size,
 		int *export_id);
 
+void habmem_defer_unimp_sent(struct export_desc *export);
 int habmem_hyp_revoke(void *expdata, uint32_t count);
 int habmem_exp_release(struct export_desc_super *exp_super);
 
@@ -618,7 +619,7 @@ void habmem_imp_hyp_close(void *priv, int kernel);
 int habmem_imp_hyp_map(void *imp_ctx, struct hab_import *param,
 		struct export_desc *exp, int kernel);
 
-int habmm_imp_hyp_unmap(void *imp_ctx, struct export_desc *exp, int kernel);
+int habmm_imp_hyp_unmap(void *imp_ctx, struct export_desc *exp, long fcnt_idle);
 
 int habmem_imp_hyp_mmap(struct file *flip, struct vm_area_struct *vma);
 

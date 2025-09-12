@@ -331,7 +331,7 @@ struct uffdio_move {
 	 * to move same src folio. It's a KMI workaround and cannot be relied
 	 * upon by userspace.
 	 */
-#define UFFDIO_MOVE_MODE_CONFIRM_FIXED		((__u64)1<<63)
+#define UFFDIO_MOVE_MODE_CONFIRM_FIXED		((__u64)1<<62)
 	__u64 mode;
 	/*
 	 * "move" is written by the ioctl and must be at the end: the

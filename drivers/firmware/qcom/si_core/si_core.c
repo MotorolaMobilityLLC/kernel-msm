@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/kobject.h>
@@ -1025,6 +1025,143 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(si_object_do_invoke);
+
+static int prepare_doorbell_args(struct qtee_callback *msg, struct si_arg u[])
+{
+	/* We initialise user arguments based on the callback message.
+	 * It is important to preserve the order of arguments, i.e. 'SI_AT_IB', 'SI_AT_OB',
+	 * following by 'SI_AT_IO', and 'SI_AT_OO'.
+	 * For doorbell_msg- there should be no args of type 'SI_AT_OB' and 'SI_AT_OO' hence
+	 * we validate that first.
+	 */
+
+	int ret = 0;
+
+	int i;
+
+	/* Invalid input if any output_buffer present */
+	for_each_output_buffer(i, msg->counts)
+		return -EINVAL;
+
+	/* Invalid input if any output_object present */
+	for_each_output_object(i, msg->counts)
+		return -EINVAL;
+
+	/* We assume QTEE already checked the buffer boundaries! */
+
+	for_each_input_buffer(i, msg->counts) {
+		u[i].b.addr = OFFSET_TO_PTR(msg, msg->args[i].b.offset);
+		u[i].b.size = msg->args[i].b.size;
+		u[i].type = SI_AT_IB;
+	}
+
+	for_each_input_object(i, msg->counts) {
+		int err;
+
+		/* See comments for 'for_each_output_object' in 'update_args'. **/
+
+		err = init_si_object(&u[i].o, msg->args[i].o);
+		if (err)
+			ret = err;
+
+		u[i].type = SI_AT_IO;
+	}
+
+	/* End of Arguments. */
+
+	u[i].type = SI_AT_END;
+
+	return ret;
+}
+
+/**
+ * process_doorbell_msg - Parse the buffer contents and invoke the
+ * doorbell_msg callback present it.
+ * @buf: doorbell_msg buffer shared with QTEE.
+ *
+ * Return: On success return 0. On failure returns -EINVAL if invalid
+ * object type or operation not supported.
+ * It returns -ENOMEM if memory could not be allocated.
+ */
+int process_doorbell_msg(void *buf)
+{
+	int i, errno;
+
+	if (!buf)
+		return -EINVAL;
+
+	struct qtee_callback *msg = (struct qtee_callback *) buf;
+
+	/* Get object being invoked!!! */
+	unsigned int object_id = msg->cxt;
+	struct si_object *object;
+
+	/* QTEE can not invoke NULL object or objects it hosts. */
+	if (si_object_type(object_id) == SI_OT_NULL ||
+		si_object_type(object_id) == SI_OT_USER) {
+		return -EINVAL;
+	}
+
+	object = qtee_get_si_object(object_id);
+	if (!object)
+		return -EINVAL;
+
+	struct si_arg *args = kmalloc_array(msg->counts + 1, sizeof(struct si_arg), GFP_KERNEL);
+
+	if (!args) {
+		put_si_object(object);
+		return -ENOMEM;
+	}
+
+	switch (SI_OBJECT_OP_METHOD_ID(msg->op)) {
+	case SI_OBJECT_OP_RELEASE:
+
+		/* Remove the 'object' from 'xa_si_objects' so that the 'object_id'
+		 * becomes invalid for further use. However, call 'put_si_object'
+		 * to schedule the actual release if there is no user.
+		 */
+
+		erase_si_object(object_id);
+		put_si_object(object);
+		errno = 0;
+
+		break;
+	case SI_OBJECT_OP_RETAIN:
+		get_si_object(object);
+		errno = 0;
+
+		break;
+	default:
+
+		/* Check if the operation is supported before going forward. */
+		if (object->ops->op_supported) {
+			if (object->ops->op_supported(msg->op)) {
+				errno = -EINVAL;
+
+				break;
+			}
+		}
+
+		errno = prepare_doorbell_args(msg, args);
+		if (errno) {
+
+			/* Unable to parse the message. Release any object arrived as input. */
+			arg_for_each_input_object(i, args)
+				put_si_object(args[i].o);
+
+			break;
+		}
+
+		/* Using context ID 0 for doorbell_msg as they don't need context tracking */
+		errno = object->ops->dispatch(0,
+			/* .dispatch(Object, Operation, Arguments). */
+			object, msg->op, args);
+	}
+
+	kfree(args);
+	return errno;
+}
+EXPORT_SYMBOL_GPL(process_doorbell_msg);
 
 /* Primordial Object. */
 /* It is invoked by QTEE for kernel services. */

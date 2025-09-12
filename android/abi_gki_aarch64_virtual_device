@@ -1089,6 +1089,7 @@
   drm_atomic_helper_dirtyfb
   drm_atomic_helper_plane_destroy_state
   drm_atomic_helper_plane_duplicate_state
+  __drm_atomic_helper_plane_duplicate_state
   drm_atomic_helper_plane_reset
   drm_connector_attach_edid_property
   drm_connector_register

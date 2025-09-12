@@ -262,6 +262,19 @@ int32_t habmm_socket_recvfrom(int32_t handle, void *dst_buff,
 #define HABMM_EXPIMP_FLAGS_FD     0x00010000
 #define HABMM_EXPIMP_FLAGS_DMABUF 0x00020000
 
+/*
+ * this flag is used when a HAB client imports memory to fd, and closes the
+ * fd on client side before calling hab unimport. Client can close fd once
+ * the dmabuf is imported into client driver, in order to reduce active fd
+ * number in a process. In this case, client should set this flag during
+ * calling habmm_unimport() to prevent excessive dma-buf fd closure in uhab
+ * from happening.
+ *
+ * TODO: move this flag to hab_ioctl.h as it is only applicable for user space
+ * HAB client.
+ */
+#define HABMM_UNIMP_FLAGS_FD_ALREADY_CLOSED  0x00040000U
+
 #define HAB_MAX_EXPORT_SIZE 0x8000000
 
 /*
@@ -308,11 +321,23 @@ int32_t habmm_unexport(int32_t handle, uint32_t export_id, uint32_t flags);
  *
  * Import the exporter's shared reference ID.
  * The importing is per process space.
+ * A dma-buf is created for both invokers calling from khab and uhab.
+ * For those invokers from khab, the dma-buf is returned directly.
+ * For those invokers from uhab, a fd corresponding to the dma-buf file is
+ * returned.
+ *
+ * AoU:
+ * As a HAB clients from kernel,
+ * 1. Increase the dma-buf file count by one before any usage and put it after usage.
+ * 2. If the generated dma_buf is shared to user space via fd, it is mandatory to
+ * increase the dma_buf file count by one.
  *
  * Params:
  *
  * in handle - communication channel created by habmm_socket_open
  * out buff_shared - buffer to be imported. returned upon success
+ *                   dma_buf pointer if calling from khab
+ *                   dma_buf fd if calling from uhab
  * in size_bytes - size of the imported buffer in bytes. It should match the
  *                 original exported buffer size
  * in export_id - received when exporter sent its exporting ID through

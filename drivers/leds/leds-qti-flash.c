@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #define pr_fmt(fmt)	"qti-flash: %s: " fmt, __func__
 
@@ -1778,7 +1778,7 @@ static int qti_flash_led_register_device(struct qti_flash_led *led,
 	const char *label;
 	int rc, i = 0, j = 0;
 	u32 val;
-	bool need_snode;
+	bool need_snode = false;
 
 	rc = of_property_read_u32(node, "reg", &val);
 	if (rc < 0) {

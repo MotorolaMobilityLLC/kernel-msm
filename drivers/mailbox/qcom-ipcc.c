@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitfield.h>
@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/suspend.h>
+#include <linux/notifier.h>
 
 #include <dt-bindings/mailbox/qcom-ipcc.h>
 
@@ -59,6 +60,8 @@ struct qcom_ipcc {
 	struct mbox_controller mbox;
 	int num_chans;
 	int irq;
+	struct notifier_block hibernate_notif_block;
+	bool needs_unmasking;
 };
 
 static inline struct qcom_ipcc *to_qcom_ipcc(struct mbox_controller *mbox)
@@ -311,7 +314,7 @@ static int qcom_ipcc_pm_resume(struct device *dev)
 	u32 hwirq;
 	int virq;
 
-	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+	if ((pm_suspend_target_state == PM_SUSPEND_MEM) || ipcc->needs_unmasking)
 		qcom_ipcc_restore_unmask_irq(dev);
 
 	hwirq = readl(ipcc->base + IPCC_REG_RECV_ID);
@@ -324,6 +327,18 @@ static int qcom_ipcc_pm_resume(struct device *dev)
 		FIELD_GET(IPCC_CLIENT_ID_MASK, hwirq), FIELD_GET(IPCC_SIGNAL_ID_MASK, hwirq));
 
 	return 0;
+}
+
+static int qcom_ipcc_hibernation_cb(struct notifier_block *nb,
+				unsigned long event, void *dummy)
+{
+	struct qcom_ipcc *ipcc = container_of(nb, struct qcom_ipcc, hibernate_notif_block);
+
+	if (event == PM_HIBERNATION_PREPARE)
+		ipcc->needs_unmasking = true;
+	else if (event ==  PM_POST_HIBERNATION)
+		ipcc->needs_unmasking = false;
+	return NOTIFY_OK;
 }
 
 static int qcom_ipcc_probe(struct platform_device *pdev)
@@ -368,6 +383,13 @@ static int qcom_ipcc_probe(struct platform_device *pdev)
 		goto err_req_irq;
 	}
 
+	ipcc->hibernate_notif_block.notifier_call = qcom_ipcc_hibernation_cb;
+	ret = register_pm_notifier(&ipcc->hibernate_notif_block);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to register PM notifier: %d\n", ret);
+		goto err_req_irq;
+	}
+
 	platform_set_drvdata(pdev, ipcc);
 
 	return 0;
@@ -385,6 +407,7 @@ static int qcom_ipcc_remove(struct platform_device *pdev)
 {
 	struct qcom_ipcc *ipcc = platform_get_drvdata(pdev);
 
+	unregister_pm_notifier(&ipcc->hibernate_notif_block);
 	disable_irq_wake(ipcc->irq);
 	irq_domain_remove(ipcc->irq_domain);
 

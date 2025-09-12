@@ -57,6 +57,16 @@ config DUMMY_IRQ
 	  The sole purpose of this module is to help with debugging of systems on
 	  which spurious IRQs would happen on disabled IRQ vector.
 
+config BHS_IRQ
+	tristate "BHS IPCC IRQ handler"
+	help
+	  This driver provides support for handling IRQs associated with the
+	  IPCC SMP2P and GLINK interfaces used in the BHS (Battery Hot Swap)
+	  subsystem. It is primarily used to retrieve and manage interrupt
+	  lines that need to be disabled or enabled during battery removal
+	  and insertion events. This ensures proper synchronization and
+	  communication between processors and subsystems during power transitions.
+
 config IBM_ASM
 	tristate "Device driver for IBM RSA service processor"
 	depends on X86 && PCI && INPUT

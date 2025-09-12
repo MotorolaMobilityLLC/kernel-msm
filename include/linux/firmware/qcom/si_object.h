@@ -236,5 +236,6 @@ int si_core_get_client_env(struct si_object_invoke_ctx *oic, struct si_object **
 int si_core_client_env_open(struct si_object_invoke_ctx *oic, struct si_object *client_env,
 			    u32 uid_val, struct si_object **service);
 
+int process_doorbell_msg(void *buf);
 
 #endif /* _LINUX_SI_OBJECT_H__ */

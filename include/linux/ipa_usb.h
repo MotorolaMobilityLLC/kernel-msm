@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _IPA_USB_H_
@@ -17,6 +17,7 @@ enum ipa_usb_teth_prot {
 	IPA_USB_MBIM = 3,
 	IPA_USB_DIAG = 4,
 	IPA_USB_RMNET_CV2X = 5,
+	IPA_USB_NCM = 6,
 	IPA_USB_MAX_TETH_PROT_SIZE
 };
 

@@ -31,6 +31,7 @@
 #include <linux/soc/qcom/smem_state.h>
 #include <linux/soc/qcom/qcom_aoss.h>
 #include <soc/qcom/secure_buffer.h>
+#include <linux/pm_wakeirq.h>
 
 #include <trace/events/rproc_qcom.h>
 #include <soc/qcom/qcom_ramdump.h>
@@ -1714,6 +1715,28 @@ void qcom_rproc_update_recovery_status(struct rproc *rproc, bool enable)
 }
 EXPORT_SYMBOL(qcom_rproc_update_recovery_status);
 
+static int adsp_setup_wakeup(struct qcom_adsp *adsp)
+{
+	int ret;
+
+	if (!adsp) {
+		dev_err(adsp->dev, "Invalid adsp or q6v5\n");
+		return -EINVAL;
+	}
+	ret = device_init_wakeup(adsp->dev, true);
+	if (ret) {
+		dev_err(adsp->dev, "failed to set device for wakeup\n");
+		return ret;
+	}
+	ret = dev_pm_set_wake_irq(adsp->dev, adsp->q6v5.wdog_irq);
+	if (ret) {
+		dev_err(adsp->dev, "failed to set wake_irq for wdog\n");
+		device_init_wakeup(adsp->dev, false);
+	}
+
+	return ret;
+}
+
 static int adsp_probe(struct platform_device *pdev)
 {
 	const struct adsp_data *desc;
@@ -1799,32 +1822,28 @@ static int adsp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, adsp);
 
-	ret = device_init_wakeup(adsp->dev, true);
+	ret = adsp_alloc_memory_region(adsp);
 	if (ret)
 		goto free_dtb_firmware;
 
-	ret = adsp_alloc_memory_region(adsp);
-	if (ret)
-		goto deinit_wakeup_source;
-
 	ret = adsp_setup_32b_dma_allocs(adsp);
 	if (ret)
-		goto deinit_wakeup_source;
+		goto free_dtb_firmware;
 
 	ret = adsp_init_clock(adsp);
 	if (ret)
-		goto deinit_wakeup_source;
+		goto free_dtb_firmware;
 
 	ret = adsp_init_regulator(adsp);
 	if (ret)
-		goto deinit_wakeup_source;
+		goto free_dtb_firmware;
 
 	adsp_init_bus_scaling(adsp);
 
 	ret = adsp_pds_attach(&pdev->dev, adsp->active_pds,
 			      desc->active_pd_names);
 	if (ret < 0)
-		goto deinit_wakeup_source;
+		goto free_dtb_firmware;
 	adsp->active_pd_count = ret;
 
 	ret = adsp_pds_attach(&pdev->dev, adsp->proxy_pds,
@@ -1848,21 +1867,25 @@ static int adsp_probe(struct platform_device *pdev)
 	if (ret)
 		goto detach_proxy_pds;
 
+	ret = adsp_setup_wakeup(adsp);
+	if (ret)
+		goto deinit_wakeup_source;
+
 	if (adsp->check_status) {
 		if (rproc_find_status_register(adsp))
-			goto detach_proxy_pds;
+			goto deinit_wakeup_source;
 		adsp->wake_state = devm_qcom_smem_state_get(&pdev->dev, "wakeup", &adsp->wake_bit);
 
 		if (IS_ERR(adsp->wake_state)) {
 			dev_err(&pdev->dev, "failed to acquire wake state\n");
-			goto detach_proxy_pds;
+			goto deinit_wakeup_source;
 		}
 
 		adsp->sleep_state = devm_qcom_smem_state_get(&pdev->dev, "sleep", &adsp->sleep_bit);
 
 		if (IS_ERR(adsp->sleep_state)) {
 			dev_err(&pdev->dev, "failed to acquire sleep state\n");
-			goto detach_proxy_pds;
+			goto deinit_wakeup_source;
 		}
 
 		mutex_init(&adsp->adsp_lock);
@@ -1884,7 +1907,7 @@ static int adsp_probe(struct platform_device *pdev)
 					      desc->ssctl_id);
 	if (IS_ERR(adsp->sysmon)) {
 		ret = PTR_ERR(adsp->sysmon);
-		goto detach_proxy_pds;
+		goto deinit_wakeup_source;
 	}
 
 	qcom_add_ssr_subdev(rproc, &adsp->ssr_subdev, desc->ssr_name);
@@ -1946,17 +1969,17 @@ destroy_minidump_dev:
 	device_remove_file(adsp->dev, &dev_attr_txn_id);
 remove_subdevs:
 	qcom_remove_sysmon_subdev(adsp->sysmon);
+deinit_wakeup_source:
+	dev_pm_clear_wake_irq(adsp->dev);
+	device_init_wakeup(adsp->dev, false);
 detach_proxy_pds:
 	adsp_pds_detach(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
 detach_active_pds:
 	adsp_pds_detach(adsp, adsp->active_pds, adsp->active_pd_count);
-deinit_wakeup_source:
-	device_init_wakeup(adsp->dev, false);
 free_dtb_firmware:
 	if (adsp->dtb_fw_name)
 		kfree_const(adsp->dtb_fw_name);
 free_rproc:
-	device_init_wakeup(adsp->dev, false);
 	rproc_free(rproc);
 
 	return ret;
@@ -1980,6 +2003,7 @@ static int adsp_remove(struct platform_device *pdev)
 	if (adsp->check_status)
 		atomic_notifier_chain_unregister(&panic_notifier_list, &adsp->panic_blk);
 	adsp_pds_detach(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
+	dev_pm_clear_wake_irq(adsp->dev);
 	device_init_wakeup(adsp->dev, false);
 	rproc_free(adsp->rproc);
 
@@ -3005,10 +3029,13 @@ static const struct adsp_data niobe_soccp_resource = {
 static const struct adsp_data seraph_soccp_resource = {
 	.crash_reason_smem = 656,
 	.firmware_name = "soccp.mbn",
+	.dtb_firmware_name = "soccp_dtb.mbn",
 	.pas_id = 51,
+	.dtb_pas_id = 0x41,
+	.minidump_id = 24,
+	.uses_elf64 = true,
 	.ssr_name = "soccp",
 	.sysmon_name = "soccp",
-	.check_status = true,
 	.early_boot = true,
 	.auto_boot = true,
 };

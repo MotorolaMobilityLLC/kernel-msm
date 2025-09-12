@@ -184,9 +184,14 @@ void hab_ctx_free_fn(struct uhab_context *ctx)
 		pr_debug("leaked imp %d vcid %X for ctx is collected total %d\n",
 			exp->export_id, exp->vcid_local,
 			ctx->import_total);
-		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, ctx->kernel);
+		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, 1);
 		if (exp->pchan->mem_proto == 1) {
 			if (!ret) {
+				/*
+				 * even if imp_hyp_unmap return success, it is still an
+				 * unexpected scenario: HAB client exits/crashes/gets
+				 * killed before unimport all imported memory
+				 */
 				pr_warn("unimp msg sent for exp id %u on %s\n",
 					exp->export_id, exp->pchan->name);
 				HAB_HEADER_SET_TYPE(header, HAB_PAYLOAD_TYPE_UNIMPORT);
@@ -196,11 +201,15 @@ void hab_ctx_free_fn(struct uhab_context *ctx)
 				ret = physical_channel_send(exp->pchan, &header, &exp->export_id,
 						HABMM_SOCKET_SEND_FLAGS_NON_BLOCKING);
 				if (ret != 0)
-					pr_err("failed to send unimp msg %d, vcid %d, exp id %d\n",
+					pr_err("failed to send unimp msg %d, vcid %x, exp id %u\n",
 						ret, exp->vcid_local, exp->export_id);
+			} else if (ret == -EBUSY) {
+				pr_warn("exp id %u unmap fail on vcid %X, still in use. unimp msg deferred\n",
+					exp->export_id, exp->vcid_local);
+				habmem_defer_unimp_sent(exp);
 			} else
-				pr_err("exp id %d pcnt %d unmap fail on vcid %X\n",
-					exp->export_id, exp->payload_count, exp->vcid_local);
+				pr_err("unmap failed %d on vcid %X, exp id %u\n",
+					ret, exp->vcid_local, exp->export_id);
 		}
 		exp_super = container_of(exp, struct export_desc_super, exp);
 		kfree(exp_super);

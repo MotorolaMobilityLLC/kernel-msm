@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _UAPI_MSM_HGSL_H
@@ -26,7 +26,6 @@ struct hgsl_mem_object {
 #define HGSL_IOCTL_BASE	'h'
 #define HGSL_IORW(n, t)	_IOWR(HGSL_IOCTL_BASE, n, t)
 #define HGSL_IOW(n, t)	_IOW(HGSL_IOCTL_BASE, n, t)
-
 
 /**
  * return current status of Doorbell system
@@ -56,6 +55,47 @@ struct hgsl_db_queue_inf {
 	__s32 queue_off_dwords;
 	__u32 db_signal;
 };
+
+/* Reuse the same flag that GPU COMMAND uses */
+#define HGSL_CONTEXT_SUBMIT_IB_LIST 0x00000004
+#define HGSL_CONTEXT_CTX_SWITCH     0x00000008
+#define HGSL_CONTEXT_END_OF_FRAME   0x00000100
+#define HGSL_CONTEXT_SYNC           0x00000400
+
+/*
+ * --- command batch flags ---
+ * The bits that are linked to a KGSL_CONTEXT equivalent are either legacy
+ * definitions or bits that are valid for both contexts and cmdbatches.  To be
+ * safe the other 8 bits that are still available in the context field should be
+ * omitted here in case we need to share - the other bits are available for
+ * cmdbatch only flags as needed
+ */
+#define HGSL_CMDBATCH_MEMLIST         0x00000001
+#define HGSL_CMDBATCH_MARKER          0x00000002
+#define HGSL_CMDBATCH_SUBMIT_IB_LIST  HGSL_CONTEXT_SUBMIT_IB_LIST /* 0x004 */
+#define HGSL_CMDBATCH_CTX_SWITCH      HGSL_CONTEXT_CTX_SWITCH     /* 0x008 */
+#define HGSL_CMDBATCH_PROFILING       0x00000010
+#define HGSL_CMDBATCH_END_OF_FRAME    HGSL_CONTEXT_END_OF_FRAME   /* 0x100 */
+#define HGSL_CMDBATCH_SYNC            HGSL_CONTEXT_SYNC           /* 0x400 */
+
+/*
+ * gpu_command_object flags - these flags communicate the type of command or
+ * memory object being submitted for a GPU command
+ */
+
+/* Flags for GPU command objects */
+#define HGSL_CMDLIST_IB                  0x00000001U
+#define HGSL_CMDLIST_CTXTSWITCH_PREAMBLE 0x00000002U
+#define HGSL_CMDLIST_IB_PREAMBLE         0x00000004U
+
+/* Flags for GPU command memory objects */
+#define HGSL_OBJLIST_MEMOBJ  0x00000008U
+#define HGSL_OBJLIST_PROFILE 0x00000010U
+
+/* Flags for GPU command sync points */
+#define HGSL_CMD_SYNCPOINT_TYPE_TIMESTAMP 0
+#define HGSL_CMD_SYNCPOINT_TYPE_FENCE 1
+#define HGSL_CMD_SYNCPOINT_TYPE_TIMELINE 2
 
 #define DB_SIGNAL_INVALID       0
 #define DB_SIGNAL_GLOBAL_0      1
@@ -569,6 +609,208 @@ struct hgsl_ioctl_mem_get_fd_params {
 
 #define HGSL_IOCTL_MEM_GET_FD \
 				HGSL_IORW(0x1D, struct hgsl_ioctl_mem_get_fd_params)
+
+/*
+ * struct hgsl_cmd_syncpoint_timestamp
+ * @context_id: ID of a context
+ * @timestamp: GPU timestamp
+ *
+ * This structure defines a syncpoint comprising a context/timestamp pair. A
+ * list of these may be passed by userland to define
+ * dependencies that must be met before the command can be submitted to the
+ * hardware
+ */
+struct hgsl_cmd_syncpoint_timestamp {
+	__u32 devhandle;
+	__u32 context_id;
+	__u32 timestamp;
+};
+
+struct hgsl_cmd_syncpoint_fence {
+	int fd;
+};
+
+/*
+ * struct hgsl_cmd_syncpoint_timeline
+ * @timelines: Address of an array of &struct hgsl_timeline_val
+ * @count: Number of entries in @timelines
+ * @timelines_size: Size of each entry in @timelines
+ *
+ * Define a syncpoint for a number of timelines.  This syncpoint will
+ * be satisfied when all of the specified timelines are signaled.
+ */
+struct hgsl_cmd_syncpoint_timeline {
+	__u64 timelines;
+	__u32 count;
+	__u32 timelines_size;
+};
+
+/**
+ * struct hgsl_cmd_syncpoint - Define a sync point for a command batch
+ * @type: type of sync point defined here
+ * @priv: Pointer to the type specific buffer
+ * @size: Size of the type specific buffer
+ *
+ * This structure contains pointers defining a specific command sync point.
+ * The pointer and size should point to a type appropriate structure.
+ */
+struct hgsl_cmd_syncpoint {
+	int type;
+	void __user *priv;
+	__kernel_size_t size;
+};
+
+/**
+ * struct hgsl_command_object - GPU command object
+ * @offset: GPU address offset of the object
+ * @gpuaddr: GPU address of the object
+ * @size: Size of the object
+ * @flags: Current flags for the object
+ * @id - GPU command object ID
+ */
+struct hgsl_command_object {
+	__u64 offset;
+	__u64 gpuaddr;
+	__u64 size;
+	__u32 flags;
+	__u32 id;
+};
+
+/**
+ * struct hgsl_command_syncpoint - GPU syncpoint object
+ * @priv: Pointer to the type specific buffer
+ * @size: Size of the type specific buffer
+ * @type: type of sync point defined here
+ */
+struct hgsl_command_syncpoint {
+	__u64 __user priv;
+	__u64 size;
+	__u32 type;
+};
+
+/**
+ * struct hgsl_gpu_command - Argument for HGSL_IOCTL_GPU_COMMAND
+ * @flags: Current flags for the object
+ * @cmdlist: List of hgsl_command_objects for submission
+ * @cmdsize: Size of hgsl_command_objects structure
+ * @numcmds: Number of hgsl_command_objects in command list
+ * @objlist: List of hgsl_command_objects for tracking
+ * @objsize: Size of hgsl_command_objects structure
+ * @numobjs: Number of hgsl_command_objects in object list
+ * @synclist: List of hgsl_command_syncpoints
+ * @syncsize: Size of hgsl_command_syncpoint structure
+ * @numsyncs: Number of hgsl_command_syncpoints in syncpoint list
+ * @devhandle GPU device handle
+ * @context_id: Context ID submitting the hgsl_gpu_command
+ * @timestamp: Timestamp for the submitted commands
+ */
+struct hgsl_gpu_command {
+	__u64 flags;
+	__u64 __user cmdlist;
+	__u32 cmdsize;
+	__u32 numcmds;
+	__u64 __user objlist;
+	__u32 objsize;
+	__u32 numobjs;
+	__u64 __user synclist;
+	__u32 syncsize;
+	__u32 numsyncs;
+	__u32 devhandle;
+	__u32 context_id;
+	__u32 timestamp;
+	__u32 padding;
+};
+
+#define HGSL_IOCTL_GPU_COMMAND \
+				HGSL_IORW(0x1E, struct hgsl_gpu_command)
+
+#define HGSL_GPU_AUX_COMMAND_BIND	(1 << 0)
+#define HGSL_GPU_AUX_COMMAND_TIMELINE	(1 << 1)
+#define HGSL_GPU_AUX_COMMAND_SYNC		HGSL_CMDBATCH_SYNC
+
+/**
+ * struct hgsl_gpu_aux_command_timeline - An aux command for timeline signals
+ * @timelines: An array of &struct hgsl_timeline_val elements
+ * @count: The number of entries in @timelines
+ * @timelines_size: The size of each element in @timelines
+ *
+ * An aux command for timeline signals that can be pointed to by
+ * &struct hgsl_gpu_aux_command_generic when the type is
+ * HGSL_GPU_AUX_COMMAND_TIMELINE.
+ */
+struct hgsl_gpu_aux_command_timeline {
+	__u64 timelines;
+	__u32 count;
+	__u32 timelines_size;
+};
+
+/**
+ * struct hgsl_gpu_aux_command_generic - Container for an AUX command
+ * @priv: Pointer to the type specific buffer
+ * @size: Size of the type specific buffer
+ * @type: type of sync point defined here
+ *
+ * Describes a generic container for GPU aux commands. @priv is a user pointer
+ * to the command struct matching @type of size @size.
+ */
+struct hgsl_gpu_aux_command_generic {
+	__u64 priv;
+	__u64 size;
+	__u32 type;
+/* private: Padding for 64 bit compatibility */
+	__u32 padding;
+};
+
+/**
+ * struct hgsl_gpu_aux_command - Argument for IOCTL_HGSL_GPU_AUX_COMMAND
+ * @flags: flags for the object
+ * @cmdlist: List of &struct hgsl_gpu_aux_command_generic objects
+ * @cmd_size: Size of each entry in @cmdlist
+ * @numcmds: Number of entries in @cmdlist
+ * @synclist: List of &struct hgsl_command_syncpoint objects
+ * @syncsize: Size of each entry in @synclist
+ * @numsyncs: Number of entries in @synclist
+ * @devhandle GPU device handle
+ * @context_id: ID of the context submitting the aux command
+ * @timestamp: Timestamp for the command submission
+ *
+ * Describe a GPU auxiliary command. Auxiliary commands are tasks that are not
+ * performed on hardware but can be queued like normal GPU commands. Like GPU
+ * commands AUX commands are assigned a timestamp and processed in order in the
+ * queue. They can also have standard sync objects attached. The only
+ * difference is that AUX commands usually perform some sort of administrative
+ * task in the CPU and are retired in the dispatcher.
+ *
+ * For bind operations flags must have one of the HGSL_GPU_AUX_COMMAND_* flags
+ * set. If sync objects are attached HGSL_GPU_AUX_COMMAND_SYNC must be set.
+ * @cmdlist points to an array of &struct hgsl_gpu_aux_command_generic structs
+ * which in turn will have a pointer to a specific command type.
+ * @numcmds is the number of commands in the list and @cmdsize is the size
+ * of each entity in @cmdlist.
+ *
+ * If HGSL_GPU_AUX_COMMAND_SYNC is specified @synclist will point to an array of
+ * &struct hgsl_command_syncpoint items in the same fashion as a GPU hardware
+ * command. @numsyncs and @syncsize describe the list.
+ *
+ * @context_id is the context that is submitting the command and @timestamp
+ * contains the timestamp for the operation.
+ */
+struct hgsl_gpu_aux_command {
+	__u64 flags;
+	__u64 cmdlist;
+	__u32 cmdsize;
+	__u32 numcmds;
+	__u64 synclist;
+	__u32 syncsize;
+	__u32 numsyncs;
+	__u32 devhandle;
+	__u32 context_id;
+	__u32 timestamp;
+	__u32 padding;
+};
+
+#define HGSL_IOCTL_GPU_AUX_COMMAND \
+				HGSL_IORW(0x1F, struct hgsl_gpu_aux_command)
 
 /**
  * struct hgsl_ioctl_gslprofiler_per_proc_gpu_busy_params - query per process gpu busy percentage

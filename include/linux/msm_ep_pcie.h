@@ -1,15 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #ifndef __MSM_EP_PCIE_H
 #define __MSM_EP_PCIE_H
@@ -357,13 +347,13 @@ int ep_pcie_core_get_capability(struct ep_pcie_hw *phandle,
 
 #if IS_ENABLED(CONFIG_QCOM_PCI_EDMA)
 int qcom_edma_init(struct device *dev);
-void edma_dump(void);
+void edma_dump(struct device *dev);
 #else
 static inline int qcom_edma_init(struct device *dev)
 {
 	return 0;
 }
-static inline void edma_dump(void) {}
+static inline void edma_dump(struct device *dev) {}
 #endif
 
 #endif

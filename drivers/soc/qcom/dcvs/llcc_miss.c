@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/debugfs.h>
@@ -19,6 +19,7 @@
 
 #define SAMPLE_MS	10
 #define DDR_OUT_BUF_MAGIC (0xDD4)
+#define DEFAULT_MAX_MASTERS 3
 
 enum cmd {
 	LLCC_MISS_START_PROFILING = 1,
@@ -43,10 +44,12 @@ enum llcc_miss_masters {
 	CPU = 0,
 	GPU,
 	NSP,
-	MAX_MASTER,
+	PCIE,
+	MAX_MASTERS,
 };
 
-static char *master_names[MAX_MASTER] = {"CPU", "GPU", "NSP"};
+static u32 max_masters = DEFAULT_MAX_MASTERS;
+static char *master_names[MAX_MASTERS] = {"CPU", "GPU", "NSP", "PCIE"};
 
 struct llcc_miss_start_req {
 	u32	cmd_id;
@@ -113,7 +116,7 @@ struct master_data {
 	char			buf[PAGE_SIZE];
 };
 
-static struct master_data mdata[MAX_MASTER];
+static struct master_data mdata[MAX_MASTERS];
 static struct dentry *llcc_miss_dir;
 static struct llcc_miss_dev_data *llcc_miss;
 
@@ -130,7 +133,7 @@ static ssize_t get_last_samples(struct file *file, char __user *user_buf,
 		goto unlock;
 	}
 	master_name = file->private_data;
-	for (m_idx = 0; m_idx < MAX_MASTER ; m_idx++) {
+	for (m_idx = 0; m_idx < max_masters ; m_idx++) {
 		if (!strcasecmp(master_names[m_idx], master_name))
 			break;
 	}
@@ -265,23 +268,31 @@ static int set_mon_enabled(void *data, u64 val)
 	u32 count, enable = val ? 1 : 0;
 
 	mutex_lock(&llcc_miss->lock);
-	for (i = 0; i < MAX_MASTER; i++) {
+
+	for (i = 0; i < max_masters; i++) {
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
-	if (enable == (llcc_miss->active_masters & BIT(i)))
+
+	if (enable == !!(llcc_miss->active_masters & BIT(i)))
 		goto unlock;
+
 	count = hweight32(llcc_miss->active_masters);
+
 	if (count >= MAX_CONCURRENT_MASTERS && enable) {
 		pr_err("Max masters already enabled\n");
 		ret = -EINVAL;
 		goto unlock;
 	}
 	mutex_unlock(&llcc_miss->lock);
+
 	if (count)
 		stop_memory_miss_stats();
+
 	mutex_lock(&llcc_miss->lock);
+
 	llcc_miss->active_masters = (llcc_miss->active_masters ^ BIT(i));
+
 	if (llcc_miss->active_masters)
 		start_memory_miss_stats();
 
@@ -297,7 +308,7 @@ static int get_mon_enabled(void *data, u64 *val)
 	int i;
 
 	mutex_lock(&llcc_miss->lock);
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		if (!strcasecmp(master_names[i], master_name))
 			break;
 	}
@@ -359,7 +370,7 @@ static void llcc_miss_update_work(struct work_struct *work)
 	mutex_lock(&llcc_miss->lock);
 	for (i = 0; i < MAX_CONCURRENT_MASTERS; i++) {
 		m = llcc_miss->data->master_buf[i].master_id;
-		if (m >= MAX_MASTER)
+		if (m >= max_masters)
 			continue;
 		mdata[m].miss_data[mdata[m].curr_idx].ts = llcc_miss->data->qtime;
 		mdata[m].miss_data[mdata[m].curr_idx].measured_miss_rate =
@@ -399,7 +410,7 @@ static int llcc_miss_create_fs_entries(void)
 		return PTR_ERR(llcc_miss_dir);
 	}
 
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		master_dir = debugfs_create_dir(master_names[i], llcc_miss_dir);
 		if (IS_ERR(master_dir)) {
 			pr_err("Debugfs directory creation failed for %s\n", master_names[i]);
@@ -433,19 +444,46 @@ error_cleanup:
 
 static int __init qcom_llcc_miss_init(void)
 {
-	int ret, i, j;
+	int i, j, ret = 0;
+	struct device_node *np;
+	u32 temp;
 
 	llcc_miss =  kzalloc(sizeof(*llcc_miss), GFP_KERNEL);
 	if (!llcc_miss)
 		return -ENOMEM;
+
 	llcc_miss->data = kzalloc(sizeof(*llcc_miss->data), GFP_KERNEL);
 	if (!llcc_miss->data) {
 		kfree(llcc_miss);
 		return -ENOMEM;
 	}
-	for (i = 0; i < MAX_MASTER; i++)
+
+	np = of_find_node_by_path("/soc/qcom-dcvs-prof");
+
+	if (!np) {
+		pr_debug("llcc_miss: Device node not found, defaulting max_masters to %u\n",
+				max_masters);
+	} else {
+		if (of_property_read_u32(np, "max_masters", &temp)) {
+			pr_debug("llcc_miss: Failed to read max_masters, defaulting max_masters to %u\n",
+					max_masters);
+		} else {
+			if (temp > MAX_MASTERS || temp < 1) {
+				pr_err("llcc_miss: Invalid max_master value initialized %u (must be 1-%d)\n",
+						temp, MAX_MASTERS);
+				of_node_put(np);
+				goto err;
+			}
+			max_masters = temp;
+		}
+		of_node_put(np);
+	}
+
+	for (i = 0; i < max_masters; i++)
 		llcc_miss->available_masters |= BIT(i);
+
 	ret =  llcc_miss_create_fs_entries();
+
 	if (ret < 0)
 		goto err;
 
@@ -456,7 +494,7 @@ static int __init qcom_llcc_miss_init(void)
 	 */
 	llcc_miss->size_of_line = sizeof(struct miss_sample) * 2 + 2;
 	llcc_miss->max_samples = PAGE_SIZE / llcc_miss->size_of_line;
-	for (i = 0; i < MAX_MASTER; i++) {
+	for (i = 0; i < max_masters; i++) {
 		mdata[i].miss_data = kcalloc(llcc_miss->max_samples,
 				sizeof(struct miss_sample), GFP_KERNEL);
 		if (!mdata[i].miss_data) {

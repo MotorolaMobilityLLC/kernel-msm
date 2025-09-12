@@ -1,6 +1,6 @@
-load(":target_variants.bzl", "la_variants")
-load(":msm_kernel_la.bzl", "define_msm_la")
 load(":image_opts.bzl", "boot_image_opts")
+load(":msm_kernel_la.bzl", "define_msm_la")
+load(":target_variants.bzl", "la_variants")
 
 target_name = "pineapple"
 
@@ -98,6 +98,7 @@ def define_pineapple():
         "drivers/mailbox/qcom-ipcc.ko",
         "drivers/mfd/qcom-i2c-pmic.ko",
         "drivers/mfd/qcom-spmi-pmic.ko",
+        "drivers/misc/bhs-irq-controller.ko",
         "drivers/misc/qseecom_proxy.ko",
         "drivers/mmc/host/cqhci.ko",
         "drivers/mmc/host/sdhci-msm.ko",
