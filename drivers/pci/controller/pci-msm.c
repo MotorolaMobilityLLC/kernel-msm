@@ -8993,6 +8993,7 @@ static void msm_pcie_drv_connect_worker(struct work_struct *work)
 static int msm_pcie_i2c_ctrl_init(struct msm_pcie_dev_t *pcie_dev)
 {
 	int ret = 0, size;
+	struct i2c_client *client;
 	struct device_node *of_node, *i2c_client_node;
 	struct device *dev = &pcie_dev->pdev->dev;
 	struct pcie_i2c_ctrl *i2c_ctrl = &pcie_dev->i2c_ctrl;
@@ -9002,12 +9003,21 @@ static int msm_pcie_i2c_ctrl_init(struct msm_pcie_dev_t *pcie_dev)
 		PCIE_DBG(pcie_dev, "PCIe: RC%d: No i2c phandle found\n",
 			 pcie_dev->rc_idx);
 		return 0;
+	}
+
+	client = of_find_i2c_device_by_node(of_node);
+
+	if (!client) {
+		PCIE_DBG(pcie_dev, "PCIe: RC%d: No i2c probe yet\n",
+			 pcie_dev->rc_idx);
+		return -EPROBE_DEFER;
 	} else {
-		if (!i2c_ctrl->client) {
-			PCIE_DBG(pcie_dev, "PCIe: RC%d: No i2c probe yet\n",
-				 pcie_dev->rc_idx);
-			return -EPROBE_DEFER;
-		}
+		i2c_ctrl->client_i2c_read = ntn3_i2c_read;
+		i2c_ctrl->client_i2c_write = ntn3_i2c_write;
+		i2c_ctrl->client_i2c_reset = ntn3_ep_reset_ctrl;
+		i2c_ctrl->client_i2c_dump_regs = ntn3_dump_regs;
+		i2c_ctrl->client_i2c_de_emphasis_wa = ntn3_de_emphasis_wa;
+		i2c_ctrl->client = client;
 	}
 
 	i2c_client_node = i2c_ctrl->client->dev.of_node;
@@ -10773,7 +10783,6 @@ static int pcie_i2c_ctrl_probe(struct i2c_client *client,
 {
 	int rc_index = -EINVAL;
 	enum i2c_client_id client_id = I2C_CLIENT_ID_INVALID;
-	struct pcie_i2c_ctrl *i2c_ctrl;
 	const struct of_device_id *match;
 	struct i2c_driver_data *data;
 
@@ -10801,18 +10810,6 @@ static int pcie_i2c_ctrl_probe(struct i2c_client *client,
 	if (rc_index >= MAX_RC_NUM) {
 		dev_err(&client->dev, "invalid RC index %d\n", rc_index);
 		return -EINVAL;
-	}
-
-	if (client_id == I2C_CLIENT_ID_NTN3) {
-		i2c_ctrl = &msm_pcie_dev[rc_index]->i2c_ctrl;
-		i2c_ctrl->client_i2c_read = ntn3_i2c_read;
-		i2c_ctrl->client_i2c_write = ntn3_i2c_write;
-		i2c_ctrl->client_i2c_reset = ntn3_ep_reset_ctrl;
-		i2c_ctrl->client_i2c_dump_regs = ntn3_dump_regs;
-		i2c_ctrl->client_i2c_de_emphasis_wa = ntn3_de_emphasis_wa;
-		i2c_ctrl->client = client;
-	} else {
-		dev_err(&client->dev, "invalid client id %d\n", client_id);
 	}
 
 	return 0;
