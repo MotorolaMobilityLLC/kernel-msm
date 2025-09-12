@@ -1053,7 +1053,10 @@ static int ___host_check_page_state_range(u64 addr, u64 size,
 		.desired	= state,
 		.get_page_state	= host_get_mmio_page_state,
 	};
-	u64 end = addr + size;
+	u64 end;
+
+	if (check_add_overflow(addr, size, &end))
+		return -EINVAL;
 
 	hyp_assert_lock_held(&host_mmu.lock);
 
@@ -1083,7 +1086,10 @@ static int __host_check_page_state_range(u64 addr, u64 size,
 {
 	struct memblock_region *reg;
 	struct kvm_mem_range range;
-	u64 end = addr + size;
+	u64 end;
+
+	if (check_add_overflow(addr, size, &end))
+		return -EINVAL;
 
 	/* Can't check the state of both MMIO and memory regions at once */
 	reg = find_mem_range(addr, &range);
@@ -1394,6 +1400,10 @@ static int __guest_check_page_state_range(struct pkvm_hyp_vm *vm, u64 addr,
 		.desired	= state,
 		.get_page_state	= guest_get_page_state,
 	};
+	u64 end;
+
+	if (check_add_overflow(addr, size, &end))
+		return -EINVAL;
 
 	hyp_assert_lock_held(&vm->pgtable_lock);
 	return check_page_state_range(&vm->pgt, addr, size, &d);
@@ -2611,8 +2621,12 @@ static int guest_get_valid_pte(struct pkvm_hyp_vm *vm, u64 pfn, u64 ipa,
 	size_t size = PAGE_SIZE << order;
 	u64 phys = hyp_pfn_to_phys(pfn);
 	u32 level;
+	u64 end;
 
 	if (order && size != PMD_SIZE)
+		return -EINVAL;
+
+	if (check_add_overflow(phys, size, &end))
 		return -EINVAL;
 
 	WARN_ON(kvm_pgtable_get_leaf(&vm->pgt, ipa, pte, &level));
