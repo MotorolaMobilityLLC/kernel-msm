@@ -1809,6 +1809,12 @@ static int sysfs_adsp_stats_show(struct seq_buf *s)
 	if (!g_sysmon_stats.smem_init_adsp)
 		sysmon_smem_init_adsp();
 
+	/*Check again whether ADSP smem is OK*/
+	if (!g_sysmon_stats.smem_init_adsp) {
+		seq_buf_printf(s, "[NA]\n");
+		return -ENOKEY;
+	}
+
 	if (g_sysmon_stats.sysmon_event_stats_adsp) {
 		events_ptr = g_sysmon_stats.sysmon_event_stats_adsp;
 		seq_buf_printf(s, "\nsysMon stats:\n\n");
@@ -1918,6 +1924,12 @@ static int sysfs_cdsp_stats_show(struct seq_buf *s)
 
 	if (!g_sysmon_stats.smem_init_cdsp)
 		sysmon_smem_init_cdsp();
+
+	/*Check again whether CDSP smem is OK*/
+	if (!g_sysmon_stats.smem_init_cdsp) {
+		seq_buf_printf(s, "[NA]\n");
+		return -ENOKEY;
+	}
 
 	if (g_sysmon_stats.sysmon_event_stats_cdsp) {
 		events_ptr = g_sysmon_stats.sysmon_event_stats_cdsp;
@@ -2093,6 +2105,12 @@ static ssize_t show_clk_stats(struct kobject *kobj,
 	if (!g_sysmon_stats.smem_init_adsp)
 		sysmon_smem_init_adsp();
 
+	/*Check again whether ADSP smem is OK*/
+	if (!g_sysmon_stats.smem_init_adsp) {
+		seq_buf_printf(&s, "[NA]");
+		goto failed;
+	}
+
 	if (g_sysmon_stats.sysmon_power_stats_adsp) {
 
 		if (sysmon_stats_query_power_residency(ADSP, &sysmon_power_stats)) {
@@ -2129,6 +2147,8 @@ static ssize_t show_clk_stats(struct kobject *kobj,
 		seq_buf_printf(&s, ", %10u", events_ptr->event_stats.Sleep_latency > 0 ?
 				events_ptr->event_stats.Sleep_latency : U32_MAX);
 	}
+
+failed:
 	seq_buf_printf(&s, "\n");
 
 	return seq_buf_used(&s);
@@ -2201,6 +2221,12 @@ static ssize_t show_hvxclk_in_time(struct kobject *kobj,
 	if (!g_sysmon_stats.smem_init_cdsp)
 		sysmon_smem_init_cdsp();
 
+	/*Check again whether CDSP smem is OK*/
+	if (!g_sysmon_stats.smem_init_cdsp) {
+		seq_buf_printf(&s, "[NA]");
+		goto failed;
+	}
+
 	if (g_sysmon_stats.sysmon_power_stats_cdsp) {
 
 		if (sysmon_stats_query_power_residency(CDSP, &sysmon_power_stats)) {
@@ -2250,6 +2276,7 @@ static ssize_t show_hvxclk_in_time(struct kobject *kobj,
 		}
 	}
 
+failed:
 	seq_buf_printf(&s, "\n");
 
 	return seq_buf_used(&s);
