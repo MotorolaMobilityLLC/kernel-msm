@@ -1657,6 +1657,8 @@ static int battery_psy_set_prop(struct power_supply *psy,
 	struct battery_chg_dev *bcdev = power_supply_get_drvdata(psy);
 
 	switch (prop) {
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		return battery_psy_set_charge_current(bcdev, pval->intval);
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD:
 		return battery_psy_set_charge_start_threshold(bcdev,
 								pval->intval);
@@ -1676,6 +1678,7 @@ static int battery_psy_prop_is_writeable(struct power_supply *psy,
 		enum power_supply_property prop)
 {
 	switch (prop) {
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD:
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD:
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
