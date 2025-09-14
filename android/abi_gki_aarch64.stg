@@ -30999,6 +30999,11 @@ pointer_reference {
   pointee_type_id: 0xd37ad96d
 }
 pointer_reference {
+  id: 0x3e521881
+  kind: POINTER
+  pointee_type_id: 0xd308849a
+}
+pointer_reference {
   id: 0x3e59d1e6
   kind: POINTER
   pointee_type_id: 0xd327a107
@@ -44217,6 +44222,11 @@ member {
   offset: 448
 }
 member {
+  id: 0x3d06fe1e
+  type_id: 0x7b3589ce
+  offset: 14976
+}
+member {
   id: 0x3d1a48d1
   type_id: 0x7b4751fa
   offset: 256
@@ -50367,12 +50377,6 @@ member {
   name: "android_backport_reserved1"
   type_id: 0x92233392
   offset: 23104
-}
-member {
-  id: 0xb26b8ea6
-  name: "android_backport_reserved1"
-  type_id: 0x92233392
-  offset: 14976
 }
 member {
   id: 0xb26b8ecf
@@ -99271,6 +99275,17 @@ member {
   offset: 1024
 }
 member {
+  id: 0x33536f6a
+  name: "freeze_seq"
+  type_id: 0xd0e93144
+}
+member {
+  id: 0x4cd1d9b8
+  name: "freeze_start_nsec"
+  type_id: 0x92233392
+  offset: 64
+}
+member {
   id: 0xebc2b6b0
   name: "freeze_super"
   type_id: 0x2f3c5242
@@ -99287,6 +99302,11 @@ member {
   name: "freezer"
   type_id: 0x8eaee9d1
   offset: 14752
+}
+member {
+  id: 0x14d41b24
+  name: "freezer"
+  type_id: 0x14ab8135
 }
 member {
   id: 0xd5e4618a
@@ -99566,6 +99586,12 @@ member {
   name: "frozen"
   type_id: 0x6d7f5ff6
   offset: 384
+}
+member {
+  id: 0xa90a46d9
+  name: "frozen_nsec"
+  type_id: 0x92233392
+  offset: 128
 }
 member {
   id: 0x696cf202
@@ -120360,6 +120386,11 @@ member {
   name: "kmemcg_id"
   type_id: 0x6720d32f
   offset: 14144
+}
+member {
+  id: 0xb713907c
+  name: "kmi_ext_info"
+  type_id: 0x3e521881
 }
 member {
   id: 0x5bb2a4ff
@@ -222004,6 +222035,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x14ab8135
+  kind: STRUCT
+  definition {
+    bytesize: 24
+    member_id: 0x33536f6a
+    member_id: 0x4cd1d9b8
+    member_id: 0xa90a46d9
+  }
+}
+struct_union {
   id: 0x14b5803c
   kind: STRUCT
   definition {
@@ -228908,6 +228949,16 @@ struct_union {
   }
 }
 struct_union {
+  id: 0x7b3589ce
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0xb713907c
+    member_id: 0x2ef635de
+    member_id: 0x36752b74
+  }
+}
+struct_union {
   id: 0x7b4751fa
   kind: UNION
   definition {
@@ -234080,7 +234131,7 @@ struct_union {
     member_id: 0x0d45cc23
     member_id: 0x144e1098
     member_id: 0x1084e7e7
-    member_id: 0xb26b8ea6
+    member_id: 0x3d06fe1e
     member_id: 0xd29089f7
   }
 }
@@ -234129,6 +234180,15 @@ struct_union {
     member_id: 0xf9e27450
     member_id: 0xb0af57e0
     member_id: 0xea724160
+  }
+}
+struct_union {
+  id: 0xd308849a
+  kind: STRUCT
+  name: "cgroup_kmi_ext_info"
+  definition {
+    bytesize: 24
+    member_id: 0x14d41b24
   }
 }
 struct_union {
