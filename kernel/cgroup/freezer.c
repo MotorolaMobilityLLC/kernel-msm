@@ -187,16 +187,16 @@ static void cgroup_do_freeze(struct cgroup *cgrp, bool freeze, u64 ts_nsec)
 	lockdep_assert_held(&cgroup_mutex);
 
 	spin_lock_irq(&css_set_lock);
-	write_seqcount_begin(&cgrp->freezer.freeze_seq);
+	write_seqcount_begin(&cgrp->kmi_ext_info->freezer.freeze_seq);
 	if (freeze) {
 		set_bit(CGRP_FREEZE, &cgrp->flags);
-		cgrp->freezer.freeze_start_nsec = ts_nsec;
+		cgrp->kmi_ext_info->freezer.freeze_start_nsec = ts_nsec;
 	} else {
 		clear_bit(CGRP_FREEZE, &cgrp->flags);
-		cgrp->freezer.frozen_nsec += (ts_nsec -
-			cgrp->freezer.freeze_start_nsec);
+		cgrp->kmi_ext_info->freezer.frozen_nsec += (ts_nsec -
+			cgrp->kmi_ext_info->freezer.freeze_start_nsec);
 	}
-	write_seqcount_end(&cgrp->freezer.freeze_seq);
+	write_seqcount_end(&cgrp->kmi_ext_info->freezer.freeze_seq);
 	spin_unlock_irq(&css_set_lock);
 
 	if (freeze)
