@@ -248,3 +248,6 @@ type 'struct xt_target' changed
 type 'struct drm_framebuffer' changed
   member 'unsigned int internal_flags' was added
 
+type 'struct cgroup' changed
+  member 'u64 android_backport_reserved1' was removed
+  member 'union { struct cgroup_kmi_ext_info* kmi_ext_info; struct { u64 android_backport_reserved1; }; union { }; }' was added
