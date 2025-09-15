@@ -175597,6 +175597,12 @@ member {
   bitsize: 1
 }
 member {
+  id: 0xa64626ae
+  name: "retry_llist"
+  type_id: 0x0bf3e543
+  offset: 384
+}
+member {
   id: 0x0e577c51
   name: "retry_long"
   type_id: 0x295c7202
@@ -224222,6 +224228,7 @@ struct_union {
     member_id: 0x89cec87f
     member_id: 0x3a0676ee
     member_id: 0x4987e167
+    member_id: 0xa64626ae
   }
 }
 struct_union {
