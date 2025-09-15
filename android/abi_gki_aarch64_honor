@@ -95,6 +95,7 @@
   zero_fill_bio_iter
   percpu_ref_is_zero
   vm_normal_folio_pmd
+  folios_put_refs
   __trace_bputs
   __traceiter_android_vh_proactive_compact_wmark_high
   __tracepoint_android_vh_proactive_compact_wmark_high
