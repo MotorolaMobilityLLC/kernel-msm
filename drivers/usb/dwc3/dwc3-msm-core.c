@@ -2404,7 +2404,7 @@ static void gsi_free_trbs(struct usb_ep *ep, struct usb_gsi_request *req)
 	sg_free_table(&req->sgt_data_buff);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,134)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,128)
 static int gsi_set_xfer_resource(struct dwc3_ep *dep)
 {
 	struct dwc3_gadget_ep_cmd_params params;
@@ -2444,7 +2444,7 @@ static void gsi_configure_ep(struct usb_ep *ep, struct usb_gsi_request *request)
 	int n = request->ep_intr_num - 1;
 	u32 reg;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,134)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,128)
 	gsi_set_xfer_resource(dep);
 #endif
 	/* setup dummy doorbell as IPA connection isn't setup yet */
