@@ -1140,6 +1140,20 @@ static int pool_free_get(void *data, u64 *val)
 }
 DEFINE_DEBUGFS_ATTRIBUTE(pool_free_fops, pool_free_get, NULL, "%llu\n");
 
+static int pool_min_free_get(void *data, u64 *val)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_1_1_hvc(KVM_HOST_SMCCC_FUNC(__pkvm_hyp_pool_report_min_free_pages), &res);
+	if (WARN_ON(res.a0 != SMCCC_RET_SUCCESS))
+		return -EINVAL;
+
+	*val = res.a1 * PAGE_SIZE;
+
+	return 0;
+}
+DEFINE_DEBUGFS_ATTRIBUTE(pool_min_free_fops, pool_min_free_get, NULL, "%llu\n");
+
 void kvm_hyp_s1_pool_debugfs(void)
 {
 	static u64 pool_size;
@@ -1150,5 +1164,7 @@ void kvm_hyp_s1_pool_debugfs(void)
 	pool_size = hyp_s1_pgtable_pages() * PAGE_SIZE;
 	debugfs_create_u64("hyp_s1_pool_size", 0400, kvm_debugfs_dir, &pool_size);
 	debugfs_create_file("hyp_s1_pool_free", 0400, kvm_debugfs_dir, NULL, &pool_free_fops);
+	debugfs_create_file("hyp_s1_pool_min_free", 0400, kvm_debugfs_dir, NULL,
+			    &pool_min_free_fops);
 }
 #endif /* CONFIG_DEBUG_FS */
