@@ -479,6 +479,7 @@ static const struct qcom_reset_map lsr_cc_seraph_resets[] = {
 	[LSR_CC_MVS0C_CLK_ARES] = { 0x8064, 2 },
 	[LSR_CC_MVS0C_BCR] = { 0x8030 },
 	[LSR_CC_MVS0C_FREERUN_CLK_ARES] = { 0x8074, 2 },
+	[LSR_CC_XO_CLK_ARES] = { 0x80d4, 2 },
 };
 
 static const struct regmap_config lsr_cc_seraph_regmap_config = {
