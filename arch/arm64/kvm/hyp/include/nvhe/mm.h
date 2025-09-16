@@ -37,6 +37,7 @@ phys_addr_t __pkvm_private_range_pa(void *va);
 int __hyp_allocator_map(unsigned long start, phys_addr_t phys);
 
 u64 hpool_get_free_pages(void);
+u64 hpool_get_min_free_pages(void);
 
 int __pkvm_map_module_page(u64 pfn, void *va, enum kvm_pgtable_prot prot, bool is_protected);
 void __pkvm_unmap_module_page(u64 pfn, void *va);
