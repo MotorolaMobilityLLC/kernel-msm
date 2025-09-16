@@ -836,6 +836,8 @@ int __pkvm_init_vm(struct kvm *host_kvm, unsigned long pgd_hva)
 
 	ret = -EINVAL;
 	pgd_size = kvm_pgtable_stage2_pgd_size(host_mmu.arch.vtcr);
+	if (!IS_ALIGNED(pgd_hva, pgd_size))
+		goto err_free_last_ran;
 	pgd = map_donated_memory_noclear(pgd_hva, pgd_size);
 	if (!pgd)
 		goto err_free_last_ran;
