@@ -956,6 +956,7 @@ static void uaudio_connect(void *unused, struct usb_interface *intf,
 	}
 
 	uadev[chip->card->number].chip = chip;
+	uadev[chip->card->number].chip->quirk_flags |= QUIRK_FLAG_CTL_MSG_DELAY_5M;
 }
 
 static void uaudio_disconnect(void *unused, struct usb_interface *intf)
