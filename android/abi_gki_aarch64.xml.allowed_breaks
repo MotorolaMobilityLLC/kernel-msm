@@ -1,0 +1,131 @@
+# How to use this file: http://go/approve-abi-break
+# ABI freeze commit: 870488eb0745645feff5bddfd44fe538660b9cf8
+
+type 'struct xhci_hcd' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct xhci_hcd' changed
+  member changed from 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; } __UNIQUE_ID_android_kabi_hide315; union { }; }' to 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; }; union { }; }'
+    type changed from 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; } __UNIQUE_ID_android_kabi_hide315; union { }; }' to 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; }; union { }; }'
+      member 'struct { u64 android_kabi_reserved1; } __UNIQUE_ID_android_kabi_hide315' was removed
+      member 'struct { u64 android_kabi_reserved1; }' was added
+
+type 'struct spi_controller' changed
+  member changed from 'u8 unused_native_cs' to 's8 unused_native_cs'
+    type changed from 'u8' = '__u8' = 'unsigned char' to 's8' = '__s8' = 'signed char'
+      resolved type changed from 'unsigned char' to 'signed char'
+  member changed from 'u8 max_native_cs' to 's8 max_native_cs'
+    type changed from 'u8' = '__u8' = 'unsigned char' to 's8' = '__s8' = 'signed char'
+      resolved type changed from 'unsigned char' to 'signed char'
+
+type 'struct xhci_hcd' changed
+  member changed from 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; } __UNIQUE_ID_android_kabi_hide316; union { }; }' to 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; }; union { }; }'
+    type changed from 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; } __UNIQUE_ID_android_kabi_hide316; union { }; }' to 'union { struct xhci_vendor_ops* vendor_ops; struct { u64 android_kabi_reserved1; }; union { }; }'
+      member 'struct { u64 android_kabi_reserved1; } __UNIQUE_ID_android_kabi_hide316' was removed
+      member 'struct { u64 android_kabi_reserved1; }' was added
+
+type 'struct ehci_hcd' changed
+  member 'unsigned int is_aspeed' was added
+
+type 'struct fscrypt_mode' changed
+  byte size changed from 32 to 40
+  member 'int security_strength' was added
+  3 members ('int ivsize' .. 'enum blk_crypto_mode_num blk_crypto_mode') changed
+    offset changed by 32
+
+type 'struct sock' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { spinlock_t sk_peer_lock; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct bpf_map' changed
+  member changed from 'u64 writecnt' to 'atomic64_t writecnt'
+    type changed from 'u64' = '__u64' = 'long long unsigned int' to 'atomic64_t' = 'struct { s64 counter; }'
+      resolved type changed from 'long long unsigned int' to 'struct { s64 counter; }'
+
+type 'struct fib_rules_ops' changed
+  member changed from 'bool(* suppress)(struct fib_rule*, struct fib_lookup_arg*)' to 'bool(* suppress)(struct fib_rule*, int, struct fib_lookup_arg*)'
+    type changed from 'bool(*)(struct fib_rule*, struct fib_lookup_arg*)' to 'bool(*)(struct fib_rule*, int, struct fib_lookup_arg*)'
+      pointed-to type changed from 'bool(struct fib_rule*, struct fib_lookup_arg*)' to 'bool(struct fib_rule*, int, struct fib_lookup_arg*)'
+        parameter 2 type changed from 'struct fib_lookup_arg*' to 'int'
+        parameter 3 of type 'struct fib_lookup_arg*' was added
+
+type 'struct snd_pcm_runtime' changed
+  byte size changed from 768 to 824
+  member 'struct mutex buffer_mutex' was added
+  member 'atomic_t buffer_accessing' was added
+
+type 'struct gpio_irq_chip' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { bool initialized; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+function symbol changed from 'int hex_to_bin(char)' to 'int hex_to_bin(unsigned char)'
+  type changed from 'int(char)' to 'int(unsigned char)'
+    parameter 1 type changed from 'char' to 'unsigned char'
+
+1 variable symbol(s) removed
+  'struct tracepoint __tracepoint_android_vh_record_percpu_rwsem_lock_starttime'
+
+1 function symbol(s) removed
+  'int __traceiter_android_vh_record_percpu_rwsem_lock_starttime(void*, struct task_struct*, unsigned long int)'
+
+type 'struct fscrypt_info' changed
+  member changed from 'struct key* ci_master_key' to 'struct fscrypt_master_key* ci_master_key'
+    type changed from 'struct key*' to 'struct fscrypt_master_key*'
+      pointed-to type changed from 'struct key' to 'struct fscrypt_master_key'
+
+type 'struct tcp_sock' changed
+  member 'u32 max_packets_seq' was removed
+  member 'u32 cwnd_usage_seq' was added
+
+type 'struct iphdr' changed
+  member '__be32 saddr' was removed
+  member '__be32 daddr' was removed
+  member 'union { struct { __be32 saddr; __be32 daddr; }; struct { __be32 saddr; __be32 daddr; } addrs; }' was added
+
+type 'struct super_block' changed
+  member changed from 'struct key* s_master_keys' to 'struct fscrypt_keyring* s_master_keys'
+    type changed from 'struct key*' to 'struct fscrypt_keyring*'
+      pointed-to type changed from 'struct key' to 'struct fscrypt_keyring'
+
+type 'struct sk_buff' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { struct { __u8 scm_io_uring; __u8 android_kabi_reserved1_padding1; __u16 android_kabi_reserved1_padding2; __u32 android_kabi_reserved1_padding3; }; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct task_struct' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { void* pf_io_worker; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct anon_vma' changed
+  byte size changed from 104 to 120
+  member 'unsigned long int num_children' was added
+  member 'unsigned long int num_active_vmas' was added
+
+function symbol changed from 'struct irq_domain* __irq_domain_add(struct fwnode_handle*, int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)' to 'struct irq_domain* __irq_domain_add(struct fwnode_handle*, unsigned int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)'
+  type changed from 'struct irq_domain*(struct fwnode_handle*, int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)' to 'struct irq_domain*(struct fwnode_handle*, unsigned int, irq_hw_number_t, int, const struct irq_domain_ops*, void*)'
+    parameter 2 type changed from 'int' to 'unsigned int'
+
+function symbol changed from 'is_ashmem_file' to 'int is_ashmem_file(struct file*)'
+  CRC changed from 0x4bef6e5f to 0x94fc40b5
+
+type 'struct perf_event' changed
+  member 'unsigned int group_generation' was added
+
+type 'struct ipv6_devconf' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { struct { __s32 accept_ra_min_lft; u32 padding; }; struct { u64 android_kabi_reserved1; }; union { }; }' was added
+
+type 'struct clk_core' changed
+  byte size changed from 248 to 264
+  member 'struct hlist_node rpm_node' was added
+  30 members ('struct device_node* of_node' .. 'struct kref ref') changed
+    offset changed by 128
+
+type 'enum binder_work_type' changed
+  enumerator 'BINDER_WORK_FROZEN_BINDER' (9) was added
+  ... 1 other enumerator(s) added
+
+type 'struct ipv6_devconf' changed
+  member 'u64 android_kabi_reserved4' was removed
+  member 'union { struct { __u8 ra_honor_pio_pflag; __u8 padding4[7]; }; struct { u64 android_kabi_reserved4; }; union { }; }' was added
+
