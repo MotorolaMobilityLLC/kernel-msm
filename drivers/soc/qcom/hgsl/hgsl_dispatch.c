@@ -625,6 +625,23 @@ int hgsl_dispatch_queue_cmds(
 		goto out;
 
 	user_ts = *timestamp;
+	/*
+	 * If there is only one drawobj in the array and it is of
+	 * type SYNCOBJ_TYPE, skip comparing user_ts as it can be 0
+	 */
+	if (!(count == 1 && drawobj[0]->type == SYNCOBJ_TYPE) &&
+		(ctxt->flags & GSL_CONTEXT_FLAG_CLIENT_GENERATED_TS)) {
+		/*
+		 * User specified timestamps need to be greater than the last
+		 * issued timestamp in the context
+		 */
+		if (hgsl_ts32_ge(ctxt->queued_ts, user_ts)) {
+			LOGW("ctx:%d next client ts %d isn't greater than current ts %d",
+				ctxt->context_id, user_ts, ctxt->queued_ts);
+			ret = -ERANGE;
+			goto out;
+		}
+	}
 	for (i = 0; i < count; i++) {
 		switch (drawobj[i]->type) {
 		case MARKEROBJ_TYPE:

@@ -250,7 +250,7 @@ void hgsl_del_event_group(struct qcom_hgsl *hgsl,
 	WARN_ON(!list_empty(&group->events));
 
 	write_lock(&hgsl->event_groups_lock);
-	list_del(&group->node);
+	list_del_init(&group->node);
 	write_unlock(&hgsl->event_groups_lock);
 }
 
@@ -293,7 +293,7 @@ void hgsl_events_deinit(struct qcom_hgsl *hgsl)
 	write_lock(&hgsl->event_groups_lock);
 	list_for_each_entry_safe(group, tmp, &hgsl->event_groups, node) {
 		WARN_ON(!list_empty(&group->events));
-		list_del(&group->node);
+		list_del_init(&group->node);
 	}
 	write_unlock(&hgsl->event_groups_lock);
 
