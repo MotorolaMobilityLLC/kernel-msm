@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -24,6 +24,7 @@ static const struct msm_pinctrl_soc_data neo_pinctrl = {
 	.nqup_regs = ARRAY_SIZE(neo_qup_regs),
 	.wakeirq_map = neo_pdc_map,
 	.nwakeirq_map = ARRAY_SIZE(neo_pdc_map),
+	.egpio_func = 11,
 };
 
 static int neo_pinctrl_probe(struct platform_device *pdev)
