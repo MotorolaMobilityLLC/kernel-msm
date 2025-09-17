@@ -504,6 +504,9 @@ DECLARE_HOOK(android_vh_filemap_map_pages,
 	TP_PROTO(struct file *file, pgoff_t first_pgoff,
 		pgoff_t last_pgoff, vm_fault_t ret),
 	TP_ARGS(file, first_pgoff, last_pgoff, ret));
+DECLARE_HOOK(android_vh_thaw_killed_process,
+	TP_PROTO(bool *thaw),
+	TP_ARGS(thaw));
 DECLARE_HOOK(android_vh_page_cache_readahead_start,
 	TP_PROTO(struct file *file, pgoff_t pgoff,
 		unsigned int size, bool sync),
