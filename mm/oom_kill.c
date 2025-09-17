@@ -1302,12 +1302,17 @@ put_task:
 
 void add_to_oom_reaper(struct task_struct *p)
 {
+	bool thaw = false;
+
 	p = find_lock_task_mm(p);
 	if (!p)
 		return;
 
 	if (task_will_free_mem(p)) {
 		__mark_oom_victim(p);
+		trace_android_vh_thaw_killed_process(&thaw);
+		if (thaw)
+			thaw_process(p);
 		queue_oom_reaper(p);
 	}
 	task_unlock(p);
