@@ -365291,6 +365291,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_ogki_ufs_dsm"
 }
 elf_symbol {
+  id: 0x2884ad94
+  name: "__traceiter_android_vh_oom_reaper_delay_bypass"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xd9f66562
+  type_id: 0x9bdfaf3f
+  full_name: "__traceiter_android_vh_oom_reaper_delay_bypass"
+}
+elf_symbol {
   id: 0x724577f8
   name: "__traceiter_android_vh_oom_swapmem_gather_finish"
   is_defined: true
@@ -372561,6 +372570,15 @@ elf_symbol {
   crc: 0x7f265135
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_ogki_ufs_dsm"
+}
+elf_symbol {
+  id: 0x05b8726a
+  name: "__tracepoint_android_vh_oom_reaper_delay_bypass"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xddfa5818
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_oom_reaper_delay_bypass"
 }
 elf_symbol {
   id: 0xdfe6a3ee
@@ -439756,6 +439774,7 @@ interface {
   symbol_id: 0xf7d13588
   symbol_id: 0xd82b5082
   symbol_id: 0x084f4da7
+  symbol_id: 0x2884ad94
   symbol_id: 0x724577f8
   symbol_id: 0xac55c769
   symbol_id: 0xacaadcc9
@@ -440564,6 +440583,7 @@ interface {
   symbol_id: 0x32321776
   symbol_id: 0xd716ec80
   symbol_id: 0x62ffe4fd
+  symbol_id: 0x05b8726a
   symbol_id: 0xdfe6a3ee
   symbol_id: 0x6bc613d3
   symbol_id: 0x20d2ceb3
