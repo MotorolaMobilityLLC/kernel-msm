@@ -101,6 +101,8 @@
   __tracepoint_android_vh_proactive_compact_wmark_high
   __traceiter_android_vh_killed_process
   __tracepoint_android_vh_killed_process
+  __traceiter_android_vh_oom_reaper_delay_bypass
+  __tracepoint_android_vh_oom_reaper_delay_bypass
   __traceiter_android_vh_rwsem_write_wait_finish
   __tracepoint_android_vh_rwsem_write_wait_finish
   __tracepoint_android_rvh_cpuinfo_c_show
