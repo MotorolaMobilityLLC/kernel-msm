@@ -440,7 +440,9 @@
   netdev_err
   netdev_info
   netdev_is_rx_handler_busy
+  netdev_master_upper_dev_get
   netdev_warn
+  nla_append
   noop_llseek
   nr_cpu_ids
   nsecs_to_jiffies
@@ -610,6 +612,8 @@
   seq_putc
   seq_puts
   seq_read
+  serdev_device_write
+  serdev_device_write_wakeup
   set_cpus_allowed_ptr
   set_normalized_timespec64
   sg_alloc_table

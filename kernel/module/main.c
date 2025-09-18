@@ -2813,12 +2813,14 @@ static int load_module(struct load_info *info, const char __user *uargs,
 
 #ifdef CONFIG_MODULE_SIG
 	mod->sig_ok = info->sig_ok;
+#ifndef CONFIG_MODULE_SIG_PROTECT
 	if (!mod->sig_ok) {
 		pr_notice_once("%s: module verification failed: signature "
 			       "and/or required key missing - tainting "
 			       "kernel\n", mod->name);
 		add_taint_module(mod, TAINT_UNSIGNED_MODULE, LOCKDEP_STILL_OK);
 	}
+#endif
 #else
 	mod->sig_ok = 0;
 #endif

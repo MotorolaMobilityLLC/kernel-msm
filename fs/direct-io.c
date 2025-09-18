@@ -38,6 +38,9 @@
 #include <linux/uio.h>
 #include <linux/atomic.h>
 #include <linux/prefetch.h>
+#ifndef __GENKSYMS__
+#include <trace/hooks/mm.h>
+#endif
 
 #include "internal.h"
 
@@ -1053,6 +1056,12 @@ do_holes:
 				put_page(page);
 				goto out;
 			}
+
+			trace_android_vh_io_statistics(dio->inode->i_mapping,
+					sdio->block_in_file >> sdio->blkfactor,
+					this_chunk_blocks >> sdio->blkfactor,
+					iov_iter_rw(sdio->iter) == READ, true);
+
 			sdio->next_block_for_io += this_chunk_blocks;
 
 			sdio->block_in_file += this_chunk_blocks;

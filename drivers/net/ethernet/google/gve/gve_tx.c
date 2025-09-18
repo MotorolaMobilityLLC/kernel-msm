@@ -725,10 +725,6 @@ bool gve_tx_poll(struct gve_notify_block *block, int budget)
 	u32 nic_done;
 	u32 to_do;
 
-	/* If budget is 0, do all the work */
-	if (budget == 0)
-		budget = INT_MAX;
-
 	/* In TX path, it may try to clean completed pkts in order to xmit,
 	 * to avoid cleaning conflict, use spin_lock(), it yields better
 	 * concurrency between xmit/clean than netif's lock.

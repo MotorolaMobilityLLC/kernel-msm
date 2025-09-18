@@ -484,8 +484,12 @@ ENTRY(\name)
 ENDPROC(\name)
 .endm
 
+	.section .irqentry.text, "ax"
+
 INT_HANDLER ext_int_handler,__LC_EXT_OLD_PSW,do_ext_irq
 INT_HANDLER io_int_handler,__LC_IO_OLD_PSW,do_io_irq
+
+	.section .kprobes.text, "ax"
 
 /*
  * Load idle PSW.
@@ -699,6 +703,7 @@ ENDPROC(stack_overflow)
 .Lthis_cpu:	.short	0
 .Lstosm_tmp:	.byte	0
 	.section .rodata, "a"
+	.balign	8
 #define SYSCALL(esame,emu)	.quad __s390x_ ## esame
 	.globl	sys_call_table
 sys_call_table:

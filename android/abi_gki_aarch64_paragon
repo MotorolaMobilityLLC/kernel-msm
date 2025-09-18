@@ -1,0 +1,21 @@
+[abi_symbol_list]
+  add_to_page_cache_lru
+  alloc_buffer_head
+  blkdev_issue_zeroout
+  __cond_resched_lock
+  d_rehash
+  filemap_fdatawrite_wbc
+  __find_get_block
+  free_buffer_head
+  __posix_acl_create
+  posix_acl_equiv_mode
+  posix_acl_from_xattr
+  posix_acl_to_xattr
+  posix_acl_valid
+  set_cached_acl
+  shrink_dcache_sb
+  sync_inodes_sb
+  try_to_free_buffers
+  wait_for_completion_io
+  write_dirty_buffer
+  yield

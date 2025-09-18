@@ -2940,7 +2940,7 @@ static void sd_read_block_characteristics(struct scsi_disk *sdkp)
 	rcu_read_lock();
 	vpd = rcu_dereference(sdkp->device->vpd_pgb1);
 
-	if (!vpd || vpd->len < 8) {
+	if (!vpd || vpd->len <= 8) {
 		rcu_read_unlock();
 	        return;
 	}
@@ -3554,7 +3554,7 @@ static int sd_probe(struct device *dev)
 
 	error = device_add_disk(dev, gd, NULL);
 	if (error) {
-		put_device(&sdkp->disk_dev);
+		device_unregister(&sdkp->disk_dev);
 		put_disk(gd);
 		goto out;
 	}
@@ -3626,6 +3626,7 @@ static int sd_start_stop_device(struct scsi_disk *sdkp, int start)
 	const struct scsi_exec_args exec_args = {
 		.sshdr = &sshdr,
 		.req_flags = BLK_MQ_REQ_PM,
+		.scmd_flags = SCMD_RETRY_PASSTHROUGH,
 	};
 	struct scsi_device *sdp = sdkp->device;
 	int res;
@@ -3761,6 +3762,9 @@ static int sd_resume_common(struct device *dev)
 	int ret;
 
 	if (!sdkp)	/* E.g.: runtime resume at the start of sd_probe() */
+		return 0;
+
+	if (!sdkp->device->manage_start_stop)
 		return 0;
 
 	sd_printk(KERN_NOTICE, sdkp, "Starting disk\n");

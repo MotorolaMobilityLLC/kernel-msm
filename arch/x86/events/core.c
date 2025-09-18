@@ -1644,6 +1644,7 @@ static void x86_pmu_del(struct perf_event *event, int flags)
 	while (++i < cpuc->n_events) {
 		cpuc->event_list[i-1] = cpuc->event_list[i];
 		cpuc->event_constraint[i-1] = cpuc->event_constraint[i];
+		cpuc->assign[i-1] = cpuc->assign[i];
 	}
 	cpuc->event_constraint[i-1] = NULL;
 	--cpuc->n_events;
@@ -2572,6 +2573,7 @@ static ssize_t set_attr_rdpmc(struct device *cdev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
+	static DEFINE_MUTEX(rdpmc_mutex);
 	unsigned long val;
 	ssize_t ret;
 
@@ -2584,6 +2586,8 @@ static ssize_t set_attr_rdpmc(struct device *cdev,
 
 	if (x86_pmu.attr_rdpmc_broken)
 		return -ENOTSUPP;
+
+	guard(mutex)(&rdpmc_mutex);
 
 	if (val != x86_pmu.attr_rdpmc) {
 		/*
