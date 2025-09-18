@@ -1096,6 +1096,7 @@ static int igc_init_empty_frame(struct igc_ring *ring,
 		return -ENOMEM;
 	}
 
+	buffer->type = IGC_TX_BUFFER_TYPE_SKB;
 	buffer->skb = skb;
 	buffer->protocol = 0;
 	buffer->bytecount = skb->len;
@@ -3708,8 +3709,7 @@ static int igc_enable_nfc_rule(struct igc_adapter *adapter,
 	}
 
 	if (rule->filter.match_flags & IGC_FILTER_FLAG_VLAN_TCI) {
-		int prio = (rule->filter.vlan_tci & VLAN_PRIO_MASK) >>
-			   VLAN_PRIO_SHIFT;
+		int prio = FIELD_GET(VLAN_PRIO_MASK, rule->filter.vlan_tci);
 
 		err = igc_add_vlan_prio_filter(adapter, prio, rule->action);
 		if (err)
@@ -3731,8 +3731,7 @@ static void igc_disable_nfc_rule(struct igc_adapter *adapter,
 		igc_del_etype_filter(adapter, rule->filter.etype);
 
 	if (rule->filter.match_flags & IGC_FILTER_FLAG_VLAN_TCI) {
-		int prio = (rule->filter.vlan_tci & VLAN_PRIO_MASK) >>
-			   VLAN_PRIO_SHIFT;
+		int prio = FIELD_GET(VLAN_PRIO_MASK, rule->filter.vlan_tci);
 
 		igc_del_vlan_prio_filter(adapter, prio);
 	}
@@ -6217,11 +6216,15 @@ static int igc_save_qbv_schedule(struct igc_adapter *adapter,
 	if (!validate_schedule(adapter, qopt))
 		return -EINVAL;
 
+	igc_ptp_read(adapter, &now);
+
+	if (igc_tsn_is_taprio_activated_by_user(adapter) &&
+	    is_base_time_past(qopt->base_time, &now))
+		adapter->qbv_config_change_errors++;
+
 	adapter->cycle_time = qopt->cycle_time;
 	adapter->base_time = qopt->base_time;
 	adapter->taprio_offload_enable = true;
-
-	igc_ptp_read(adapter, &now);
 
 	for (n = 0; n < qopt->num_entries; n++) {
 		struct tc_taprio_sched_entry *e = &qopt->entries[n];
@@ -7284,6 +7287,7 @@ static void igc_io_resume(struct pci_dev *pdev)
 	rtnl_lock();
 	if (netif_running(netdev)) {
 		if (igc_open(netdev)) {
+			rtnl_unlock();
 			netdev_err(netdev, "igc_open failed after reset\n");
 			return;
 		}

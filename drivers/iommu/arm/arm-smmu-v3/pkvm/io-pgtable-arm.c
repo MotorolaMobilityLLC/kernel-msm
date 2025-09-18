@@ -42,10 +42,15 @@ void *__arm_lpae_alloc_pages(size_t size, gfp_t gfp, struct io_pgtable_cfg *cfg)
 
 void __arm_lpae_free_pages(void *addr, size_t size, struct io_pgtable_cfg *cfg)
 {
-	u8 order = get_order(size);
+	u8 order;
 	struct arm_lpae_io_pgtable *data = io_pgtable_cfg_to_data(cfg);
 
-	BUG_ON(size != (1 << order) * PAGE_SIZE);
+	/*
+	 * It's guaranteed all allocations are aligned, but io-pgtable-arm-common
+	 * might free PGD with it's actual size.
+	 */
+	size = PAGE_ALIGN(size);
+	order = get_order(size);
 
 	if (!cfg->coherent_walk)
 		kvm_flush_dcache_to_poc(addr, size);
@@ -100,7 +105,7 @@ struct io_pgtable *kvm_arm_io_pgtable_alloc(struct io_pgtable_cfg *cfg,
 	if (ret)
 		goto out_free;
 
-	pgd_size = ARM_LPAE_PGD_SIZE(data);
+	pgd_size = PAGE_ALIGN(ARM_LPAE_PGD_SIZE(data));
 	data->pgd = __arm_lpae_alloc_pages(pgd_size, 0, &data->iop.cfg);
 	if (!data->pgd) {
 		ret = -ENOMEM;
@@ -136,6 +141,7 @@ int kvm_arm_io_pgtable_free(struct io_pgtable *iopt)
 		kvm_flush_dcache_to_poc(data->pgd, pgd_size);
 
 	__arm_lpae_free_pgtable(data, data->start_level, data->pgd);
+	hyp_free(data);
 	return 0;
 }
 

@@ -92,14 +92,6 @@ static void __page_cache_release(struct folio *folio)
 		__folio_clear_lru_flags(folio);
 		unlock_page_lruvec_irqrestore(lruvec, flags);
 	}
-	/* See comment on folio_test_mlocked in release_pages() */
-	if (unlikely(folio_test_mlocked(folio))) {
-		long nr_pages = folio_nr_pages(folio);
-
-		__folio_clear_mlocked(folio);
-		zone_stat_mod_folio(folio, NR_MLOCK, -nr_pages);
-		count_vm_events(UNEVICTABLE_PGCLEARED, nr_pages);
-	}
 }
 
 static void __folio_put_small(struct folio *folio)
@@ -624,6 +616,7 @@ static void lru_lazyfree_fn(struct lruvec *lruvec, struct folio *folio)
 	if (folio_test_anon(folio) && folio_test_swapbacked(folio) &&
 	    !folio_test_swapcache(folio) && !folio_test_unevictable(folio)) {
 		long nr_pages = folio_nr_pages(folio);
+		bool folio_added = false;
 
 		lruvec_del_folio(lruvec, folio);
 		folio_clear_active(folio);
@@ -634,7 +627,9 @@ static void lru_lazyfree_fn(struct lruvec *lruvec, struct folio *folio)
 		 * anonymous folios
 		 */
 		folio_clear_swapbacked(folio);
-		lruvec_add_folio(lruvec, folio);
+		trace_android_vh_add_lazyfree_bypass(lruvec, folio, &folio_added);
+		if (!folio_added)
+			lruvec_add_folio(lruvec, folio);
 
 		__count_vm_events(PGLAZYFREE, nr_pages);
 		__count_memcg_events(lruvec_memcg(lruvec), PGLAZYFREE,
@@ -1037,18 +1032,6 @@ void release_pages(release_pages_arg arg, int nr)
 
 			lruvec_del_folio(lruvec, folio);
 			__folio_clear_lru_flags(folio);
-		}
-
-		/*
-		 * In rare cases, when truncation or holepunching raced with
-		 * munlock after VM_LOCKED was cleared, Mlocked may still be
-		 * found set here.  This does not indicate a problem, unless
-		 * "unevictable_pgs_cleared" appears worryingly large.
-		 */
-		if (unlikely(folio_test_mlocked(folio))) {
-			__folio_clear_mlocked(folio);
-			zone_stat_sub_folio(folio, NR_MLOCK);
-			count_vm_event(UNEVICTABLE_PGCLEARED);
 		}
 
 		list_add(&folio->lru, &pages_to_free);

@@ -34,6 +34,7 @@
 #include <linux/vmalloc.h>
 #include <linux/mutex.h>
 #include <linux/mm.h>
+#include <trace/hooks/mm.h>
 
 static DEFINE_PER_CPU(struct swap_slots_cache, swp_slots);
 static bool	swap_slot_cache_active;
@@ -274,6 +275,7 @@ void free_swap_slot(swp_entry_t entry)
 	struct swap_slots_cache *cache;
 
 	cache = raw_cpu_ptr(&swp_slots);
+	trace_android_vh_alloc_swap_slot_cache(cache);
 	if (likely(use_swap_slot_cache && cache->slots_ret)) {
 		spin_lock_irq(&cache->free_lock);
 		/* Swap slots cache may be deactivated before acquiring lock */

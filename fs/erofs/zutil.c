@@ -110,7 +110,8 @@ int z_erofs_gbuf_growsize(unsigned int nrpages)
 out:
 	if (i < z_erofs_gbuf_count && tmp_pages) {
 		for (j = 0; j < nrpages; ++j)
-			if (tmp_pages[j] && tmp_pages[j] != gbuf->pages[j])
+			if (tmp_pages[j] && (j >= gbuf->nrpages ||
+					     tmp_pages[j] != gbuf->pages[j]))
 				__free_page(tmp_pages[j]);
 		kfree(tmp_pages);
 	}
@@ -261,7 +262,7 @@ struct erofs_workgroup *erofs_insert_workgroup(struct super_block *sb,
 repeat:
 	xa_lock(&sbi->managed_pslots);
 	pre = __xa_cmpxchg(&sbi->managed_pslots, grp->index,
-			   NULL, grp, GFP_NOFS);
+			   NULL, grp, GFP_KERNEL);
 	if (pre) {
 		if (xa_is_err(pre)) {
 			pre = ERR_PTR(xa_err(pre));

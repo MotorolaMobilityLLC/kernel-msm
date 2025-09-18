@@ -37,7 +37,7 @@
 /*
  * Worker macros, don't use these, use the ones without a leading '_'
  */
-
+#ifdef CONFIG_64BIT
 #define __ANDROID_KABI_CHECK_SIZE_ALIGN(_orig, _new)				\
 	union {									\
 		_Static_assert(sizeof(struct{_new;}) <= sizeof(struct{_orig;}),	\
@@ -51,6 +51,9 @@
 			       " is not aligned the same as "			\
 			       __stringify(_new) );				\
 	}
+#else
+#define __ANDROID_KABI_CHECK_SIZE_ALIGN(_orig, _new)
+#endif
 
 #ifdef __GENKSYMS__
 
@@ -103,6 +106,14 @@
 #define ANDROID_BACKPORT_RESERVE_ARRAY(number, bytes)
 #endif
 
+/*
+ * ANDROID_KABI_BACKPORT_OK
+ *   Used to allow padding originally reserved with ANDROID_KABI_RESERVE
+ *   to be used for backports of non-LTS patches by partners. These
+ *   fields can by used by replacing with ANDROID_KABI_BACKPORT_USE()
+ *   for partner backports.
+ */
+#define ANDROID_KABI_BACKPORT_OK(number) ANDROID_KABI_RESERVE(number)
 
 /*
  * Macros to use _after_ the ABI is frozen
@@ -116,6 +127,17 @@
  */
 #define ANDROID_KABI_USE(number, _new)		\
 	_ANDROID_KABI_REPLACE(_ANDROID_KABI_RESERVE(number), _new)
+
+/*
+ * ANDROID_KABI_BACKPORT_USE(number, _new)
+ *   Use a previous padding entry that was defined with
+ *   ANDROID_KABI_BACKPORT_OK(). This is functionally identical
+ *   to ANDROID_KABI_USE() except that it differentiates the
+ *   normal use of KABI fields for LTS from KABI fields that
+ *   were released for use with other backports from upstream.
+ */
+#define ANDROID_KABI_BACKPORT_USE(number, _new) \
+	ANDROID_KABI_USE(number, _new)
 
 /*
  * ANDROID_KABI_USE2(number, _new1, _new2)

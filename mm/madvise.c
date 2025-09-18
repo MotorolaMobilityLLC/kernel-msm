@@ -45,6 +45,7 @@
 struct madvise_walk_private {
 	struct mmu_gather *tlb;
 	bool pageout;
+	void *private;
 };
 
 /*
@@ -186,6 +187,7 @@ success:
 		error = replace_anon_vma_name(vma, anon_name);
 		if (error)
 			return error;
+		trace_android_vh_replace_anon_vma_name(vma, anon_name);
 	}
 
 	return 0;
@@ -455,7 +457,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
 huge_unlock:
 		spin_unlock(ptl);
 		if (pageout)
-			reclaim_pages(&folio_list, true);
+			__reclaim_pages(&folio_list, true, private->private);
 		return 0;
 	}
 
@@ -477,7 +479,8 @@ regular_folio:
 
 		if (!pte_present(ptent)) {
 			entry = pte_to_swp_entry(ptent);
-			trace_android_vh_madvise_pageout_swap_entry(entry,
+			if (!non_swap_entry(entry))
+				trace_android_vh_madvise_pageout_swap_entry(entry,
 					swp_swapcount(entry), NULL);
 			continue;
 		}
@@ -584,7 +587,7 @@ regular_folio:
 		pte_unmap_unlock(start_pte, ptl);
 	}
 	if (pageout)
-		reclaim_pages(&folio_list, true);
+		__reclaim_pages(&folio_list, true, private->private);
 	cond_resched();
 
 	return 0;
@@ -642,10 +645,17 @@ static int madvise_pageout_page_range(struct mmu_gather *tlb,
 		.tlb = tlb,
 	};
 	int ret;
+	LIST_HEAD(folio_list);
+
+	trace_android_rvh_madvise_pageout_begin(&walk_private.private);
 
 	tlb_start_vma(tlb, vma);
 	ret = walk_page_range(vma->vm_mm, addr, end, &cold_walk_ops, &walk_private);
 	tlb_end_vma(tlb, vma);
+
+	trace_android_rvh_madvise_pageout_end(walk_private.private, &folio_list);
+	if (!list_empty(&folio_list))
+		reclaim_pages(&folio_list, true);
 
 	return ret;
 }
@@ -971,7 +981,16 @@ static long madvise_dontneed_free(struct vm_area_struct *vma,
 			 */
 			end = vma->vm_end;
 		}
-		VM_WARN_ON(start >= end);
+		/*
+		 * If the memory region between start and end was
+		 * originally backed by 4kB pages and then remapped to
+		 * be backed by hugepages while mmap_lock was dropped,
+		 * the adjustment for hugetlb vma above may have rounded
+		 * end down to the start address.
+		 */
+		if (start == end)
+			return 0;
+		VM_WARN_ON(start > end);
 	}
 
 	if (behavior == MADV_DONTNEED || behavior == MADV_DONTNEED_LOCKED)
@@ -1088,6 +1107,9 @@ static int madvise_vma_behavior(struct vm_area_struct *vma,
 	int error;
 	struct anon_vma_name *anon_name;
 	unsigned long new_flags = vma->vm_flags;
+
+	if (unlikely(!can_modify_vma_madv(vma, behavior)))
+		return -EPERM;
 
 	switch (behavior) {
 	case MADV_REMOVE:
@@ -1507,21 +1529,11 @@ int do_madvise(struct mm_struct *mm, unsigned long start, size_t len_in, int beh
 	start = untagged_addr_remote(mm, start);
 	end = start + len;
 
-	/*
-	 * Check if the address range is sealed for do_madvise().
-	 * can_modify_mm_madv assumes we have acquired the lock on MM.
-	 */
-	if (unlikely(!can_modify_mm_madv(mm, start, end, behavior))) {
-		error = -EPERM;
-		goto out;
-	}
-
 	blk_start_plug(&plug);
 	error = madvise_walk_vmas(mm, start, end, behavior,
 			madvise_vma_behavior);
 	blk_finish_plug(&plug);
 
-out:
 	if (write)
 		mmap_write_unlock(mm);
 	else

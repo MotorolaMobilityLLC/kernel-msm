@@ -236,7 +236,6 @@ void pkvm_host_reclaim_page(struct kvm *host_kvm, phys_addr_t ipa);
 #define PVM_ID_AA64ISAR2_ALLOW (\
 	ARM64_FEATURE_MASK(ID_AA64ISAR2_EL1_ATS1A) | \
 	ARM64_FEATURE_MASK(ID_AA64ISAR2_EL1_GPA3) | \
-	ARM64_FEATURE_MASK(ID_AA64ISAR2_EL1_MOPS) | \
 	FIELD_PREP(ARM64_FEATURE_MASK(ID_AA64ISAR2_EL1_APA3), ID_AA64ISAR2_EL1_APA3_PAuth) \
 	)
 
@@ -594,7 +593,7 @@ static inline unsigned long host_s2_pgtable_pages(void)
  * Maximum number of consitutents allowed in a descriptor. This number is
  * arbitrary, see comment below on SG_MAX_SEGMENTS in hyp_ffa_proxy_pages().
  */
-#define KVM_FFA_MAX_NR_CONSTITUENTS	4096
+#define KVM_FFA_MAX_NR_CONSTITUENTS	12288
 
 static inline unsigned long hyp_ffa_proxy_pages(void)
 {

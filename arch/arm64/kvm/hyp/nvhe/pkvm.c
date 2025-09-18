@@ -432,7 +432,14 @@ struct pkvm_hyp_vcpu *pkvm_load_hyp_vcpu(pkvm_handle_t handle,
 
 	hyp_read_lock(&vm_table_lock);
 	hyp_vm = get_vm_by_handle(handle);
-	if (!hyp_vm || hyp_vm->is_dying || READ_ONCE(hyp_vm->nr_vcpus) <= vcpu_idx)
+	if (!hyp_vm || hyp_vm->is_dying)
+		goto unlock;
+
+	/*
+	 * Synchronise with concurrent vCPU initialisation by loading
+	 * 'hyp_vm->nr_vcpus' before the vCPU pointer.
+	 */
+	if (smp_load_acquire(&hyp_vm->nr_vcpus) <= vcpu_idx)
 		goto unlock;
 
 	hyp_vcpu = hyp_vm->vcpus[vcpu_idx];
@@ -941,7 +948,12 @@ int __pkvm_init_vcpu(pkvm_handle_t handle, struct kvm_vcpu *host_vcpu)
 		goto unlock_vcpus;
 
 	hyp_vm->vcpus[idx] = hyp_vcpu;
-	hyp_vm->nr_vcpus++;
+
+	/*
+	 * Incrementing 'hyp_vm->nr_vcpus' makes the new vCPU visible
+	 * to the vCPU-load path.
+	 */
+	smp_store_release(&hyp_vm->nr_vcpus, idx + 1);
 
 unlock_vcpus:
 	hyp_spin_unlock(&hyp_vm->vcpus_lock);
@@ -1086,7 +1098,7 @@ void pkvm_poison_pvmfw_pages(void)
 	phys_addr_t addr = pvmfw_base;
 
 	while (npages--) {
-		hyp_poison_page(addr);
+		hyp_poison_page(addr, PAGE_SIZE);
 		addr += PAGE_SIZE;
 	}
 }
@@ -1618,9 +1630,19 @@ static bool pkvm_memrelinquish_call(struct pkvm_hyp_vcpu *hyp_vcpu,
 		goto out_guest_err;
 
 	ret = __pkvm_guest_relinquish_to_host(hyp_vcpu, ipa, &pa);
-	if (ret == -ENOMEM) {
-		if (pkvm_handle_empty_memcache(hyp_vcpu, exit_code))
+	if (ret == -E2BIG) {
+		struct kvm_hyp_req *req = pkvm_hyp_req_reserve(hyp_vcpu, KVM_HYP_REQ_TYPE_SPLIT);
+
+		if (!req) {
+			ret = -ENOMEM;
 			goto out_guest_err;
+		}
+
+		req->split.guest_ipa = ALIGN_DOWN(ipa, PMD_SIZE);
+		req->split.size = PMD_SIZE;
+
+		write_sysreg_el2(read_sysreg_el2(SYS_ELR) - 4, SYS_ELR);
+		*exit_code = ARM_EXCEPTION_HYP_REQ;
 
 		return false;
 	} else if (ret) {

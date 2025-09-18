@@ -1,5 +1,7 @@
 [abi_symbol_list]
 # commonly used symbols
+  __traceiter_android_rvh_logbuf
+  __tracepoint_android_rvh_logbuf
   __traceiter_android_vh_logbuf
   __tracepoint_android_vh_logbuf
   tracepoint_probe_register
@@ -15,6 +17,12 @@
   __tracepoint_android_vh_shrink_slab_bypass
   __traceiter_android_vh_do_shrink_slab
   __traceiter_android_vh_shrink_slab_bypass
+
+# required by mi_mem_engine.ko
+  __traceiter_android_vh_tune_swappiness
+  __tracepoint_android_vh_tune_swappiness
+  __traceiter_android_vh_do_shrink_slab_ex
+  __tracepoint_android_vh_do_shrink_slab_ex
 
 # required by lz4 decompress module
   __tracepoint_android_vh_lz4_decompress_bypass
@@ -66,14 +74,27 @@
   scsi_device_lookup
   scsi_host_lookup
   scsi_device_lookup
+  scsi_device_set_state
   blk_mq_quiesce_tagset
   blk_mq_unquiesce_tagset
+  memblock_free
+  __mem_cgroup_charge
+  __mem_cgroup_uncharge
+  __mod_memcg_lruvec_state
+  unpack_shadow
+  bucket_order
+  mem_cgroup_move_account
+  sum_mthp_stat
+  all_pcp_disable
+  all_pcp_enable
   __traceiter_android_vh_anon_vma_name_recog
   __traceiter_android_vh_restore_mm_flags
   __traceiter_android_vh_update_vma_flags
+  __traceiter_android_vh_thp_vma_allowable_orders
   __tracepoint_android_vh_anon_vma_name_recog
   __tracepoint_android_vh_restore_mm_flags
   __tracepoint_android_vh_update_vma_flags
+  __tracepoint_android_vh_thp_vma_allowable_orders
   __traceiter_android_vh_madvise_cold_or_pageout_abort
   __traceiter_android_vh_compact_finished
   __tracepoint_android_vh_madvise_cold_or_pageout_abort
@@ -82,6 +103,31 @@
   __tracepoint_android_vh_customize_thp_pcp_order
   __traceiter_android_vh_customize_thp_gfp_orders
   __tracepoint_android_vh_customize_thp_gfp_orders
+  __traceiter_android_vh_customize_pmd_gfp_bypass
+  __tracepoint_android_vh_customize_pmd_gfp_bypass
+  __traceiter_android_vh_refault_filemap_add_folio
+  __tracepoint_android_vh_refault_filemap_add_folio
+  __traceiter_android_vh_mem_cgroup_charge
+  __traceiter_android_vh_filemap_add_folio
+  __traceiter_android_vh_shrink_node
+  __tracepoint_android_vh_mem_cgroup_charge
+  __tracepoint_android_vh_filemap_add_folio
+  __tracepoint_android_vh_shrink_node
+  __tracepoint_cma_alloc_start
+  __tracepoint_cma_alloc_busy_retry
+  __tracepoint_cma_alloc_finish
+  __tracepoint_cma_release
+  __traceiter_cma_alloc_start
+  __traceiter_cma_alloc_busy_retry
+  __traceiter_cma_alloc_finish
+  __traceiter_cma_release
+  __traceiter_android_vh_dma_buf_release
+  __tracepoint_android_vh_dma_buf_release
+  __traceiter_android_vh_page_private_mod
+  __tracepoint_android_vh_page_private_mod
+  set_page_private
+  mmc_set_blocklen
+  nr_free_buffer_pages
 
 #required by metis.ko module
   __traceiter_android_vh_rwsem_read_wait_start
@@ -118,6 +164,14 @@
   android_rvh_probe_register
   __traceiter_android_rvh_fiq_dump
   __tracepoint_android_rvh_fiq_dump
+
+# required by kmod_protect.ko
+  __traceiter_android_vh_free_mod_mem
+  __traceiter_android_vh_set_mod_perm_after_init
+  __traceiter_android_vh_set_mod_perm_before_init
+  __tracepoint_android_vh_free_mod_mem
+  __tracepoint_android_vh_set_mod_perm_after_init
+  __tracepoint_android_vh_set_mod_perm_before_init
 
 #required by mi_sched.ko
   __traceiter_android_vh_scheduler_tick
@@ -378,6 +432,20 @@
   __tracepoint_android_vh_psi_event
   __tracepoint_android_vh_psi_group
 
+#required by io_monitor.ko
+  __tracepoint_f2fs_gc_begin
+  __tracepoint_f2fs_gc_end
+  __tracepoint_f2fs_write_checkpoint
+  __tracepoint_f2fs_sync_file_enter
+  __tracepoint_f2fs_sync_file_exit
+  __tracepoint_ufshcd_command
+  __traceiter_f2fs_gc_begin
+  __traceiter_f2fs_gc_end
+  __traceiter_f2fs_write_checkpoint
+  __traceiter_f2fs_sync_file_enter
+  __traceiter_f2fs_sync_file_exit
+  __traceiter_ufshcd_command
+
 #required by zram.ko module
   __blk_alloc_disk
   bio_end_io_acct_remapped
@@ -423,3 +491,41 @@ __tracepoint_android_vh_get_folio_trylock_result
 __traceiter_android_vh_do_folio_trylock
 __tracepoint_android_vh_do_folio_trylock
 reclaim_pages
+__tracepoint_android_vh_alloc_flags_cma_adjust
+__traceiter_android_vh_alloc_flags_cma_adjust
+
+# required by xr-qi.ko
+__tracepoint_android_vh_futex_wait_queue_start
+__traceiter_android_vh_futex_wait_queue_start
+
+# required by zsmalloc.ko
+__traceiter_android_vh_zs_shrinker_adjust
+__traceiter_android_vh_zs_shrinker_bypass
+__tracepoint_android_vh_zs_shrinker_adjust
+__tracepoint_android_vh_zs_shrinker_bypass
+
+# required by msm_drm.ko
+pwm_apply_might_sleep
+
+# required by mi_buffer_io_reclaim ko
+shrink_inactive_list
+__tracepoint_android_vh_copy_page_to_user
+__traceiter_android_vh_copy_page_to_user
+__tracepoint_android_vh_copy_page_from_user
+__traceiter_android_vh_copy_page_from_user
+__tracepoint_android_vh_destroy_inode
+__traceiter_android_vh_destroy_inode
+
+# required by gzvm.ko
+__traceiter_android_vh_gzvm_destroy_vm_post_process
+__tracepoint_android_vh_gzvm_destroy_vm_post_process
+__traceiter_android_vh_gzvm_handle_demand_page_pre
+__traceiter_android_vh_gzvm_handle_demand_page_post
+__tracepoint_android_vh_gzvm_handle_demand_page_pre
+__tracepoint_android_vh_gzvm_handle_demand_page_post
+
+# required by launch_boost driver
+__traceiter_android_vh_filemap_read
+__tracepoint_android_vh_filemap_read
+__traceiter_android_vh_filemap_map_pages_range
+__tracepoint_android_vh_filemap_map_pages_range

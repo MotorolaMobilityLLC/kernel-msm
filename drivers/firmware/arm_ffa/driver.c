@@ -732,6 +732,11 @@ static void __do_sched_recv_cb(u16 part_id, u16 vcpu, bool is_per_vcpu)
 	void *cb_data;
 
 	partition = xa_load(&drv_info->partition_info, part_id);
+	if (!partition) {
+		pr_err("%s: Invalid partition ID 0x%x\n", __func__, part_id);
+		return;
+	}
+
 	read_lock(&partition->rw_lock);
 	callback = partition->callback;
 	cb_data = partition->cb_data;
@@ -782,9 +787,9 @@ static void ffa_notification_info_get(void)
 			if (ids_processed >= max_ids - 1)
 				break;
 
-			part_id = packed_id_list[++ids_processed];
+			part_id = packed_id_list[ids_processed++];
 
-			if (!ids_count[list]) { /* Global Notification */
+			if (ids_count[list] == 1) { /* Global Notification */
 				__do_sched_recv_cb(part_id, 0, false);
 				continue;
 			}
@@ -794,7 +799,7 @@ static void ffa_notification_info_get(void)
 				if (ids_processed >= max_ids - 1)
 					break;
 
-				vcpu_id = packed_id_list[++ids_processed];
+				vcpu_id = packed_id_list[ids_processed++];
 
 				__do_sched_recv_cb(part_id, vcpu_id, true);
 			}
@@ -909,6 +914,11 @@ static int ffa_sched_recv_cb_update(u16 part_id, ffa_sched_recv_cb callback,
 	bool cb_valid;
 
 	partition = xa_load(&drv_info->partition_info, part_id);
+	if (!partition) {
+		pr_err("%s: Invalid partition ID 0x%x\n", __func__, part_id);
+		return -EINVAL;
+	}
+
 	write_lock(&partition->rw_lock);
 
 	cb_valid = !!partition->callback;
@@ -1211,6 +1221,7 @@ static void ffa_setup_partitions(void)
 			ffa_device_unregister(ffa_dev);
 			continue;
 		}
+		rwlock_init(&info->rw_lock);
 		xa_store(&drv_info->partition_info, tpbuf->id, info, GFP_KERNEL);
 	}
 	drv_info->partition_count = count;
@@ -1221,6 +1232,7 @@ static void ffa_setup_partitions(void)
 	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info)
 		return;
+	rwlock_init(&info->rw_lock);
 	xa_store(&drv_info->partition_info, drv_info->vm_id, info, GFP_KERNEL);
 	drv_info->partition_count++;
 }

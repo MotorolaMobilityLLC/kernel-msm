@@ -143,8 +143,7 @@ void unlink_file_vma(struct vm_area_struct *vma)
 static void remove_vma(struct vm_area_struct *vma, bool unreachable)
 {
 	might_sleep();
-	if (vma->vm_ops && vma->vm_ops->close)
-		vma->vm_ops->close(vma);
+	vma_close(vma);
 	if (vma->vm_file)
 		fput(vma->vm_file);
 	mpol_put(vma_policy(vma));
@@ -1222,7 +1221,7 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 			unsigned long pgoff, unsigned long *populate,
 			struct list_head *uf)
 {
-	unsigned long old_len;
+	unsigned long file_backed_len = 0;
 	struct mm_struct *mm = current->mm;
 	int pkey = 0;
 
@@ -1252,9 +1251,6 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 	len = __COMPAT_PAGE_ALIGN(len, flags);
 	if (!len)
 		return -ENOMEM;
-
-	/* Save the requested len */
-	old_len = len;
 
 	/* offset overflow? */
 	if ((pgoff + (len >> PAGE_SHIFT)) < pgoff)
@@ -1296,7 +1292,7 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 	 * to. we assume access permissions have been handled by the open
 	 * of the memory object, so we don't do any here.
 	 */
-	vm_flags |= calc_vm_prot_bits(prot, pkey) | calc_vm_flag_bits(flags) |
+	vm_flags |= calc_vm_prot_bits(prot, pkey) | calc_vm_flag_bits(file, flags) |
 			mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC;
 
 	if (flags & MAP_LOCKED)
@@ -1313,7 +1309,7 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 		if (!file_mmap_ok(file, inode, pgoff, len))
 			return -EOVERFLOW;
 
-		len = __filemap_len(inode, pgoff, len, flags);
+		file_backed_len = __filemap_len(inode, pgoff, len, flags);
 
 		flags_mask = LEGACY_MAP_MASK | file->f_op->mmap_supported_flags;
 
@@ -1409,7 +1405,7 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 	     (flags & (MAP_POPULATE | MAP_NONBLOCK)) == MAP_POPULATE))
 		*populate = len;
 
-	__filemap_fixup(addr, prot, old_len, len);
+	__filemap_fixup(addr, prot, file_backed_len, len);
 
 	return addr;
 }
@@ -1754,6 +1750,7 @@ generic_get_unmapped_area(struct file *filp, unsigned long addr,
 	info.high_limit = mmap_end;
 	info.align_mask = 0;
 	info.align_offset = 0;
+	trace_android_vh_update_unmapped_area_info(&info);
 	return vm_unmapped_area(&info);
 }
 
@@ -1804,6 +1801,7 @@ generic_get_unmapped_area_topdown(struct file *filp, unsigned long addr,
 	info.high_limit = arch_get_mmap_base(addr, mm->mmap_base);
 	info.align_mask = 0;
 	info.align_offset = 0;
+	trace_android_vh_update_unmapped_area_info(&info);
 	addr = vm_unmapped_area(&info);
 
 	/*
@@ -2820,7 +2818,7 @@ cannot_expand:
 		}
 
 		vma->vm_file = get_file(file);
-		error = call_mmap(file, vma);
+		error = mmap_file(file, vma);
 		if (error)
 			goto unmap_and_free_vma;
 
@@ -2834,7 +2832,7 @@ cannot_expand:
 
 		vma_iter_config(&vmi, addr, end);
 		/*
-		 * If vm_flags changed after call_mmap(), we should try merge
+		 * If vm_flags changed after mmap_file(), we should try merge
 		 * vma again as we may succeed this time.
 		 */
 		if (unlikely(vm_flags != vma->vm_flags && prev)) {
@@ -2868,7 +2866,7 @@ cannot_expand:
 		vma_set_anonymous(vma);
 	}
 
-	if (map_deny_write_exec(vma, vma->vm_flags)) {
+	if (map_deny_write_exec(vma->vm_flags, vma->vm_flags)) {
 		error = -EACCES;
 		goto close_and_free_vma;
 	}
@@ -2942,8 +2940,7 @@ expanded:
 	return addr;
 
 close_and_free_vma:
-	if (file && vma->vm_ops && vma->vm_ops->close)
-		vma->vm_ops->close(vma);
+	vma_close(vma);
 
 	if (file || vma->vm_file) {
 unmap_and_free_vma:
@@ -3075,8 +3072,12 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 		flags |= MAP_LOCKED;
 
 	file = get_file(vma->vm_file);
+	ret = security_mmap_file(vma->vm_file, prot, flags);
+	if (ret)
+		goto out_fput;
 	ret = do_mmap(vma->vm_file, start, size,
 			prot, flags, 0, pgoff, &populate, NULL);
+out_fput:
 	fput(file);
 out:
 	mmap_write_unlock(mm);
@@ -3451,8 +3452,7 @@ struct vm_area_struct *copy_vma(struct vm_area_struct **vmap,
 	return new_vma;
 
 out_vma_link:
-	if (new_vma->vm_ops && new_vma->vm_ops->close)
-		new_vma->vm_ops->close(new_vma);
+	vma_close(new_vma);
 
 	if (new_vma->vm_file)
 		fput(new_vma->vm_file);

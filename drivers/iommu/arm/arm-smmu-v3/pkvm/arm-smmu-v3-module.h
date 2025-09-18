@@ -42,6 +42,8 @@ extern const struct pkvm_module_ops		*mod_ops;
 #define kvm_iommu_reclaim_pages_atomic(x, y)	CALL_FROM_OPS(iommu_reclaim_pages_atomic, x, y)
 #define kvm_iommu_snapshot_host_stage2(x)	CALL_FROM_OPS(iommu_snapshot_host_stage2, x)
 #define kvm_iommu_flush_unmap_cache(x)		CALL_FROM_OPS(iommu_flush_unmap_cache, x)
+#define __pkvm_host_share_hyp(x)		CALL_FROM_OPS(host_share_hyp, x)
+#define hyp_pin_shared_mem(x, y)		CALL_FROM_OPS(pin_shared_mem, x, y)
 #endif
 
 #endif /* __ARM_SMMU_V3_MODULE__ */

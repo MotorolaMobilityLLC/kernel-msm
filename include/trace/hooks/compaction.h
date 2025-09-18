@@ -15,6 +15,9 @@ enum compact_result;
 DECLARE_HOOK(android_vh_compaction_try_to_compact_exit,
         TP_PROTO(enum compact_result *compact_result),
         TP_ARGS(compact_result));
+DECLARE_HOOK(android_vh_proactive_compact_wmark_high,
+	TP_PROTO(int *wmark_high),
+	TP_ARGS(wmark_high));
 #endif /* _TRACE_HOOK_COMPACTION_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

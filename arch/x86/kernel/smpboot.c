@@ -60,6 +60,7 @@
 #include <linux/stackprotector.h>
 #include <linux/cpuhotplug.h>
 #include <linux/mc146818rtc.h>
+#include <linux/acpi.h>
 
 #include <asm/acpi.h>
 #include <asm/cacheinfo.h>
@@ -258,12 +259,9 @@ static void notrace start_secondary(void *unused)
 	cpu_init_exception_handling();
 
 	/*
-	 * 32-bit systems load the microcode from the ASM startup code for
-	 * historical reasons.
-	 *
-	 * On 64-bit systems load it before reaching the AP alive
-	 * synchronization point below so it is not part of the full per
-	 * CPU serialized bringup part when "parallel" bringup is enabled.
+	 * Load the microcode before reaching the AP alive synchronization
+	 * point below so it is not part of the full per CPU serialized
+	 * bringup part when "parallel" bringup is enabled.
 	 *
 	 * That's even safe when hyperthreading is enabled in the CPU as
 	 * the core code starts the primary threads first and leaves the
@@ -276,8 +274,7 @@ static void notrace start_secondary(void *unused)
 	 * CPUID, MSRs etc. must be strictly serialized to maintain
 	 * software state correctness.
 	 */
-	if (IS_ENABLED(CONFIG_X86_64))
-		load_ucode_ap();
+	load_ucode_ap();
 
 	/*
 	 * Synchronization point with the hotplug core. Sets this CPUs
@@ -603,14 +600,6 @@ static int x86_cluster_flags(void)
 }
 #endif
 
-static int x86_die_flags(void)
-{
-	if (cpu_feature_enabled(X86_FEATURE_HYBRID_CPU))
-	       return x86_sched_itmt_flags();
-
-	return 0;
-}
-
 /*
  * Set if a package/die has multiple NUMA nodes inside.
  * AMD Magny-Cours, Intel Cluster-on-Die, and Intel
@@ -640,13 +629,13 @@ static void __init build_sched_topology(void)
 	};
 #endif
 	/*
-	 * When there is NUMA topology inside the package skip the DIE domain
+	 * When there is NUMA topology inside the package skip the PKG domain
 	 * since the NUMA domains will auto-magically create the right spanning
 	 * domains based on the SLIT.
 	 */
 	if (!x86_has_numa_in_package) {
 		x86_topology[i++] = (struct sched_domain_topology_level){
-			cpu_cpu_mask, x86_die_flags, SD_INIT_NAME(DIE)
+			cpu_cpu_mask, x86_sched_itmt_flags, SD_INIT_NAME(PKG)
 		};
 	}
 

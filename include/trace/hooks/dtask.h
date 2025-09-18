@@ -71,6 +71,38 @@ DECLARE_HOOK(android_vh_rwsem_can_spin_on_owner,
 	TP_PROTO(struct rw_semaphore *sem, bool *ret),
 	TP_ARGS(sem, ret));
 
+struct device;
+DECLARE_HOOK(android_vh_dpm_wait_start,
+	TP_PROTO(struct device *dev),
+	TP_ARGS(dev));
+DECLARE_HOOK(android_vh_dpm_wait_finish,
+	TP_PROTO(struct device *dev),
+	TP_ARGS(dev));
+
+struct irq_desc;
+DECLARE_HOOK(android_vh_sync_irq_wait_start,
+	TP_PROTO(struct irq_desc *desc),
+	TP_ARGS(desc));
+DECLARE_HOOK(android_vh_sync_irq_wait_finish,
+	TP_PROTO(struct irq_desc *desc),
+	TP_ARGS(desc));
+
+struct workqueue_struct;
+DECLARE_HOOK(android_vh_flush_wq_wait_start,
+	TP_PROTO(struct workqueue_struct *wq),
+	TP_ARGS(wq));
+DECLARE_HOOK(android_vh_flush_wq_wait_finish,
+	TP_PROTO(struct workqueue_struct *wq),
+	TP_ARGS(wq));
+
+struct work_struct;
+DECLARE_HOOK(android_vh_flush_work_wait_start,
+	TP_PROTO(struct work_struct *work),
+	TP_ARGS(work));
+DECLARE_HOOK(android_vh_flush_work_wait_finish,
+	TP_PROTO(struct work_struct *work),
+	TP_ARGS(work));
+
 DECLARE_HOOK(android_vh_sched_show_task,
 	TP_PROTO(struct task_struct *task),
 	TP_ARGS(task));
@@ -97,7 +129,7 @@ DECLARE_HOOK(android_vh_alter_mutex_list_add,
 DECLARE_HOOK(android_vh_mutex_unlock_slowpath,
 	TP_PROTO(struct mutex *lock),
 	TP_ARGS(lock));
-DECLARE_HOOK(android_vh_mutex_unlock_slowpath_before_wakeq,
+DECLARE_HOOK(android_vh_mutex_unlock_slowpath_bf_wakeq,
 	TP_PROTO(struct mutex *lock),
 	TP_ARGS(lock));
 

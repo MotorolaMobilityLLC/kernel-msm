@@ -16,6 +16,7 @@
 #include <linux/export.h>
 #include <linux/syscalls.h>
 #include <linux/pagemap.h>
+#include <linux/page_size_compat.h>
 #include <linux/splice.h>
 #include <linux/compat.h>
 #include <linux/mount.h>
@@ -661,6 +662,17 @@ ssize_t ksys_pread64(unsigned int fd, char __user *buf, size_t count,
 	f = fdget(fd);
 	if (f.file) {
 		ret = -ESPIPE;
+
+		/*
+		 * If userspace thinks the pages are larger than they actually are,
+		 * adjust the offset and count to compensate.
+		 *
+		 * NOTE: We only need to adjust the position here since pagemap_read()
+		 * handles updating the count.
+		 */
+		if (__is_emulated_pagemap_file(f.file))
+			pos *= __PAGE_SIZE / PAGE_SIZE;
+
 		if (f.file->f_mode & FMODE_PREAD)
 			ret = vfs_read(f.file, buf, count, &pos);
 		fdput(f);

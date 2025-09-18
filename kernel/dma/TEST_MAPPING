@@ -264,6 +264,17 @@
           "include-filter": "android.hardware.camera2.cts.FastBasicsTest"
         }
       ]
+    },
+    {
+      "name": "CtsIncrementalInstallHostTestCases",
+      "options": [
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalInstallTest"
+        }
+      ]
+    },
+    {
+      "name": "VtsAidlHalSensorsTargetTest"
     }
   ]
 }

@@ -25,10 +25,12 @@
   filp_close
   free_workqueue_attrs
   __getblk_gfp
+  get_dup_sched_clock
   gnet_stats_add_queue
   gnet_stats_copy_basic
   gnet_stats_copy_queue
   __irq_regs
+  kblockd_mod_delayed_work_on
   kernfs_path_from_node
   __kmalloc_node
   __lock_buffer
@@ -38,6 +40,7 @@
   noop_qdisc
   of_css
   pfifo_qdisc_ops
+  pfn_to_online_page
   proc_mkdir_mode
   profile_event_register
   profile_event_unregister
@@ -116,6 +119,8 @@
   __traceiter_android_vh_binder_special_task
   __traceiter_android_vh_binder_wait_for_work
   __traceiter_android_vh_blk_fill_rwbs
+  __traceiter_android_vh_blk_mq_delay_run_hw_queue
+  __traceiter_android_vh_blk_mq_kick_requeue_list
   __traceiter_android_vh_build_skb_around
   __traceiter_android_vh_cgroup_attach
   __traceiter_android_vh_check_folio_look_around_ref
@@ -125,6 +130,8 @@
   __traceiter_android_vh_configfs_uevent_work
   __traceiter_android_vh_count_workingset_refault
   __traceiter_android_vh_do_anonymous_page
+  __traceiter_android_vh_do_async_mmap_readahead
+  __traceiter_android_vh_do_group_exit
   __traceiter_android_vh_do_new_mount_fc
   __traceiter_android_vh_do_swap_page
   __traceiter_android_vh_do_wp_page
@@ -132,9 +139,11 @@
   __traceiter_android_vh_f2fs_file_open
   __traceiter_android_vh_f2fs_ra_op_flags
   __traceiter_android_vh_filemap_update_page
+  __traceiter_android_vh_free_unref_page_list_bypass
   __traceiter_android_vh_free_task
   __traceiter_android_vh_free_unref_page_bypass
   __traceiter_android_vh_fuse_request_end
+  __traceiter_android_vh_init_adjust_zone_wmark
   __traceiter_android_vh_inode_lru_isolate
   __traceiter_android_vh_invalidate_mapping_pagevec
   __traceiter_android_vh_irqtime_account_process_tick
@@ -143,10 +152,12 @@
   __traceiter_android_vh_lock_folio_drop_mmap_start
   __traceiter_android_vh_look_around
   __traceiter_android_vh_look_around_migrate_folio
+  __traceiter_android_vh_lruvec_add_folio
+  __traceiter_android_vh_lruvec_del_folio
   __traceiter_android_vh_mmap_region
   __traceiter_android_vh_mutex_init
   __traceiter_android_vh_mutex_unlock_slowpath
-  __traceiter_android_vh_mutex_unlock_slowpath_before_wakeq
+  __traceiter_android_vh_mutex_unlock_slowpath_bf_wakeq
   __traceiter_android_vh_mutex_wait_finish
   __traceiter_android_vh_mutex_wait_start
   __traceiter_android_vh_oom_swapmem_gather_finish
@@ -170,17 +181,21 @@
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_sd_init_unmap_multi_segment
   __traceiter_android_vh_sd_setup_unmap_multi_segment
+  __traceiter_android_vh_send_signal_locked
   __traceiter_android_vh_shmem_swapin_folio
   __traceiter_android_vh_should_alloc_pages_retry
   __traceiter_android_vh_shrink_folio_list
+  __traceiter_android_vh_shrink_node_memcgs
   __traceiter_android_vh_sk_alloc
   __traceiter_android_vh_sk_free
   __traceiter_android_vh_swapmem_gather_add_bypass
   __traceiter_android_vh_swapmem_gather_finish
   __traceiter_android_vh_swapmem_gather_init
+  __traceiter_android_vh_swap_writepage
   __traceiter_android_vh_sync_txn_recvd
   __traceiter_android_vh_tcp_rtt_estimator
   __traceiter_android_vh_test_clear_look_around_ref
+  __traceiter_android_vh_throttle_direct_reclaim_bypass
   __traceiter_android_vh_try_to_unmap_one
   __traceiter_android_vh_tune_mmap_readaround
   __traceiter_android_vh_udp_enqueue_schedule_skb
@@ -235,6 +250,8 @@
   __tracepoint_android_vh_binder_special_task
   __tracepoint_android_vh_binder_wait_for_work
   __tracepoint_android_vh_blk_fill_rwbs
+  __tracepoint_android_vh_blk_mq_delay_run_hw_queue
+  __tracepoint_android_vh_blk_mq_kick_requeue_list
   __tracepoint_android_vh_build_skb_around
   __tracepoint_android_vh_cgroup_attach
   __tracepoint_android_vh_check_folio_look_around_ref
@@ -244,6 +261,8 @@
   __tracepoint_android_vh_configfs_uevent_work
   __tracepoint_android_vh_count_workingset_refault
   __tracepoint_android_vh_do_anonymous_page
+  __tracepoint_android_vh_do_async_mmap_readahead
+  __tracepoint_android_vh_do_group_exit
   __tracepoint_android_vh_do_new_mount_fc
   __tracepoint_android_vh_do_swap_page
   __tracepoint_android_vh_do_wp_page
@@ -254,6 +273,7 @@
   __tracepoint_android_vh_free_task
   __tracepoint_android_vh_free_unref_page_bypass
   __tracepoint_android_vh_fuse_request_end
+  __tracepoint_android_vh_init_adjust_zone_wmark
   __tracepoint_android_vh_inode_lru_isolate
   __tracepoint_android_vh_invalidate_mapping_pagevec
   __tracepoint_android_vh_irqtime_account_process_tick
@@ -262,10 +282,12 @@
   __tracepoint_android_vh_lock_folio_drop_mmap_start
   __tracepoint_android_vh_look_around
   __tracepoint_android_vh_look_around_migrate_folio
+  __tracepoint_android_vh_lruvec_add_folio
+  __tracepoint_android_vh_lruvec_del_folio
   __tracepoint_android_vh_mmap_region
   __tracepoint_android_vh_mutex_init
   __tracepoint_android_vh_mutex_unlock_slowpath
-  __tracepoint_android_vh_mutex_unlock_slowpath_before_wakeq
+  __tracepoint_android_vh_mutex_unlock_slowpath_bf_wakeq
   __tracepoint_android_vh_mutex_wait_finish
   __tracepoint_android_vh_mutex_wait_start
   __tracepoint_android_vh_oom_swapmem_gather_finish
@@ -289,17 +311,22 @@
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_sd_init_unmap_multi_segment
   __tracepoint_android_vh_sd_setup_unmap_multi_segment
+  __tracepoint_android_vh_send_signal_locked
   __tracepoint_android_vh_shmem_swapin_folio
   __tracepoint_android_vh_should_alloc_pages_retry
+  __tracepoint_android_vh_free_unref_page_list_bypass
   __tracepoint_android_vh_shrink_folio_list
+  __tracepoint_android_vh_shrink_node_memcgs
   __tracepoint_android_vh_sk_alloc
   __tracepoint_android_vh_sk_free
   __tracepoint_android_vh_swapmem_gather_add_bypass
   __tracepoint_android_vh_swapmem_gather_finish
   __tracepoint_android_vh_swapmem_gather_init
+  __tracepoint_android_vh_swap_writepage
   __tracepoint_android_vh_sync_txn_recvd
   __tracepoint_android_vh_tcp_rtt_estimator
   __tracepoint_android_vh_test_clear_look_around_ref
+  __tracepoint_android_vh_throttle_direct_reclaim_bypass
   __tracepoint_android_vh_try_to_unmap_one
   __tracepoint_android_vh_tune_mmap_readaround
   __tracepoint_android_vh_udp_enqueue_schedule_skb
@@ -322,3 +349,5 @@
   ufshcd_query_descriptor_retry
   unlock_buffer
   __wait_on_buffer
+  zs_lookup_class_index
+  utf8_data_table_new

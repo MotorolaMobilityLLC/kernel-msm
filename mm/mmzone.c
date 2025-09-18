@@ -11,6 +11,13 @@
 #include <linux/mmzone.h>
 #include <trace/hooks/mm.h>
 
+void set_page_private(struct page *page, unsigned long private)
+{
+	trace_android_vh_page_private_mod(page, private);
+	page->private = private;
+}
+EXPORT_SYMBOL_GPL(set_page_private);
+
 struct pglist_data *first_online_pgdat(void)
 {
 	return NODE_DATA(first_online_node);

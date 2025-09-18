@@ -1551,7 +1551,7 @@ static int pagemap_pmd_range(pmd_t *pmdp, unsigned long addr, unsigned long end,
 			flags |= PM_FILE;
 
 		for (; addr != end; addr += PAGE_SIZE, idx++) {
-			unsigned long cur_flags = flags;
+			u64 cur_flags = flags;
 			pagemap_entry_t pme;
 
 			if (page && (flags & PM_PRESENT) &&
@@ -1659,6 +1659,30 @@ static const struct mm_walk_ops pagemap_ops = {
 	.walk_lock	= PGWALK_RDLOCK,
 };
 
+static inline void __collapse_pagemap_result(pagemap_entry_t *src_vec,
+					     pagemap_entry_t *res_vec,
+					     unsigned long entries,
+					     unsigned int nr_subpages)
+{
+	unsigned int i;
+
+	if (nr_subpages == 1)
+		return;
+
+	for (i = 0; i < entries; i++) {
+		/*
+		 * Zero the PFN since there is no guarantee that the PFNs are contiguous.
+		 * Zero the flags - applicable flags are derived from the sub-entries,
+		 *                  inapplicable flags are kept zeroed.
+		 */
+		if (i % nr_subpages == 0)
+			res_vec[i / nr_subpages] = make_pme(0, 0);
+
+		res_vec[i / nr_subpages].pme
+			|= src_vec[i].pme & (PM_SOFT_DIRTY|PM_MMAP_EXCLUSIVE|PM_FILE|PM_PRESENT);
+	}
+}
+
 /*
  * /proc/pid/pagemap - an array mapping virtual pages to pfns
  *
@@ -1696,6 +1720,8 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 	unsigned long start_vaddr;
 	unsigned long end_vaddr;
 	int ret = 0, copied = 0;
+	unsigned int nr_subpages = __PAGE_SIZE / PAGE_SIZE;
+	pagemap_entry_t *res = NULL;
 
 	if (!mm || !mmget_not_zero(mm))
 		goto out;
@@ -1717,6 +1743,21 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 	ret = -ENOMEM;
 	if (!pm.buffer)
 		goto out_mm;
+
+	if (unlikely(nr_subpages > 1)) {
+		/*
+		 * Userspace thinks the pages are large than the actually are, adjust the count to
+		 * compensate.
+		 */
+		count *= nr_subpages;
+
+		res = kcalloc(pm.len / nr_subpages, PM_ENTRY_BYTES, GFP_KERNEL);
+		if (!res) {
+			ret = -ENOMEM;
+			goto out_free;
+		}
+	} else
+		res = pm.buffer;
 
 	src = *ppos;
 	svpfn = src / PM_ENTRY_BYTES;
@@ -1760,19 +1801,33 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
 		start_vaddr = end;
 
 		len = min(count, PM_ENTRY_BYTES * pm.pos);
-		if (copy_to_user(buf, pm.buffer, len)) {
+
+		__collapse_pagemap_result(pm.buffer, res, len / PM_ENTRY_BYTES, nr_subpages);
+
+		if (copy_to_user(buf, res, len / nr_subpages)) {
 			ret = -EFAULT;
 			goto out_free;
 		}
+
+		/*
+		 * If emulating the page size, clear the old results, to avoid
+		 * corrupting the next __collapse_pagemap_result()
+		 */
+		if (unlikely(nr_subpages > 1))
+			memset(res, 0, len / nr_subpages);
+
 		copied += len;
-		buf += len;
+		buf += len / nr_subpages;
 		count -= len;
 	}
 	*ppos += copied;
 	if (!ret || ret == PM_END_OF_BUFFER)
-		ret = copied;
+		ret = copied / nr_subpages;
 
 out_free:
+	/* Avoid double free, as res = pm.buffer if nr_subpages == 1 */
+	if (unlikely(nr_subpages > 1))
+		kfree(res);
 	kfree(pm.buffer);
 out_mm:
 	mmput(mm);
@@ -1800,12 +1855,36 @@ static int pagemap_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+loff_t __pagemap_lseek(struct file *file, loff_t offset, int orig)
+{
+	unsigned long nr_subpages = __PAGE_SIZE / PAGE_SIZE;
+	loff_t ret;
+
+	/*
+	 * Userspace thinks the pages are larger than they actually are, so adjust the
+	 * offset to compensate.
+	 */
+	offset *= nr_subpages;
+
+	ret = mem_lseek(file, offset, orig);  /* borrow this */
+	if (ret < 0)
+		return offset;
+
+	/* Re-adjust the offset to reflect the larger userspace page size. */
+	return ret / nr_subpages;
+}
+
 const struct file_operations proc_pagemap_operations = {
-	.llseek		= mem_lseek, /* borrow this */
+	.llseek		= __pagemap_lseek,
 	.read		= pagemap_read,
 	.open		= pagemap_open,
 	.release	= pagemap_release,
 };
+
+bool __is_emulated_pagemap_file(struct file *file)
+{
+	return __PAGE_SIZE != PAGE_SIZE && file->f_op == &proc_pagemap_operations;
+}
 #endif /* CONFIG_PROC_PAGE_MONITOR */
 
 #ifdef CONFIG_NUMA

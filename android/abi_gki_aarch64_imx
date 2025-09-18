@@ -122,6 +122,7 @@
   class_find_device
   class_register
   class_unregister
+  cleanup_srcu_struct
   clear_page
   clk_bulk_disable
   clk_bulk_enable
@@ -148,6 +149,7 @@
   clk_hw_get_parent_by_index
   clk_hw_get_rate
   clk_hw_is_enabled
+  clk_hw_is_prepared
   clk_hw_register
   clk_hw_register_composite
   __clk_hw_register_divider
@@ -437,6 +439,7 @@
   devm_rc_allocate_device
   devm_rc_register_device
   devm_register_sys_off_handler
+  devm_regmap_add_irq_chip
   devm_regmap_field_alloc
   __devm_regmap_init
   __devm_regmap_init_i2c
@@ -1250,6 +1253,7 @@
   __kmalloc
   kmalloc_caches
   kmalloc_large
+  kmalloc_size_roundup
   kmalloc_trace
   kmem_cache_alloc
   kmem_cache_create
@@ -1739,6 +1743,7 @@
   phylink_fwnode_phy_connect
   phylink_generic_validate
   phylink_get_eee_err
+  phylink_init_eee
   phylink_limit_mac_speed
   phylink_mii_c22_pcs_an_restart
   phylink_mii_c22_pcs_config
@@ -1905,6 +1910,7 @@
   put_pid
   __put_task_struct
   put_unused_fd
+  pwm_apply_might_sleep
   pwm_apply_state
   pwmchip_add
   pwmchip_remove
@@ -1989,6 +1995,7 @@
   regmap_field_update_bits_base
   regmap_get_device
   __regmap_init_mmio_clk
+  regmap_irq_get_domain
   regmap_irq_get_virq
   regmap_multi_reg_write
   regmap_noinc_read
@@ -2005,6 +2012,7 @@
   regulator_bulk_enable
   regulator_bulk_free
   regulator_bulk_get
+  regulator_desc_list_voltage_linear
   regulator_desc_list_voltage_linear_range
   regulator_disable
   regulator_disable_regmap
@@ -2012,11 +2020,13 @@
   regulator_enable_regmap
   regulator_get_optional
   regulator_get_voltage
+  regulator_get_voltage_sel_pickable_regmap
   regulator_get_voltage_sel_regmap
   regulator_is_enabled
   regulator_is_enabled_regmap
   regulator_list_voltage_linear
   regulator_list_voltage_linear_range
+  regulator_list_voltage_pickable_linear_range
   regulator_list_voltage_table
   regulator_map_voltage_ascend
   regulator_put
@@ -2024,6 +2034,7 @@
   regulator_set_load
   regulator_set_ramp_delay_regmap
   regulator_set_voltage
+  regulator_set_voltage_sel_pickable_regmap
   regulator_set_voltage_sel_regmap
   regulator_set_voltage_time_sel
   release_firmware
@@ -2168,6 +2179,8 @@
   set_user_nice
   sg_alloc_table
   sg_alloc_table_from_pages_segment
+  sg_copy_from_buffer
+  sg_copy_to_buffer
   sget_dev
   sg_free_table
   sg_init_one
@@ -2370,6 +2383,10 @@
   spi_sync
   spi_unregister_controller
   sprintf
+  srcu_init_notifier_head
+  srcu_notifier_call_chain
+  srcu_notifier_chain_register
+  srcu_notifier_chain_unregister
   sscanf
   __stack_chk_fail
   static_key_count

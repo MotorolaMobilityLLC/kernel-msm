@@ -18,6 +18,7 @@
 #include <linux/mm_inline.h>
 #include <linux/mmu_notifier.h>
 #include <linux/poll.h>
+#include <linux/page_size_compat.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
 #include <linux/file.h>
@@ -2028,7 +2029,8 @@ static int userfaultfd_move(struct userfaultfd_ctx *ctx,
 		return ret;
 
 	if (uffdio_move.mode & ~(UFFDIO_MOVE_MODE_ALLOW_SRC_HOLES|
-				  UFFDIO_MOVE_MODE_DONTWAKE))
+				  UFFDIO_MOVE_MODE_DONTWAKE|
+				  UFFDIO_MOVE_MODE_CONFIRM_FIXED))
 		return -EINVAL;
 
 	if (mmget_not_zero(mm)) {
@@ -2272,6 +2274,9 @@ static inline bool userfaultfd_syscall_allowed(int flags)
 
 SYSCALL_DEFINE1(userfaultfd, int, flags)
 {
+	if (__PAGE_SIZE != PAGE_SIZE)
+		return -EOPNOTSUPP;
+
 	if (!userfaultfd_syscall_allowed(flags))
 		return -EPERM;
 

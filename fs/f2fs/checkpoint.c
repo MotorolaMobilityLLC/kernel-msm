@@ -20,11 +20,21 @@
 #include "segment.h"
 #include "iostat.h"
 #include <trace/events/f2fs.h>
+#include <trace/hooks/fs.h>
 
-#define DEFAULT_CHECKPOINT_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+EXPORT_TRACEPOINT_SYMBOL_GPL(f2fs_write_checkpoint);
+
+#define DEFAULT_CHECKPOINT_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_RT, 3))
 
 static struct kmem_cache *ino_entry_slab;
 struct kmem_cache *f2fs_inode_entry_slab;
+
+void _trace_android_rvh_f2fs_down_read(wait_queue_head_t *read_waiters,
+					struct rw_semaphore *rwsem, bool *skip)
+{
+	trace_android_rvh_f2fs_down_read(read_waiters, rwsem, skip);
+}
+EXPORT_SYMBOL_GPL(_trace_android_rvh_f2fs_down_read);
 
 void f2fs_stop_checkpoint(struct f2fs_sb_info *sbi, bool end_io,
 						unsigned char reason)
@@ -32,7 +42,7 @@ void f2fs_stop_checkpoint(struct f2fs_sb_info *sbi, bool end_io,
 	f2fs_build_fault_attr(sbi, 0, 0);
 	if (!end_io)
 		f2fs_flush_merged_writes(sbi);
-	f2fs_handle_critical_error(sbi, reason, end_io);
+	f2fs_handle_critical_error(sbi, reason);
 }
 
 /*
@@ -99,7 +109,7 @@ repeat:
 	}
 
 	if (unlikely(!PageUptodate(page))) {
-		f2fs_handle_page_eio(sbi, page->index, META);
+		f2fs_handle_page_eio(sbi, page_folio(page), META);
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);
 	}
@@ -345,30 +355,31 @@ static int __f2fs_write_meta_page(struct page *page,
 				enum iostat_type io_type)
 {
 	struct f2fs_sb_info *sbi = F2FS_P_SB(page);
+	struct folio *folio = page_folio(page);
 
-	trace_f2fs_writepage(page_folio(page), META);
+	trace_f2fs_writepage(folio, META);
 
 	if (unlikely(f2fs_cp_error(sbi))) {
 		if (is_sbi_flag_set(sbi, SBI_IS_CLOSE)) {
-			ClearPageUptodate(page);
+			folio_clear_uptodate(folio);
 			dec_page_count(sbi, F2FS_DIRTY_META);
-			unlock_page(page);
+			folio_unlock(folio);
 			return 0;
 		}
 		goto redirty_out;
 	}
 	if (unlikely(is_sbi_flag_set(sbi, SBI_POR_DOING)))
 		goto redirty_out;
-	if (wbc->for_reclaim && page->index < GET_SUM_BLOCK(sbi, 0))
+	if (wbc->for_reclaim && folio->index < GET_SUM_BLOCK(sbi, 0))
 		goto redirty_out;
 
-	f2fs_do_write_meta_page(sbi, page, io_type);
+	f2fs_do_write_meta_page(sbi, folio, io_type);
 	dec_page_count(sbi, F2FS_DIRTY_META);
 
 	if (wbc->for_reclaim)
 		f2fs_submit_merged_write_cond(sbi, NULL, page, 0, META);
 
-	unlock_page(page);
+	folio_unlock(folio);
 
 	if (unlikely(f2fs_cp_error(sbi)))
 		f2fs_submit_merged_write(sbi, META);
@@ -1551,7 +1562,7 @@ static int do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 		blk = start_blk + BLKS_PER_SEG(sbi) - nm_i->nat_bits_blocks;
 		for (i = 0; i < nm_i->nat_bits_blocks; i++)
 			f2fs_update_meta_page(sbi, nm_i->nat_bits +
-					(i << F2FS_BLKSIZE_BITS), blk + i);
+					F2FS_BLK_TO_BYTES(i), blk + i);
 	}
 
 	/* write out checkpoint buffer at block 0 */
@@ -1894,10 +1905,18 @@ int f2fs_issue_checkpoint(struct f2fs_sb_info *sbi)
 	if (waitqueue_active(&cprc->ckpt_wait_queue))
 		wake_up(&cprc->ckpt_wait_queue);
 
-	if (cprc->f2fs_issue_ckpt)
+	if (cprc->f2fs_issue_ckpt) {
+		bool prio_changed = false;
+		int saved_prio;
+
+		trace_android_vh_f2fs_improve_priority(cprc->f2fs_issue_ckpt, &saved_prio,
+						&prio_changed);
 		wait_for_completion(&req.wait);
-	else
+		if (prio_changed)
+			trace_android_vh_f2fs_restore_priority(cprc->f2fs_issue_ckpt, saved_prio);
+	} else {
 		flush_remained_ckpt_reqs(sbi, &req);
+	}
 
 	return req.ret;
 }

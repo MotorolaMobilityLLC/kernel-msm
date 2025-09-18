@@ -139,6 +139,7 @@
   __traceiter_android_vh_ipi_stop
   __traceiter_android_vh_mutex_unlock_slowpath
   __traceiter_android_vh_mutex_wait_start
+  __traceiter_android_vh_proactive_compact_stop
   __traceiter_android_vh_rwsem_downgrade_wake_finish
   __traceiter_android_vh_rwsem_read_wait_start
   __traceiter_android_vh_rwsem_read_wait_finish
@@ -212,6 +213,7 @@
   __tracepoint_android_vh_ipi_stop
   __tracepoint_android_vh_mutex_unlock_slowpath
   __tracepoint_android_vh_mutex_wait_start
+  __tracepoint_android_vh_proactive_compact_stop
   __tracepoint_android_vh_rwsem_downgrade_wake_finish
   __tracepoint_android_vh_rwsem_read_wait_start
   __tracepoint_android_vh_rwsem_read_wait_finish
@@ -313,6 +315,18 @@
   snd_usb_register_platform_ops
   snd_usb_unlock_shutdown
   snd_usb_unregister_platform_ops
+
+# required by batman-adv.ko
+  br_multicast_has_querier_adjacent
+  br_multicast_has_querier_anywhere
+  br_multicast_has_router_adjacent
+  br_multicast_list_adjacent
+  dev_get_iflink
+  ip_mc_check_igmp
+  ipv6_mc_check_mld
+  netdev_master_upper_dev_get_rcu
+  skb_prepare_seq_read
+  skb_seq_read
 
 # required by gzvm.ko
   __traceiter_android_vh_gzvm_vcpu_exit_reason
@@ -603,6 +617,12 @@
 # required by sysdump.ko
   node_states
 
+# required by torture.ko
+  cpu_is_hotpluggable
+  ftrace_dump
+  rcu_cpu_stall_suppress
+  rcu_inkernel_boot_has_ended
+
 # required by ufs_sprd.ko
   __scsi_add_device
   scsi_test_unit_ready
@@ -792,3 +812,4 @@
   devfreq_cooling_em_register
   dev_pm_qos_read_value
   regcache_cache_only
+  vm_unmapped_area

@@ -6475,8 +6475,6 @@ net/tipc/udp_media.c
 net/tipc/udp_media.h
 net/unix/af_unix.c
 net/unix/garbage.c
-net/unix/scm.c
-net/unix/scm.h
 net/unix/sysctl_net_unix.c
 net/unix/unix_bpf.c
 net/vmw_vsock/af_vsock.c

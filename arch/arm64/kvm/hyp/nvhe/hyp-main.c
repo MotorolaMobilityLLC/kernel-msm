@@ -648,6 +648,10 @@ static void sync_debug_state(struct pkvm_hyp_vcpu *hyp_vcpu)
 		return;
 
 	__vcpu_restore_guest_debug_regs(vcpu);
+	vcpu_write_sys_reg(host_vcpu, vcpu_read_sys_reg(vcpu, MDSCR_EL1),
+						   MDSCR_EL1);
+	*vcpu_cpsr(host_vcpu) = *vcpu_cpsr(vcpu);
+
 	vcpu->arch.debug_ptr = &host_vcpu->arch.vcpu_debug_state;
 }
 
@@ -1103,6 +1107,27 @@ out:
 	cpu_reg(host_ctxt, 1) = ret;
 }
 
+static void handle___pkvm_host_split_guest(struct kvm_cpu_context *host_ctxt)
+{
+	DECLARE_REG(u64, pfn, host_ctxt, 1);
+	DECLARE_REG(u64, gfn, host_ctxt, 2);
+	DECLARE_REG(u64, size, host_ctxt, 3);
+	struct pkvm_hyp_vcpu *hyp_vcpu;
+	int ret = -EINVAL;
+
+	if (!is_protected_kvm_enabled())
+		goto out;
+
+	hyp_vcpu = pkvm_get_loaded_hyp_vcpu();
+	if (!hyp_vcpu)
+		goto out;
+
+	ret = __pkvm_host_split_guest(pfn, gfn, size, hyp_vcpu);
+
+out:
+	cpu_reg(host_ctxt, 1) = ret;
+}
+
 static void handle___kvm_adjust_pc(struct kvm_cpu_context *host_ctxt)
 {
 	struct pkvm_hyp_vcpu *hyp_vcpu;
@@ -1416,7 +1441,7 @@ static void handle___pkvm_enable_tracing(struct kvm_cpu_context *host_ctxt)
 
 static void handle___pkvm_swap_reader_tracing(struct kvm_cpu_context *host_ctxt)
 {
-	DECLARE_REG(int, cpu, host_ctxt, 1);
+	DECLARE_REG(unsigned int, cpu, host_ctxt, 1);
 
 	cpu_reg(host_ctxt, 1) = __pkvm_swap_reader_tracing(cpu);
 }
@@ -1545,7 +1570,8 @@ static void handle___pkvm_host_iommu_detach_dev(struct kvm_cpu_context *host_ctx
 
 static void handle___pkvm_host_iommu_map_pages(struct kvm_cpu_context *host_ctxt)
 {
-	unsigned long ret;
+	int ret;
+	unsigned long mapped;
 	DECLARE_REG(pkvm_handle_t, domain, host_ctxt, 1);
 	DECLARE_REG(unsigned long, iova, host_ctxt, 2);
 	DECLARE_REG(phys_addr_t, paddr, host_ctxt, 3);
@@ -1554,8 +1580,9 @@ static void handle___pkvm_host_iommu_map_pages(struct kvm_cpu_context *host_ctxt
 	DECLARE_REG(unsigned int, prot, host_ctxt, 6);
 
 	ret = kvm_iommu_map_pages(domain, iova, paddr,
-				  pgsize, pgcount, prot);
-	hyp_reqs_smccc_encode(ret, host_ctxt, this_cpu_ptr(&host_hyp_reqs));
+				  pgsize, pgcount, prot, &mapped);
+	cpu_reg(host_ctxt, 0) = ret;
+	hyp_reqs_smccc_encode(mapped, host_ctxt, this_cpu_ptr(&host_hyp_reqs));
 }
 
 static void handle___pkvm_host_iommu_unmap_pages(struct kvm_cpu_context *host_ctxt)
@@ -1646,6 +1673,7 @@ static const hcall_t host_hcall[] = {
 	HANDLE_FUNC(__pkvm_relax_perms),
 	HANDLE_FUNC(__pkvm_wrprotect),
 	HANDLE_FUNC(__pkvm_dirty_log),
+	HANDLE_FUNC(__pkvm_host_split_guest),
 	HANDLE_FUNC(__pkvm_tlb_flush_vmid),
 	HANDLE_FUNC(__kvm_adjust_pc),
 	HANDLE_FUNC(__kvm_vcpu_run),

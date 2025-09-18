@@ -24,6 +24,7 @@ SPDX-License-Identifier: GPL-2.0 OR Apache-2.0
     <test class="com.android.tradefed.testtype.binary.KernelTargetTest" >
         <option name="exit-code-skip" value="4" />
         <option name="skip-binary-check" value="true" />
+        <option name="ktap-result-parser-resolution" value="INDIVIDUAL_LEAVES" />
         <option name="test-command-line" key="kselftest_binderfs_binderfs_test" value="cd &ktest_dir;; ./kselftest_binderfs_binderfs_test" />
         <option name="test-command-line" key="kselftest_breakpoints_breakpoint_test" value="cd &ktest_dir;; ./kselftest_breakpoints_breakpoint_test" />
         <option name="test-command-line" key="kselftest_capabilities_test_execve" value="cd &ktest_dir;; ./kselftest_capabilities_test_execve" />
@@ -56,6 +57,7 @@ SPDX-License-Identifier: GPL-2.0 OR Apache-2.0
         <option name="test-command-line" key="kselftest_futex_wait_uninitialized_heap" value="cd &ktest_dir;; ./futex_wait_uninitialized_heap" />
         <option name="test-command-line" key="kselftest_futex_wait_wouldblock" value="cd &ktest_dir;; ./futex_wait_wouldblock" />
         <option name="test-command-line" key="kselftest_kcmp_kcmp_test" value="cd &ktest_dir;; ./kselftest_kcmp_kcmp_test" />
+        <option name="test-command-line" key="kselftest_memfd_test" value="cd &ktest_dir;; ./kselftest_memfd_test" />
         <option name="test-command-line" key="kselftest_mm_mremap_dontunmap" value="cd &ktest_dir;; ./kselftest_mm_mremap_dontunmap" />
         <option name="test-command-line" key="kselftest_mm_mremap_test" value="cd &ktest_dir;; ./kselftest_mm_mremap_test" />
         <option name="test-command-line" key="kselftest_mm_uffd_unit_tests" value="cd &ktest_dir;; ./kselftest_mm_uffd_unit_tests" />

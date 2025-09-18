@@ -39,6 +39,8 @@
 #include <linux/rculist.h>
 #include <net/busy_poll.h>
 
+#include <trace/hooks/fs.h>
+
 /*
  * LOCKING:
  * There are three level of locking required by epoll :
@@ -741,7 +743,8 @@ static bool __ep_remove(struct eventpoll *ep, struct epitem *epi, bool force)
 	to_free = NULL;
 	head = file->f_ep;
 	if (head->first == &epi->fllink && !epi->fllink.next) {
-		file->f_ep = NULL;
+		/* See eventpoll_release() for details. */
+		WRITE_ONCE(file->f_ep, NULL);
 		if (!is_file_epoll(file)) {
 			struct epitems_head *v;
 			v = container_of(head, struct epitems_head, epitems);
@@ -1267,7 +1270,10 @@ static int ep_poll_callback(wait_queue_entry_t *wait, unsigned mode, int sync, v
 				break;
 			}
 		}
-		wake_up(&ep->wq);
+		if (sync)
+			wake_up_sync(&ep->wq);
+		else
+			wake_up(&ep->wq);
 	}
 	if (waitqueue_active(&ep->poll_wait))
 		pwake++;
@@ -1440,15 +1446,20 @@ static int ep_create_wakeup_source(struct epitem *epi)
 {
 	struct name_snapshot n;
 	struct wakeup_source *ws;
+	char ws_name[64];
 
+	strscpy(ws_name, "eventpoll", sizeof(ws_name));
+	trace_android_vh_ep_create_wakeup_source(ws_name, sizeof(ws_name));
 	if (!epi->ep->ws) {
-		epi->ep->ws = wakeup_source_register(NULL, "eventpoll");
+		epi->ep->ws = wakeup_source_register(NULL, ws_name);
 		if (!epi->ep->ws)
 			return -ENOMEM;
 	}
 
 	take_dentry_name_snapshot(&n, epi->ffd.file->f_path.dentry);
-	ws = wakeup_source_register(NULL, n.name.name);
+	strscpy(ws_name, n.name.name, sizeof(ws_name));
+	trace_android_vh_ep_create_wakeup_source(ws_name, sizeof(ws_name));
+	ws = wakeup_source_register(NULL, ws_name);
 	release_dentry_name_snapshot(&n);
 
 	if (!ws)
@@ -1498,7 +1509,8 @@ allocate:
 			spin_unlock(&file->f_lock);
 			goto allocate;
 		}
-		file->f_ep = head;
+		/* See eventpoll_release() for details. */
+		WRITE_ONCE(file->f_ep, head);
 		to_free = NULL;
 	}
 	hlist_add_head_rcu(&epi->fllink, file->f_ep);

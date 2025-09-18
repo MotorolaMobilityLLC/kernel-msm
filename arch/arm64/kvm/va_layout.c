@@ -110,10 +110,11 @@ __init void kvm_apply_hyp_relocations(void)
 	}
 }
 
-void kvm_apply_hyp_module_relocations(void *mod_start, void *hyp_va,
+void kvm_apply_hyp_module_relocations(struct pkvm_el2_module *mod,
 				      kvm_nvhe_reloc_t *begin,
 				      kvm_nvhe_reloc_t *end)
 {
+	void *hyp_va = (void *)mod->token;
 	kvm_nvhe_reloc_t *rel;
 
 	for (rel = begin; rel < end; ++rel) {
@@ -130,8 +131,11 @@ void kvm_apply_hyp_module_relocations(void *mod_start, void *hyp_va,
 
 		/* Convert the module VA of the reloc to a hyp VA */
 		WARN_ON(aarch64_insn_write_literal_u64(ptr,
-					(u64)(((void *)va - mod_start) + hyp_va)));
+					(u64)(((void *)va - mod->sections.start) + hyp_va)));
 	}
+
+	sync_icache_aliases((unsigned long)mod->text.start,
+			    (unsigned long)mod->text.end);
 }
 
 static u32 compute_instruction(int n, u32 rd, u32 rn)

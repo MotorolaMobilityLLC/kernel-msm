@@ -33,6 +33,7 @@ static int gunyah_probe(struct platform_device *pdev)
 
 static const struct of_device_id gunyah_of_match[] = {
 	{ .compatible = "gunyah-hypervisor" },
+	{ .compatible = "qcom,gunyah-hypervisor" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, gunyah_of_match);

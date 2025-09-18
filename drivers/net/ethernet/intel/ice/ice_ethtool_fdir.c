@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-/* Copyright (C) 2018-2020, Intel Corporation. */
+/* Copyright (C) 2018-2023, Intel Corporation. */
 
 /* flow director ethtool support for ice */
 
@@ -540,16 +540,24 @@ int ice_fdir_num_avail_fltr(struct ice_hw *hw, struct ice_vsi *vsi)
 	/* total guaranteed filters assigned to this VSI */
 	num_guar = vsi->num_gfltr;
 
-	/* minus the guaranteed filters programed by this VSI */
-	num_guar -= (rd32(hw, VSIQF_FD_CNT(vsi_num)) &
-		     VSIQF_FD_CNT_FD_GCNT_M) >> VSIQF_FD_CNT_FD_GCNT_S;
-
 	/* total global best effort filters */
 	num_be = hw->func_caps.fd_fltr_best_effort;
 
-	/* minus the global best effort filters programmed */
-	num_be -= (rd32(hw, GLQF_FD_CNT) & GLQF_FD_CNT_FD_BCNT_M) >>
-		   GLQF_FD_CNT_FD_BCNT_S;
+	/* Subtract the number of programmed filters from the global values */
+	switch (hw->mac_type) {
+	case ICE_MAC_E830:
+		num_guar -= FIELD_GET(E830_VSIQF_FD_CNT_FD_GCNT_M,
+				      rd32(hw, VSIQF_FD_CNT(vsi_num)));
+		num_be -= FIELD_GET(E830_GLQF_FD_CNT_FD_BCNT_M,
+				    rd32(hw, GLQF_FD_CNT));
+		break;
+	case ICE_MAC_E810:
+	default:
+		num_guar -= FIELD_GET(E800_VSIQF_FD_CNT_FD_GCNT_M,
+				      rd32(hw, VSIQF_FD_CNT(vsi_num)));
+		num_be -= FIELD_GET(E800_GLQF_FD_CNT_FD_BCNT_M,
+				    rd32(hw, GLQF_FD_CNT));
+	}
 
 	return num_guar + num_be;
 }
@@ -1694,11 +1702,12 @@ static int
 ice_set_fdir_input_set(struct ice_vsi *vsi, struct ethtool_rx_flow_spec *fsp,
 		       struct ice_fdir_fltr *input)
 {
-	u16 dest_vsi, q_index = 0;
+	s16 q_index = ICE_FDIR_NO_QUEUE_IDX;
 	u16 orig_q_index = 0;
 	struct ice_pf *pf;
 	struct ice_hw *hw;
 	int flow_type;
+	u16 dest_vsi;
 	u8 dest_ctl;
 
 	if (!vsi || !fsp || !input)

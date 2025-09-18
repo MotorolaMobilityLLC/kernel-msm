@@ -20,7 +20,8 @@ enum {
 void *scmi_raw_mode_init(const struct scmi_handle *handle,
 			 struct dentry *top_dentry, int instance_id,
 			 u8 *channels, int num_chans,
-			 const struct scmi_desc *desc, int tx_max_msg);
+			 const struct scmi_desc *desc, int tx_max_msg,
+			 u32 max_rx_timeout_ms);
 void scmi_raw_mode_cleanup(void *raw);
 
 void scmi_raw_message_report(void *raw, struct scmi_xfer *xfer,

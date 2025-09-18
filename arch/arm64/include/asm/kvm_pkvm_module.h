@@ -82,6 +82,16 @@ enum pkvm_psci_notification {
  *				CPU will be stuck in an infinite loop. @nr_pages
  *				allows to apply this prot on a range of
  *				contiguous memory.
+ * @host_stage2_enable_lazy_pte:
+ * 				Unmap a range of memory from the host stage-2,
+ * 				leaving the pages host ownership intact. The
+ * 				pages will be remapped lazily (subject to the
+ * 				usual ownership checks) in response to a
+ * 				faulting access from the host.
+ * @host_stage2_disable_lazy_pte:
+ * 				This is the opposite function of
+ * 				host_stage2_enable_lazy_pte. Must be called once
+ * 				the module is done with the region.
  * @host_stage2_get_leaf:	Query the host's stage2 page-table entry for
  *				the page @phys.
  * @register_host_smc_handler:	@cb is called whenever the host issues an SMC
@@ -215,8 +225,8 @@ struct pkvm_module_ops {
 	int (*iommu_snapshot_host_stage2)(struct kvm_hyp_iommu_domain *domain);
 	int (*hyp_smp_processor_id)(void);
 	ANDROID_KABI_USE(1, void (*iommu_flush_unmap_cache)(struct kvm_iommu_paddr_cache *cache));
-	ANDROID_KABI_RESERVE(2);
-	ANDROID_KABI_RESERVE(3);
+	ANDROID_KABI_USE(2, int (*host_stage2_enable_lazy_pte)(u64 addr, u64 nr_pages));
+	ANDROID_KABI_USE(3, int (*host_stage2_disable_lazy_pte)(u64 addr, u64 nr_pages));
 	ANDROID_KABI_RESERVE(4);
 	ANDROID_KABI_RESERVE(5);
 	ANDROID_KABI_RESERVE(6);

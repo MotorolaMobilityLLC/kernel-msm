@@ -156,6 +156,7 @@ struct workqueue_struct	*fileinfo_put_wq;
 struct workqueue_struct	*cifsoplockd_wq;
 struct workqueue_struct	*deferredclose_wq;
 struct workqueue_struct	*serverclose_wq;
+struct workqueue_struct	*cfid_put_wq;
 __u32 cifs_lock_secret;
 
 /*
@@ -312,8 +313,17 @@ cifs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	struct TCP_Server_Info *server = tcon->ses->server;
 	unsigned int xid;
 	int rc = 0;
+	const char *full_path;
+	void *page;
 
 	xid = get_xid();
+	page = alloc_dentry_path();
+
+	full_path = build_path_from_dentry(dentry, page);
+	if (IS_ERR(full_path)) {
+		rc = PTR_ERR(full_path);
+		goto statfs_out;
+	}
 
 	if (le32_to_cpu(tcon->fsAttrInfo.MaxPathNameComponentLength) > 0)
 		buf->f_namelen =
@@ -329,8 +339,10 @@ cifs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	buf->f_ffree = 0;	/* unlimited */
 
 	if (server->ops->queryfs)
-		rc = server->ops->queryfs(xid, tcon, cifs_sb, buf);
+		rc = server->ops->queryfs(xid, tcon, full_path, cifs_sb, buf);
 
+statfs_out:
+	free_dentry_path(page);
 	free_xid(xid);
 	return rc;
 }
@@ -1888,9 +1900,16 @@ init_cifs(void)
 		goto out_destroy_deferredclose_wq;
 	}
 
+	cfid_put_wq = alloc_workqueue("cfid_put_wq",
+				      WQ_FREEZABLE|WQ_MEM_RECLAIM, 0);
+	if (!cfid_put_wq) {
+		rc = -ENOMEM;
+		goto out_destroy_serverclose_wq;
+	}
+
 	rc = cifs_init_inodecache();
 	if (rc)
-		goto out_destroy_serverclose_wq;
+		goto out_destroy_cfid_put_wq;
 
 	rc = init_mids();
 	if (rc)
@@ -1952,6 +1971,8 @@ out_destroy_mids:
 	destroy_mids();
 out_destroy_inodecache:
 	cifs_destroy_inodecache();
+out_destroy_cfid_put_wq:
+	destroy_workqueue(cfid_put_wq);
 out_destroy_serverclose_wq:
 	destroy_workqueue(serverclose_wq);
 out_destroy_deferredclose_wq:
@@ -1994,6 +2015,7 @@ exit_cifs(void)
 	destroy_workqueue(decrypt_wq);
 	destroy_workqueue(fileinfo_put_wq);
 	destroy_workqueue(serverclose_wq);
+	destroy_workqueue(cfid_put_wq);
 	destroy_workqueue(cifsiod_wq);
 	cifs_proc_clean();
 }

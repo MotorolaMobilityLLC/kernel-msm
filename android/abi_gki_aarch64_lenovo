@@ -606,6 +606,7 @@
   kasprintf
   kernel_kobj
   kernel_sigaction
+  __kfence_pool
   __kfifo_free
   __kfifo_in
   __kfifo_init
@@ -865,6 +866,7 @@
   pci_unregister_driver
   pci_write_config_dword
   __per_cpu_offset
+  perf_allow_kernel
   perf_aux_output_begin
   perf_aux_output_end
   perf_aux_output_flag
@@ -1028,6 +1030,15 @@
   seq_release
   seq_release_private
   seq_write
+  serial8250_clear_and_reinit_fifos
+  serial8250_do_set_divisor
+  serial8250_do_set_ldisc
+  serial8250_em485_config
+  serial8250_em485_start_tx
+  serial8250_em485_stop_tx
+  serial8250_em485_supported
+  serial8250_handle_irq
+  serial8250_update_uartclk
   set_capacity
   set_capacity_and_notify
   set_cpus_allowed_ptr
@@ -1251,6 +1262,7 @@
   __traceiter_android_vh_cpufreq_online
   __traceiter_android_vh_update_topology_flags_workfn
   __traceiter_binder_transaction_received
+  __traceiter_android_vh_alloc_swap_slot_cache
   __traceiter_cpu_frequency_limits
   __tracepoint_android_rvh_account_irq
   __tracepoint_android_rvh_after_dequeue_task
@@ -1278,10 +1290,12 @@
   __tracepoint_android_vh_update_topology_flags_workfn
   __tracepoint_binder_transaction_received
   __tracepoint_cpu_frequency_limits
+  __tracepoint_android_vh_alloc_swap_slot_cache
   tracing_off
   tracing_on
   try_module_get
   __udelay
+  uart_read_port_properties
   unlock_page
   unmap_mapping_range
   unpin_user_page
@@ -1316,6 +1330,7 @@
   vm_iomap_memory
   vm_map_ram
   vm_unmap_ram
+  vm_unmapped_area
   vprintk
   vscnprintf
   vsnprintf

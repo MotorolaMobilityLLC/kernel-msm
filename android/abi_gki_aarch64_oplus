@@ -1,5 +1,6 @@
 [abi_symbol_list]
   address_space_init_once
+  alg_test
   bio_add_page
   bio_associate_blkg
   bio_put
@@ -60,6 +61,7 @@
   have_governor_per_policy
   i2c_smbus_read_word_data
   i2c_smbus_write_word_data
+  __icmp_send
   igrab
   iio_channel_get
   iio_channel_release
@@ -86,6 +88,7 @@
   lookup_one_len_unlocked
   mem_cgroup_from_id
   mem_cgroup_update_lru_size
+  memcg_page_state
   memory_cgrp_subsys
   memory_cgrp_subsys_enabled_key
   mipi_dsi_generic_write
@@ -186,7 +189,9 @@
   tcf_exts_init_ex
   tcf_exts_validate
   tcf_queue_work
+  tcp_cong_avoid_ai
   tcp_hashinfo
+  tcp_reno_undo_cwnd
   touch_atime
   __traceiter_android_rvh_post_init_entity_util_avg
   __traceiter_android_rvh_rtmutex_force_update
@@ -199,6 +204,7 @@
   __traceiter_android_vh_alloc_oem_binder_struct
   __traceiter_android_vh_alloc_pages_failure_bypass
   __traceiter_android_vh_alloc_pages_reclaim_bypass
+  __traceiter_android_rvh_alloc_workqueue
   __traceiter_android_vh_alter_mutex_list_add
   __traceiter_android_vh_binder_alloc_new_buf_locked
   __traceiter_android_vh_binder_buffer_release
@@ -317,12 +323,20 @@
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_unreserve_highatomic_bypass
   __traceiter_android_vh_update_page_mapcount
+  __traceiter_android_vh_alloc_swap_folio_gfp
+  __traceiter_android_vh_replace_anon_vma_name
+  __traceiter_android_vh_get_swap_pages_bypass
+  __traceiter_android_vh_should_split_folio_to_list
+  __traceiter_android_vh_should_skip_zone
+  __traceiter_android_vh_update_unmapped_area_info
+  __traceiter_android_vh_reuse_whole_anon_folio
   __traceiter_block_bio_queue
   __traceiter_block_getrq
   __traceiter_block_rq_complete
   __traceiter_block_rq_issue
   __traceiter_block_rq_merge
   __traceiter_block_rq_requeue
+  __traceiter_android_vh_check_set_ioprio
   __traceiter_mm_vmscan_kswapd_wake
   __traceiter_net_dev_queue
   __traceiter_net_dev_xmit
@@ -345,6 +359,7 @@
   __tracepoint_android_vh_alloc_oem_binder_struct
   __tracepoint_android_vh_alloc_pages_failure_bypass
   __tracepoint_android_vh_alloc_pages_reclaim_bypass
+  __tracepoint_android_rvh_alloc_workqueue
   __tracepoint_android_vh_alter_mutex_list_add
   __tracepoint_android_vh_binder_alloc_new_buf_locked
   __tracepoint_android_vh_binder_buffer_release
@@ -464,12 +479,20 @@
   __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_unreserve_highatomic_bypass
   __tracepoint_android_vh_update_page_mapcount
+  __tracepoint_android_vh_alloc_swap_folio_gfp
+  __tracepoint_android_vh_replace_anon_vma_name
+  __tracepoint_android_vh_get_swap_pages_bypass
+  __tracepoint_android_vh_should_split_folio_to_list
+  __tracepoint_android_vh_should_skip_zone
+  __tracepoint_android_vh_update_unmapped_area_info
+  __tracepoint_android_vh_reuse_whole_anon_folio
   __tracepoint_block_bio_queue
   __tracepoint_block_getrq
   __tracepoint_block_rq_complete
   __tracepoint_block_rq_issue
   __tracepoint_block_rq_merge
   __tracepoint_block_rq_requeue
+  __tracepoint_android_vh_check_set_ioprio
   __tracepoint_mm_vmscan_kswapd_wake
   __tracepoint_net_dev_queue
   __tracepoint_net_dev_xmit
@@ -508,9 +531,11 @@
   vfs_path_lookup
   vfs_rename
   vfs_rmdir
+  vfs_splice_read
   vfs_statfs
   vfs_unlink
   __vmalloc_array
+  vma_set_file
   wait_for_completion_io_timeout
   wait_for_completion_killable_timeout
   wakeup_source_remove
@@ -519,3 +544,16 @@
   xt_register_match
   xt_unregister_match
   zero_pfn
+  crypto_register_scomp
+  crypto_unregister_scomp
+  zstd_get_params
+  zstd_compress_cctx
+  zstd_is_error
+  zstd_decompress_dctx
+  zstd_cctx_workspace_bound
+  zstd_init_cctx
+  zstd_dctx_workspace_bound
+  zstd_init_dctx
+  contpte_ptep_get
+  contpte_ptep_set_access_flags
+  __ptep_set_access_flags

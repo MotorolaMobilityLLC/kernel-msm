@@ -272,6 +272,55 @@
           "include-filter": "android.hardware.camera2.cts.FastBasicsTest"
         }
       ]
+    },
+    {
+      "name": "CtsIncrementalInstallHostTestCases",
+      "options": [
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalFeatureTest"
+        },
+        {
+          "include-filter": "android.incrementalinstall.cts.IncrementalInstallTest"
+        }
+      ]
+    },
+    {
+      "name": "CtsRootBluetoothTestCases"
+    },
+    {
+      "name": "vts_kernel_net_tests"
+    },
+    {
+      "name": "VtsAidlHalSensorsTargetTest"
+    },
+    {
+      "name": "binderDriverInterfaceTest"
+    },
+    {
+      "name": "binderLibTest"
+    },
+    {
+      "name": "binderSafeInterfaceTest"
+    },
+    {
+      "name": "memunreachable_binder_test"
+    },
+    {
+      "name": "VtsHalBluetoothAudioTargetTest"
+    },
+    {
+      "name": "CtsLibcoreTestCases"
+    },
+    {
+      "name": "CtsUsbTests"
+    },
+    {
+      "name": "CtsDrmTestCases",
+      "options": [
+        {
+          "exclude-filter": "android.drm.cts.DRMTest#testForwardLockAccess"
+        }
+      ]
     }
   ]
 }

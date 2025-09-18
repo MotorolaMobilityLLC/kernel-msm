@@ -184,7 +184,7 @@ static int hyp_allocator_map(struct hyp_allocator *allocator,
 		u8 *missing_donations = this_cpu_ptr(&hyp_allocator_missing_donations);
 		u32 delta = (size >> PAGE_SHIFT) - mc->nr_pages;
 
-		*missing_donations = (u8)min(delta, (u32)~((u8)0));
+		*missing_donations = min(delta, U8_MAX);
 
 		return -ENOMEM;
 	}
@@ -798,9 +798,15 @@ done:
 int hyp_alloc_refill(struct kvm_hyp_memcache *host_mc)
 {
 	struct kvm_hyp_memcache *alloc_mc = this_cpu_ptr(&hyp_allocator_mc);
+	int ret;
+	struct hyp_allocator *allocator = &hyp_allocator;
 
-	return refill_memcache(alloc_mc, host_mc->nr_pages + alloc_mc->nr_pages,
-			       host_mc);
+	hyp_spin_lock(&allocator->lock);
+	ret = refill_memcache(alloc_mc, host_mc->nr_pages + alloc_mc->nr_pages,
+			      host_mc);
+	hyp_spin_unlock(&allocator->lock);
+
+	return ret;
 }
 
 int hyp_alloc_init(size_t size)

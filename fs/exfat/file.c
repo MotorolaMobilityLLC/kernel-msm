@@ -29,7 +29,7 @@ static int exfat_cont_expand(struct inode *inode, loff_t size)
 	if (ret)
 		return ret;
 
-	num_clusters = EXFAT_B_TO_CLU_ROUND_UP(ei->i_size_ondisk, sbi);
+	num_clusters = EXFAT_B_TO_CLU(exfat_ondisk_size(inode), sbi);
 	new_num_clusters = EXFAT_B_TO_CLU_ROUND_UP(size, sbi);
 
 	if (new_num_clusters == num_clusters)
@@ -51,7 +51,7 @@ static int exfat_cont_expand(struct inode *inode, loff_t size)
 	clu.flags = ei->flags;
 
 	ret = exfat_alloc_cluster(inode, new_num_clusters - num_clusters,
-			&clu, IS_DIRSYNC(inode));
+			&clu, inode_needs_sync(inode));
 	if (ret)
 		return ret;
 
@@ -74,14 +74,11 @@ out:
 	/* Expanded range not zeroed, do not update valid_size */
 	i_size_write(inode, size);
 
-	ei->i_size_aligned = round_up(size, sb->s_blocksize);
-	ei->i_size_ondisk = ei->i_size_aligned;
 	inode->i_blocks = round_up(size, sbi->cluster_size) >> 9;
-
-	if (IS_DIRSYNC(inode))
-		return write_inode_now(inode, 1);
-
 	mark_inode_dirty(inode);
+
+	if (IS_SYNC(inode))
+		return write_inode_now(inode, 1);
 
 	return 0;
 
@@ -158,7 +155,7 @@ int __exfat_truncate(struct inode *inode)
 	exfat_set_volume_dirty(sb);
 
 	num_clusters_new = EXFAT_B_TO_CLU_ROUND_UP(i_size_read(inode), sbi);
-	num_clusters_phys = EXFAT_B_TO_CLU_ROUND_UP(ei->i_size_ondisk, sbi);
+	num_clusters_phys = EXFAT_B_TO_CLU(exfat_ondisk_size(inode), sbi);
 
 	exfat_chain_set(&clu, ei->start_clu, num_clusters_phys, ei->flags);
 
@@ -244,8 +241,6 @@ void exfat_truncate(struct inode *inode)
 	struct super_block *sb = inode->i_sb;
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 	struct exfat_inode_info *ei = EXFAT_I(inode);
-	unsigned int blocksize = i_blocksize(inode);
-	loff_t aligned_size;
 	int err;
 
 	mutex_lock(&sbi->s_lock);
@@ -263,17 +258,6 @@ void exfat_truncate(struct inode *inode)
 
 	inode->i_blocks = round_up(i_size_read(inode), sbi->cluster_size) >> 9;
 write_size:
-	aligned_size = i_size_read(inode);
-	if (aligned_size & (blocksize - 1)) {
-		aligned_size |= (blocksize - 1);
-		aligned_size++;
-	}
-
-	if (ei->i_size_ondisk > i_size_read(inode))
-		ei->i_size_ondisk = aligned_size;
-
-	if (ei->i_size_aligned > i_size_read(inode))
-		ei->i_size_aligned = aligned_size;
 	mutex_unlock(&sbi->s_lock);
 }
 
@@ -300,6 +284,9 @@ int exfat_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
 	struct inode *inode = dentry->d_inode;
 	unsigned int ia_valid;
 	int error;
+
+	if (unlikely(exfat_forced_shutdown(inode->i_sb)))
+		return -EIO;
 
 	if ((attr->ia_valid & ATTR_SIZE) &&
 	    attr->ia_size > i_size_read(inode)) {
@@ -344,6 +331,7 @@ int exfat_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
 	if (attr->ia_valid & ATTR_SIZE)
 		inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
 
+	setattr_copy(&nop_mnt_idmap, inode, attr);
 	exfat_truncate_inode_atime(inode);
 
 	if (attr->ia_valid & ATTR_SIZE) {
@@ -481,6 +469,19 @@ static int exfat_ioctl_fitrim(struct inode *inode, unsigned long arg)
 	return 0;
 }
 
+static int exfat_ioctl_shutdown(struct super_block *sb, unsigned long arg)
+{
+	u32 flags;
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EPERM;
+
+	if (get_user(flags, (__u32 __user *)arg))
+		return -EFAULT;
+
+	return exfat_force_shutdown(sb, flags);
+}
+
 long exfat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct inode *inode = file_inode(filp);
@@ -491,6 +492,8 @@ long exfat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return exfat_ioctl_get_attributes(inode, user_attr);
 	case FAT_IOCTL_SET_ATTRIBUTES:
 		return exfat_ioctl_set_attributes(filp, user_attr);
+	case EXFAT_IOC_SHUTDOWN:
+		return exfat_ioctl_shutdown(inode->i_sb, arg);
 	case FITRIM:
 		return exfat_ioctl_fitrim(inode, arg);
 	default:
@@ -510,6 +513,9 @@ int exfat_file_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
 {
 	struct inode *inode = filp->f_mapping->host;
 	int err;
+
+	if (unlikely(exfat_forced_shutdown(inode->i_sb)))
+		return -EIO;
 
 	err = __generic_file_fsync(filp, start, end, datasync);
 	if (err)
@@ -571,8 +577,18 @@ static ssize_t exfat_file_write_iter(struct kiocb *iocb, struct iov_iter *iter)
 	valid_size = ei->valid_size;
 
 	ret = generic_write_checks(iocb, iter);
-	if (ret < 0)
+	if (ret <= 0)
 		goto unlock;
+
+	if (iocb->ki_flags & IOCB_DIRECT) {
+		unsigned long align = pos | iov_iter_alignment(iter);
+
+		if (!IS_ALIGNED(align, i_blocksize(inode)) &&
+		    !IS_ALIGNED(align, bdev_logical_block_size(inode->i_sb->s_bdev))) {
+			ret = -EINVAL;
+			goto unlock;
+		}
+	}
 
 	if (pos > valid_size) {
 		ret = exfat_file_zeroed_range(file, valid_size, pos);

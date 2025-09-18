@@ -886,20 +886,6 @@ static int hpage_collapse_find_target_node(struct collapse_control *cc)
 }
 #endif
 
-static bool hpage_collapse_alloc_folio(struct folio **folio, gfp_t gfp, int node,
-				      nodemask_t *nmask)
-{
-	*folio = __folio_alloc(gfp, HPAGE_PMD_ORDER, node, nmask);
-
-	if (unlikely(!*folio)) {
-		count_vm_event(THP_COLLAPSE_ALLOC_FAILED);
-		return false;
-	}
-
-	count_vm_event(THP_COLLAPSE_ALLOC);
-	return true;
-}
-
 /*
  * If mmap_lock temporarily dropped, revalidate vma
  * before taking mmap_lock.
@@ -1054,7 +1040,7 @@ out:
 	return result;
 }
 
-static int alloc_charge_hpage(struct page **hpage, struct mm_struct *mm,
+static int alloc_charge_folio(struct folio **foliop, struct mm_struct *mm,
 			      struct collapse_control *cc)
 {
 	gfp_t gfp = (cc->is_khugepaged ? alloc_hugepage_khugepaged_gfpmask() :
@@ -1062,20 +1048,23 @@ static int alloc_charge_hpage(struct page **hpage, struct mm_struct *mm,
 	int node = hpage_collapse_find_target_node(cc);
 	struct folio *folio;
 
-	if (!hpage_collapse_alloc_folio(&folio, gfp, node, &cc->alloc_nmask)) {
-		*hpage = NULL;
+	folio = __folio_alloc(gfp, HPAGE_PMD_ORDER, node, &cc->alloc_nmask);
+	if (!folio) {
+		*foliop = NULL;
+		count_vm_event(THP_COLLAPSE_ALLOC_FAILED);
 		return SCAN_ALLOC_HUGE_PAGE_FAIL;
 	}
 
+	count_vm_event(THP_COLLAPSE_ALLOC);
 	if (unlikely(mem_cgroup_charge(folio, mm, gfp))) {
 		folio_put(folio);
-		*hpage = NULL;
+		*foliop = NULL;
 		return SCAN_CGROUP_CHARGE_FAIL;
 	}
 
 	count_memcg_folio_events(folio, THP_COLLAPSE_ALLOC, 1);
 
-	*hpage = folio_page(folio, 0);
+	*foliop = folio;
 	return SCAN_SUCCEED;
 }
 
@@ -1104,7 +1093,8 @@ static int collapse_huge_page(struct mm_struct *mm, unsigned long address,
 	 */
 	mmap_read_unlock(mm);
 
-	result = alloc_charge_hpage(&hpage, mm, cc);
+	result = alloc_charge_folio(&folio, mm, cc);
+	hpage = &folio->page;
 	if (result != SCAN_SUCCEED)
 		goto out_nolock;
 
@@ -1210,7 +1200,6 @@ static int collapse_huge_page(struct mm_struct *mm, unsigned long address,
 	if (unlikely(result != SCAN_SUCCEED))
 		goto out_up_write;
 
-	folio = page_folio(hpage);
 	/*
 	 * The smp_wmb() inside __folio_mark_uptodate() ensures the
 	 * copy_huge_page writes become visible before the set_pmd_at()
@@ -1791,29 +1780,27 @@ static int collapse_file(struct mm_struct *mm, unsigned long addr,
 			 struct collapse_control *cc)
 {
 	struct address_space *mapping = file->f_mapping;
-	struct page *hpage;
 	struct page *page;
-	struct page *tmp;
-	struct folio *folio;
+	struct page *tmp, *dst;
+	struct folio *folio, *new_folio;
 	pgoff_t index = 0, end = start + HPAGE_PMD_NR;
 	LIST_HEAD(pagelist);
 	XA_STATE_ORDER(xas, &mapping->i_pages, start, HPAGE_PMD_ORDER);
 	int nr_none = 0, result = SCAN_SUCCEED;
 	bool is_shmem = shmem_file(file);
-	int nr = 0;
 
 	VM_BUG_ON(!IS_ENABLED(CONFIG_READ_ONLY_THP_FOR_FS) && !is_shmem);
 	VM_BUG_ON(start & (HPAGE_PMD_NR - 1));
 
-	result = alloc_charge_hpage(&hpage, mm, cc);
+	result = alloc_charge_folio(&new_folio, mm, cc);
 	if (result != SCAN_SUCCEED)
 		goto out;
 
-	__SetPageLocked(hpage);
+	__folio_set_locked(new_folio);
 	if (is_shmem)
-		__SetPageSwapBacked(hpage);
-	hpage->index = start;
-	hpage->mapping = mapping;
+		__folio_set_swapbacked(new_folio);
+	new_folio->index = start;
+	new_folio->mapping = mapping;
 
 	/*
 	 * Ensure we have slots for all the pages in the range.  This is
@@ -2046,20 +2033,24 @@ xa_unlocked:
 	 * The old pages are locked, so they won't change anymore.
 	 */
 	index = start;
+	dst = folio_page(new_folio, 0);
 	list_for_each_entry(page, &pagelist, lru) {
 		while (index < page->index) {
-			clear_highpage(hpage + (index % HPAGE_PMD_NR));
+			clear_highpage(dst);
 			index++;
+			dst++;
 		}
-		if (copy_mc_highpage(hpage + (page->index % HPAGE_PMD_NR), page) > 0) {
+		if (copy_mc_highpage(dst, page) > 0) {
 			result = SCAN_COPY_MC;
 			goto rollback;
 		}
 		index++;
+		dst++;
 	}
 	while (index < end) {
-		clear_highpage(hpage + (index % HPAGE_PMD_NR));
+		clear_highpage(dst);
 		index++;
+		dst++;
 	}
 
 	if (nr_none) {
@@ -2087,16 +2078,17 @@ xa_unlocked:
 		}
 
 		/*
-		 * If userspace observed a missing page in a VMA with a MODE_MISSING
-		 * userfaultfd, then it might expect a UFFD_EVENT_PAGEFAULT for that
-		 * page. If so, we need to roll back to avoid suppressing such an
-		 * event. Since wp/minor userfaultfds don't give userspace any
-		 * guarantees that the kernel doesn't fill a missing page with a zero
-		 * page, so they don't matter here.
+		 * If userspace observed a missing page in a VMA with
+		 * a MODE_MISSING userfaultfd, then it might expect a
+		 * UFFD_EVENT_PAGEFAULT for that page. If so, we need to
+		 * roll back to avoid suppressing such an event. Since
+		 * wp/minor userfaultfds don't give userspace any
+		 * guarantees that the kernel doesn't fill a missing
+		 * page with a zero page, so they don't matter here.
 		 *
-		 * Any userfaultfds registered after this point will not be able to
-		 * observe any missing pages due to the previously inserted retry
-		 * entries.
+		 * Any userfaultfds registered after this point will
+		 * not be able to observe any missing pages due to the
+		 * previously inserted retry entries.
 		 */
 		vma_interval_tree_foreach(vma, &mapping->i_mmap, start, end) {
 			if (userfaultfd_missing(vma)) {
@@ -2121,33 +2113,32 @@ immap_locked:
 		xas_lock_irq(&xas);
 	}
 
-	nr = thp_nr_pages(hpage);
 	if (is_shmem)
-		__mod_lruvec_page_state(hpage, NR_SHMEM_THPS, nr);
+		__lruvec_stat_mod_folio(new_folio, NR_SHMEM_THPS, HPAGE_PMD_NR);
 	else
-		__mod_lruvec_page_state(hpage, NR_FILE_THPS, nr);
+		__lruvec_stat_mod_folio(new_folio, NR_FILE_THPS, HPAGE_PMD_NR);
 
 	if (nr_none) {
-		__mod_lruvec_page_state(hpage, NR_FILE_PAGES, nr_none);
+		__lruvec_stat_mod_folio(new_folio, NR_FILE_PAGES, nr_none);
 		/* nr_none is always 0 for non-shmem. */
-		__mod_lruvec_page_state(hpage, NR_SHMEM, nr_none);
+		__lruvec_stat_mod_folio(new_folio, NR_SHMEM, nr_none);
 	}
 
 	/*
-	 * Mark hpage as uptodate before inserting it into the page cache so
-	 * that it isn't mistaken for an fallocated but unwritten page.
+	 * Mark new_folio as uptodate before inserting it into the
+	 * page cache so that it isn't mistaken for an fallocated but
+	 * unwritten page.
 	 */
-	folio = page_folio(hpage);
-	folio_mark_uptodate(folio);
-	folio_ref_add(folio, HPAGE_PMD_NR - 1);
+	folio_mark_uptodate(new_folio);
+	folio_ref_add(new_folio, HPAGE_PMD_NR - 1);
 
 	if (is_shmem)
-		folio_mark_dirty(folio);
-	folio_add_lru(folio);
+		folio_mark_dirty(new_folio);
+	folio_add_lru(new_folio);
 
 	/* Join all the small entries into a single multi-index entry. */
 	xas_set_order(&xas, start, HPAGE_PMD_ORDER);
-	xas_store(&xas, hpage);
+	xas_store(&xas, new_folio);
 	WARN_ON_ONCE(xas_error(&xas));
 	xas_unlock_irq(&xas);
 
@@ -2158,7 +2149,7 @@ immap_locked:
 	retract_page_tables(mapping, start);
 	if (cc && !cc->is_khugepaged)
 		result = SCAN_PTE_MAPPED_HUGEPAGE;
-	unlock_page(hpage);
+	folio_unlock(new_folio);
 
 	/*
 	 * The collapse has succeeded, so free the old pages.
@@ -2203,13 +2194,13 @@ rollback:
 		smp_mb();
 	}
 
-	hpage->mapping = NULL;
+	new_folio->mapping = NULL;
 
-	unlock_page(hpage);
-	put_page(hpage);
+	folio_unlock(new_folio);
+	folio_put(new_folio);
 out:
 	VM_BUG_ON(!list_empty(&pagelist));
-	trace_mm_khugepaged_collapse_file(mm, hpage, index, is_shmem, addr, file, nr, result);
+	trace_mm_khugepaged_collapse_file(mm, new_folio, index, addr, is_shmem, file, HPAGE_PMD_NR, result);
 	return result;
 }
 

@@ -7,6 +7,7 @@
 #include <linux/kasan-tags.h>
 #include <linux/kfence.h>
 #include <linux/stackdepot.h>
+#include <asm/cacheflush.h>
 
 #if defined(CONFIG_KASAN_SW_TAGS) || defined(CONFIG_KASAN_HW_TAGS)
 
@@ -442,6 +443,8 @@ static inline u8 kasan_random_tag(void) { return 0; }
 
 #ifdef CONFIG_KASAN_HW_TAGS
 
+DECLARE_STATIC_KEY_FALSE(kasan_inval_dcache);
+
 static inline void kasan_poison(const void *addr, size_t size, u8 value, bool init)
 {
 	addr = kasan_reset_tag(addr);
@@ -456,6 +459,9 @@ static inline void kasan_poison(const void *addr, size_t size, u8 value, bool in
 		return;
 
 	hw_set_mem_tag_range((void *)addr, size, value, init);
+
+	if (static_branch_unlikely(&kasan_inval_dcache) && size)
+		dcache_clean_inval_poc((unsigned long)addr, (unsigned long)addr + size);
 }
 
 static inline void kasan_unpoison(const void *addr, size_t size, bool init)
@@ -473,6 +479,9 @@ static inline void kasan_unpoison(const void *addr, size_t size, bool init)
 	size = round_up(size, KASAN_GRANULE_SIZE);
 
 	hw_set_mem_tag_range((void *)addr, size, tag, init);
+
+	if (static_branch_unlikely(&kasan_inval_dcache) && size)
+		dcache_clean_inval_poc((unsigned long)addr, (unsigned long)addr + size);
 }
 
 static inline bool kasan_byte_accessible(const void *addr)

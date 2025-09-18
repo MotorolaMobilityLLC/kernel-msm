@@ -89,6 +89,7 @@ void si_meminfo(struct sysinfo *val)
 	val->freehigh = nr_free_highpages();
 	val->mem_unit = PAGE_SIZE;
 	trace_android_vh_si_meminfo_adjust(&val->totalram, &val->freeram);
+	trace_android_vh_si_meminfo_adjust_shmem(&val->sharedram);
 }
 
 EXPORT_SYMBOL(si_meminfo);

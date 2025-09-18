@@ -1312,6 +1312,8 @@ static int check_hotplug_memory_range(u64 start, u64 size)
 static int online_memory_block(struct memory_block *mem, void *arg)
 {
 	mem->online_type = mhp_default_online_type;
+	if (mem->online_type == MMOP_ONLINE_MOVABLE)
+		static_branch_enable(&movablecore_enabled);
 	return device_online(&mem->dev);
 }
 
@@ -1610,7 +1612,7 @@ struct range __weak arch_get_mappable_range(void)
 
 struct range mhp_get_pluggable_range(bool need_mapping)
 {
-	const u64 max_phys = (1ULL << MAX_PHYSMEM_BITS) - 1;
+	const u64 max_phys = PHYSMEM_END;
 	struct range mhp_range;
 
 	if (need_mapping) {
@@ -2297,6 +2299,8 @@ static int try_reonline_memory_block(struct memory_block *mem, void *arg)
 
 	if (**online_types != MMOP_OFFLINE) {
 		mem->online_type = **online_types;
+		if (mem->online_type == MMOP_ONLINE_MOVABLE)
+			static_branch_enable(&movablecore_enabled);
 		rc = device_online(&mem->dev);
 		if (rc < 0)
 			pr_warn("%s: Failed to re-online memory: %d",

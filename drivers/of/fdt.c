@@ -33,6 +33,13 @@
 #include "of_private.h"
 
 /*
+ * __dtb_empty_root_begin[] and __dtb_empty_root_end[] magically created by
+ * cmd_dt_S_dtb in scripts/Makefile.lib
+ */
+extern uint8_t __dtb_empty_root_begin[];
+extern uint8_t __dtb_empty_root_end[];
+
+/*
  * of_fdt_limit_memory - limit the number of regions in the /memory node
  * @limit: maximum entries
  *
@@ -471,6 +478,7 @@ int __initdata dt_root_addr_cells;
 int __initdata dt_root_size_cells;
 
 void *initial_boot_params __ro_after_init;
+phys_addr_t initial_boot_params_pa __ro_after_init;
 
 #ifdef CONFIG_OF_EARLY_FLATTREE
 
@@ -1300,17 +1308,18 @@ static void * __init early_init_dt_alloc_memory_arch(u64 size, u64 align)
 	return ptr;
 }
 
-bool __init early_init_dt_verify(void *params)
+bool __init early_init_dt_verify(void *dt_virt, phys_addr_t dt_phys)
 {
-	if (!params)
+	if (!dt_virt)
 		return false;
 
 	/* check device tree validity */
-	if (fdt_check_header(params))
+	if (fdt_check_header(dt_virt))
 		return false;
 
 	/* Setup flat device-tree pointer */
-	initial_boot_params = params;
+	initial_boot_params = dt_virt;
+	initial_boot_params_pa = dt_phys;
 	of_fdt_crc32 = crc32_be(~0, initial_boot_params,
 				fdt_totalsize(initial_boot_params));
 	return true;
@@ -1336,16 +1345,31 @@ void __init early_init_dt_scan_nodes(void)
 	early_init_dt_check_for_usable_mem_range();
 }
 
-bool __init early_init_dt_scan(void *params)
+bool __init early_init_dt_scan(void *dt_virt, phys_addr_t dt_phys)
 {
 	bool status;
 
-	status = early_init_dt_verify(params);
+	status = early_init_dt_verify(dt_virt, dt_phys);
 	if (!status)
 		return false;
 
 	early_init_dt_scan_nodes();
 	return true;
+}
+
+static void *__init copy_device_tree(void *fdt)
+{
+	int size;
+	void *dt;
+
+	size = fdt_totalsize(fdt);
+	dt = early_init_dt_alloc_memory_arch(size,
+					     roundup_pow_of_two(FDT_V17_SIZE));
+
+	if (dt)
+		memcpy(dt, fdt, size);
+
+	return dt;
 }
 
 /**
@@ -1358,7 +1382,22 @@ bool __init early_init_dt_scan(void *params)
  */
 void __init unflatten_device_tree(void)
 {
-	__unflatten_device_tree(initial_boot_params, NULL, &of_root,
+	void *fdt = initial_boot_params;
+
+	/* Populate an empty root node when bootloader doesn't provide one */
+	if (!fdt) {
+		fdt = (void *) __dtb_empty_root_begin;
+		/* fdt_totalsize() will be used for copy size */
+		if (fdt_totalsize(fdt) >
+		    __dtb_empty_root_end - __dtb_empty_root_begin) {
+			pr_err("invalid size in dtb_empty_root\n");
+			return;
+		}
+		of_fdt_crc32 = crc32_be(~0, fdt, fdt_totalsize(fdt));
+		fdt = copy_device_tree(fdt);
+	}
+
+	__unflatten_device_tree(fdt, NULL, &of_root,
 				early_init_dt_alloc_memory_arch, false);
 
 	/* Get pointer to "/chosen" and "/aliases" nodes for use everywhere */
@@ -1380,22 +1419,9 @@ void __init unflatten_device_tree(void)
  */
 void __init unflatten_and_copy_device_tree(void)
 {
-	int size;
-	void *dt;
+	if (initial_boot_params)
+		initial_boot_params = copy_device_tree(initial_boot_params);
 
-	if (!initial_boot_params) {
-		pr_warn("No valid device tree found, continuing without\n");
-		return;
-	}
-
-	size = fdt_totalsize(initial_boot_params);
-	dt = early_init_dt_alloc_memory_arch(size,
-					     roundup_pow_of_two(FDT_V17_SIZE));
-
-	if (dt) {
-		memcpy(dt, initial_boot_params, size);
-		initial_boot_params = dt;
-	}
 	unflatten_device_tree();
 }
 

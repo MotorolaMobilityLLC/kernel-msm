@@ -28,7 +28,12 @@ load(
     "merged_kernel_uapi_headers",
 )
 load(":abi.bzl", "cc_binary_with_abi")
-load(":modules.bzl", "get_gki_modules_list", "get_kunit_modules_list")
+load(
+    ":modules.bzl",
+    "get_gki_modules_list",
+    "get_gki_protected_modules_list",
+    "get_kunit_modules_list",
+)
 
 package(
     default_visibility = [
@@ -94,11 +99,20 @@ write_file(
     ],
 )
 
+write_file(
+    name = "gki_aarch64_protected_modules",
+    out = "android/gki_aarch64_protected_modules",
+    content = get_gki_protected_modules_list("arm64") + [
+        "",  # Ensure new line at the end.
+    ],
+)
+
 filegroup(
     name = "aarch64_additional_kmi_symbol_lists",
     srcs = [
         # keep sorted
         "android/abi_gki_aarch64_amlogic",
+        "android/abi_gki_aarch64_asr",
         "android/abi_gki_aarch64_asus",
         "android/abi_gki_aarch64_db845c",
         "android/abi_gki_aarch64_exynos",
@@ -113,16 +127,20 @@ filegroup(
         "android/abi_gki_aarch64_mtktv",
         "android/abi_gki_aarch64_nothing",
         "android/abi_gki_aarch64_oplus",
+        "android/abi_gki_aarch64_paragon",
         "android/abi_gki_aarch64_pixel",
+        "android/abi_gki_aarch64_pixel_watch",
         "android/abi_gki_aarch64_qcom",
         "android/abi_gki_aarch64_sunxi",
         "android/abi_gki_aarch64_tcl",
+        "android/abi_gki_aarch64_transsion",
         "android/abi_gki_aarch64_tuxera",
         "android/abi_gki_aarch64_type_visibility",
         "android/abi_gki_aarch64_unisoc",
         "android/abi_gki_aarch64_virtual_device",
         "android/abi_gki_aarch64_vivo",
         "android/abi_gki_aarch64_xiaomi",
+        "android/abi_gki_aarch64_xiaomi2",
     ],
     visibility = ["//visibility:public"],
 )
@@ -134,7 +152,7 @@ define_common_kernels(target_configs = {
         "additional_kmi_symbol_lists": [":aarch64_additional_kmi_symbol_lists"],
         "trim_nonlisted_kmi": True,
         "protected_exports_list": "android/abi_gki_protected_exports_aarch64",
-        "protected_modules_list": "android/gki_aarch64_protected_modules",
+        "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
         "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
@@ -144,10 +162,36 @@ define_common_kernels(target_configs = {
         ],
     },
     "kernel_aarch64_16k": {
-        "kmi_symbol_list_strict_mode": False,
+        "kmi_symbol_list_strict_mode": True,
+        "kmi_symbol_list": "android/abi_gki_aarch64",
+        "additional_kmi_symbol_lists": [":aarch64_additional_kmi_symbol_lists"],
+        "trim_nonlisted_kmi": True,
+        "protected_exports_list": "android/abi_gki_protected_exports_aarch64",
+        "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
-        "extra_dist": [":test_mappings_zip"],
+        "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
+        "extra_dist": [
+            ":test_mappings_zip",
+            ":tests_zip_arm64",
+        ],
+    },
+    "kernel_aarch64_autofdo": {
+        "kmi_symbol_list_strict_mode": True,
+        "kmi_symbol_list": "android/abi_gki_aarch64",
+        "additional_kmi_symbol_lists": [":aarch64_additional_kmi_symbol_lists"],
+        "trim_nonlisted_kmi": True,
+        "protected_exports_list": "android/abi_gki_protected_exports_aarch64",
+        "protected_modules_list": ":gki_aarch64_protected_modules",
+        "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
+        "make_goals": _GKI_AARCH64_MAKE_GOALS,
+        "clang_autofdo_profile": "//toolchain/pgo-profiles/kernel:aarch64/android15-6.6/kernel.afdo",
+        "defconfig_fragments": ["arch/arm64/configs/autofdo_gki.fragment"],
+        "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
+        "extra_dist": [
+            ":test_mappings_zip",
+            ":tests_zip_arm64",
+        ],
     },
     "kernel_x86_64": {
         "kmi_symbol_list_strict_mode": False,
@@ -177,6 +221,34 @@ kernel_build(
     make_goals = [
         "Image",
     ],
+)
+
+kernel_build(
+    name = "kernel_aarch64_microdroid_16k",
+    srcs = ["//common:kernel_aarch64_sources"],
+    outs = [
+        "Image",
+        "System.map",
+        "modules.builtin",
+        "modules.builtin.modinfo",
+        "vmlinux",
+        "vmlinux.symvers",
+    ],
+    build_config = "build.config.microdroid.aarch64",
+    make_goals = [
+        "Image",
+    ],
+    page_size = "16k",
+)
+
+copy_to_dist_dir(
+    name = "kernel_aarch64_microdroid_16k_dist",
+    data = [
+        ":kernel_aarch64_microdroid_16k",
+    ],
+    dist_dir = "out/kernel_aarch64_microdroid_16k/dist",
+    flat = True,
+    log = "info",
 )
 
 copy_to_dist_dir(
@@ -594,7 +666,6 @@ _ROCKPI4_MODULE_OUTS = [
     "drivers/thermal/rockchip_thermal.ko",
     "drivers/usb/host/ohci-hcd.ko",
     "drivers/usb/host/ohci-platform.ko",
-    "drivers/virtio/virtio_pci_legacy_dev.ko",
     "net/core/failover.ko",
 ]
 
@@ -884,6 +955,14 @@ ddk_headers(
     visibility = ["//visibility:public"],
 )
 
+ddk_headers_archive(
+    name = "kernel_x86_64_ddk_headers_archive",
+    srcs = [
+        "all_headers_x86_64",
+    ],
+    visibility = ["//visibility:private"],
+)
+
 # Implementation details for DDK headers. The targets below cannot be directly
 # depended on by DDK modules.
 
@@ -895,8 +974,10 @@ ddk_headers(
         "drivers/usb/core/usb.h",
         "drivers/usb/host/pci-quirks.h",
         "drivers/usb/host/xhci.h",
+        "drivers/usb/host/xhci-caps.h",
         "drivers/usb/host/xhci-ext-caps.h",
         "drivers/usb/host/xhci-plat.h",
+        "drivers/usb/host/xhci-port.h",
     ],
     linux_includes = [
         "drivers/usb",
@@ -910,8 +991,12 @@ ddk_headers(
 ddk_headers(
     name = "all_headers_allowlist_aarch64",
     hdrs = [
+        "drivers/dma-buf/heaps/deferred-free-helper.h",
+        "drivers/extcon/extcon.h",
+        "drivers/pci/controller/dwc/pcie-designware.h",
         "drivers/thermal/thermal_core.h",
         "drivers/thermal/thermal_netlink.h",
+        "drivers/usb/dwc3/core.h",
         "sound/usb/card.h",
         "sound/usb/usbaudio.h",
         ":all_headers_allowlist_aarch64_globs",
@@ -924,7 +1009,11 @@ ddk_headers(
     linux_includes = [
         "arch/arm64/include",
         "arch/arm64/include/uapi",
+        "drivers/dma-buf",
+        "drivers/extcon",
+        "drivers/pci/controller/dwc",
         "drivers/thermal",
+        "drivers/usb",
         "sound/usb",
         "include",
         "include/uapi",
@@ -1031,33 +1120,9 @@ _KSELFTEST_COPTS = [
     "-pthread",
     "-std=gnu99",
 ] + select({
-    ":arm": ["-mcpu=cortex-a8"],
+    "//build/kernel/kleaf/platforms/config_settings:android_arm": ["-mcpu=cortex-a8"],
     "//conditions:default": [],
 })
-
-config_setting(
-    name = "x86_64",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_x86_64"},
-    visibility = ["//visibility:private"],
-)
-
-config_setting(
-    name = "i386",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_i386"},
-    visibility = ["//visibility:private"],
-)
-
-config_setting(
-    name = "arm64",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_arm64"},
-    visibility = ["//visibility:private"],
-)
-
-config_setting(
-    name = "arm",
-    values = {"platforms": "//build/kernel/kleaf/impl:android_arm"},
-    visibility = ["//visibility:private"],
-)
 
 cc_library(
     name = "kselftest_headers_lib",
@@ -1082,9 +1147,9 @@ cc_binary_with_abi(
 cc_binary_with_abi(
     name = "kselftest_breakpoints_breakpoint_test",
     srcs = select({
-        ":x86_64": ["tools/testing/selftests/breakpoints/breakpoint_test.c"],
-        ":i386": ["tools/testing/selftests/breakpoints/breakpoint_test.c"],
-        ":arm64": ["tools/testing/selftests/breakpoints/breakpoint_test_arm64.c"],
+        "//build/kernel/kleaf/platforms/config_settings:android_x86_64": ["tools/testing/selftests/breakpoints/breakpoint_test.c"],
+        "//build/kernel/kleaf/platforms/config_settings:android_i386": ["tools/testing/selftests/breakpoints/breakpoint_test.c"],
+        "//build/kernel/kleaf/platforms/config_settings:android_arm64": ["tools/testing/selftests/breakpoints/breakpoint_test_arm64.c"],
         "//conditions:default": [],
     }),
     copts = _KSELFTEST_COPTS,
@@ -1356,6 +1421,28 @@ cc_binary_with_abi(
     ],
 )
 
+cc_library(
+    name = "kselftest_memfd",
+    srcs = ["tools/testing/selftests/memfd/common.c"],
+    hdrs = ["tools/testing/selftests/memfd/common.h"],
+    copts = _KSELFTEST_COPTS,
+    visibility = ["//visibility:private"],
+    deps = [
+        ":kselftest_headers_lib",
+    ],
+)
+
+cc_binary_with_abi(
+    name = "kselftest_memfd_test",
+    srcs = ["tools/testing/selftests/memfd/memfd_test.c"],
+    copts = _KSELFTEST_COPTS,
+    includes = ["tools/testing/selftests"],
+    path_prefix = _KSELFTEST_DIR,
+    target_compatible_with = ["@platforms//os:android"],
+    visibility = ["//visibility:private"],
+    deps = [":kselftest_memfd"],
+)
+
 cc_binary_with_abi(
     name = "kselftest_mm_compaction_test",
     srcs = ["tools/testing/selftests/mm/compaction_test.c"],
@@ -1598,7 +1685,7 @@ cc_binary_with_abi(
     name = "kselftest_size_test_get_size",
     srcs = ["tools/testing/selftests/size/get_size.c"],
     copts = _KSELFTEST_COPTS + select({
-        ":x86_64": ["-mstackrealign"],
+        "//build/kernel/kleaf/platforms/config_settings:android_x86_64": ["-mstackrealign"],
         "//conditions:default": [],
     }),
     includes = [
@@ -2038,10 +2125,10 @@ cc_binary_with_abi(
 copy_file(
     name = "kselftest_gen_config",
     src = select({
-        ":x86_64": "tools/testing/selftests/android/config_x86_64.xml",
-        ":i386": "tools/testing/selftests/android/config_x86.xml",
-        ":arm64": "tools/testing/selftests/android/config_arm64.xml",
-        ":arm": "tools/testing/selftests/android/config_arm.xml",
+        "//build/kernel/kleaf/platforms/config_settings:android_x86_64": "tools/testing/selftests/android/config_x86_64.xml",
+        "//build/kernel/kleaf/platforms/config_settings:android_i386": "tools/testing/selftests/android/config_x86.xml",
+        "//build/kernel/kleaf/platforms/config_settings:android_arm64": "tools/testing/selftests/android/config_arm64.xml",
+        "//build/kernel/kleaf/platforms/config_settings:android_arm": "tools/testing/selftests/android/config_arm.xml",
     }),
     out = _KSELFTEST_DIR + "/selftests.config",
     visibility = ["//visibility:private"],
@@ -2065,6 +2152,7 @@ android_filegroup(
         ":kselftest_futex_futex_wait_x86_64",
         ":kselftest_gen_config",
         ":kselftest_kcmp_kcmp_test_x86_64",
+        ":kselftest_memfd_test_x86_64",
         ":kselftest_mm_compaction_test_x86_64",
         ":kselftest_mm_hugepage_mmap_x86_64",
         ":kselftest_mm_hugepage_shm_x86_64",
@@ -2269,6 +2357,7 @@ android_filegroup(
         ":kselftest_futex_futex_wait_wouldblock_arm64",
         ":kselftest_gen_config",
         ":kselftest_kcmp_kcmp_test_arm64",
+        ":kselftest_memfd_test_arm64",
         ":kselftest_mm_compaction_test_arm64",
         ":kselftest_mm_hugepage_mmap_arm64",
         ":kselftest_mm_hugepage_shm_arm64",

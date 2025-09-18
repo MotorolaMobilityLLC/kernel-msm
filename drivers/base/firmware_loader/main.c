@@ -93,6 +93,7 @@ static inline struct fw_priv *to_fw_priv(struct kref *ref)
 DEFINE_MUTEX(fw_lock);
 
 struct firmware_cache fw_cache;
+bool fw_load_abort_all;
 
 void fw_state_init(struct fw_priv *fw_priv)
 {
@@ -530,6 +531,9 @@ static int firmware_param_path_get(char *buffer, const struct kernel_param *kp)
 			count += scnprintf(buffer + count, PATH_SIZE, "%s%s", fw_path_para[i], ",");
 	}
 
+	if (count == 0)
+		return count;
+
 	buffer[count - 1] = '\0';
 
 	return count - 1;
@@ -892,25 +896,44 @@ static void fw_log_firmware_info(const struct firmware *fw, const char *name, st
 	shash->tfm = alg;
 
 	if (crypto_shash_digest(shash, fw->data, fw->size, sha256buf) < 0)
-		goto out_shash;
+		goto out_free;
 
 	for (int i = 0; i < SHA256_DIGEST_SIZE; i++)
 		sprintf(&outbuf[i * 2], "%02x", sha256buf[i]);
 	outbuf[SHA256_BLOCK_SIZE] = 0;
 	dev_dbg(device, "Loaded FW: %s, sha256: %s\n", name, outbuf);
 
-out_shash:
-	crypto_free_shash(alg);
 out_free:
 	kfree(shash);
 	kfree(outbuf);
 	kfree(sha256buf);
+	crypto_free_shash(alg);
 }
 #else
 static void fw_log_firmware_info(const struct firmware *fw, const char *name,
 				 struct device *device)
 {}
 #endif
+
+/*
+ * Reject firmware file names with ".." path components.
+ * There are drivers that construct firmware file names from device-supplied
+ * strings, and we don't want some device to be able to tell us "I would like to
+ * be sent my firmware from ../../../etc/shadow, please".
+ *
+ * Search for ".." surrounded by either '/' or start/end of string.
+ *
+ * This intentionally only looks at the firmware name, not at the firmware base
+ * directory or at symlink contents.
+ */
+static bool name_contains_dotdot(const char *name)
+{
+	size_t name_len = strlen(name);
+
+	return strcmp(name, "..") == 0 || strncmp(name, "../", 3) == 0 ||
+	       strstr(name, "/../") != NULL ||
+	       (name_len >= 3 && strcmp(name+name_len-3, "/..") == 0);
+}
 
 /* called from request_firmware() and request_firmware_work_func() */
 static int
@@ -928,6 +951,14 @@ _request_firmware(const struct firmware **firmware_p, const char *name,
 		return -EINVAL;
 
 	if (!name || name[0] == '\0') {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (name_contains_dotdot(name)) {
+		dev_warn(device,
+			 "Firmware load for '%s' refused, path contains '..' component\n",
+			 name);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1009,6 +1040,8 @@ out:
  *      @name will be used as $FIRMWARE in the uevent environment and
  *      should be distinctive enough not to be confused with any other
  *      firmware image for this or any other device.
+ *	It must not contain any ".." path components - "foo/bar..bin" is
+ *	allowed, but "foo/../bar.bin" is not.
  *
  *	Caller must hold the reference count of @device.
  *
@@ -1592,10 +1625,10 @@ static int fw_pm_notify(struct notifier_block *notify_block,
 	case PM_SUSPEND_PREPARE:
 	case PM_RESTORE_PREPARE:
 		/*
-		 * kill pending fallback requests with a custom fallback
-		 * to avoid stalling suspend.
+		 * Here, kill pending fallback requests will only kill
+		 * non-uevent firmware request to avoid stalling suspend.
 		 */
-		kill_pending_fw_fallback_reqs(true);
+		kill_pending_fw_fallback_reqs(false);
 		device_cache_fw_images();
 		break;
 
@@ -1680,7 +1713,7 @@ static int fw_shutdown_notify(struct notifier_block *unused1,
 	 * Kill all pending fallback requests to avoid both stalling shutdown,
 	 * and avoid a deadlock with the usermode_lock.
 	 */
-	kill_pending_fw_fallback_reqs(false);
+	kill_pending_fw_fallback_reqs(true);
 
 	return NOTIFY_DONE;
 }
