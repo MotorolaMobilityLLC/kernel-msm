@@ -378,7 +378,7 @@ static const struct sys_reg_desc pvm_sys_reg_descs[] = {
 	RAZ_WI(SYS_OSDLR_EL1),
 
 	/* Group 1 ID registers */
-	HOST_HANDLED(SYS_REVIDR_EL1),
+	RAZ_WI(SYS_REVIDR_EL1),
 
 	/* AArch64 mappings of the AArch32 ID registers */
 	/* CRm=1 */
@@ -466,7 +466,7 @@ static const struct sys_reg_desc pvm_sys_reg_descs[] = {
 
 	HOST_HANDLED(SYS_CCSIDR_EL1),
 	HOST_HANDLED(SYS_CLIDR_EL1),
-	HOST_HANDLED(SYS_AIDR_EL1),
+	RAZ_WI(SYS_AIDR_EL1),
 	HOST_HANDLED(SYS_CSSELR_EL1),
 	HOST_HANDLED(SYS_CTR_EL0),
 
