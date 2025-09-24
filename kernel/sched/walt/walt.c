@@ -135,6 +135,22 @@ static struct syscore_ops walt_syscore_ops = {
 	.suspend	= walt_suspend
 };
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+// Moto huangzq2
+int moto_sched_enabled = 0;
+int set_moto_sched_enabled(int enable) {
+	moto_sched_enabled = enable;
+	return 0;
+}
+EXPORT_SYMBOL(set_moto_sched_enabled);
+
+struct msched_ops *moto_sched_ops = NULL;
+void set_moto_sched_ops(struct msched_ops *ops) {
+	moto_sched_ops = ops;
+}
+EXPORT_SYMBOL_GPL(set_moto_sched_ops);
+#endif
+
 /*
  *@boost:should be 0,1,2.
  *@period:boost time based on ms units.
@@ -5861,10 +5877,18 @@ static void walt_do_sched_yield(void *unused, struct rq *rq)
 	get_entry_instr(DO_SCHED_YIELD);
 	walt_lockdep_assert_rq(rq, NULL);
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	// Moto wangwang: don't deactivate mvp tasks when moto_sched enabled.
+	if (unlikely(!moto_sched_enabled) && !list_empty(&wts->mvp_list) && wts->mvp_list.next) {
+		if (!pipeline_in_progress() || !walt_pipeline_low_latency_task(curr))
+			walt_cfs_deactivate_mvp_task(rq, curr, 3); // Moto huangzq2: debugging enhancement.
+	}
+#else
 	if (!list_empty(&wts->mvp_list) && wts->mvp_list.next) {
 		if (!pipeline_in_progress() || !walt_pipeline_low_latency_task(curr))
 			walt_cfs_deactivate_mvp_task(rq, curr);
 	}
+#endif	
 
 	if (per_cpu(rt_task_arrival_time, cpu_of(rq)))
 		per_cpu(rt_task_arrival_time, cpu_of(rq)) = 0;
@@ -6162,7 +6186,9 @@ static void walt_init(struct work_struct *work)
 	walt_rt_init();
 	walt_cfs_init();
 	walt_halt_init();
+#if !IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	walt_mvp_lock_ordering_init();
+#endif
 
 	wait_for_completion_interruptible(&tick_sched_clock_completion);
 

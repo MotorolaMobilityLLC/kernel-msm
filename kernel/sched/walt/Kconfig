@@ -62,4 +62,14 @@ config SCHED_WALT_MIDPOINT
 	help
 	  This feature will have a midpoint frequency voted qos request
 	  in fmin and fmax.
+
+config SCHED_MOTO_UNFAIR
+	tristate "Enable moto unfair scheduler"
+	depends on SCHED_WALT
+	default n
+	help
+	  This feature will allow the scheduler to maintain more detailed
+	  mvp scheduling.
+
+
 endmenu
