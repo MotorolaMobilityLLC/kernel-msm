@@ -128,6 +128,9 @@ struct walt_task_struct {
 	u64				active_time;
 	u64				last_win_size;
 	int				boost;
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	u16				ux_type; // Moto huangzq2: add ux flag for moto_sched
+#endif
 	bool				wake_up_idle;
 	bool				misfit;
 	bool				rtg_high_prio;
@@ -206,6 +209,57 @@ static inline void set_wake_up_idle(bool wake_up_idle)
 
 extern int sched_lpm_disallowed_time(int cpu, u64 *timeout);
 extern int set_task_boost(int boost, u64 period);
+
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+// Moto huangzq2: export api for moto_sched
+extern int set_moto_sched_enabled(int enable);
+
+struct msched_ops {
+	int (*task_get_mvp_prio)(struct task_struct *p, bool with_inherit);
+	unsigned int (*task_get_mvp_limit)(struct task_struct *p, int mvp_prio);
+	void (*binder_inherit_ux_type)(struct task_struct *task);
+	void (*binder_clear_inherited_ux_type)(struct task_struct *task);
+	void (*binder_ux_type_set)(struct task_struct *task);
+	void (*queue_ux_task)(struct rq *rq, struct task_struct *task, int enqueue);
+};
+
+extern struct msched_ops *moto_sched_ops;
+extern void set_moto_sched_ops(struct msched_ops *ops);
+
+static inline int moto_task_get_mvp_prio(struct task_struct *p, bool with_inherit) {
+	if (moto_sched_ops != NULL && moto_sched_ops->task_get_mvp_prio != NULL)
+		return moto_sched_ops->task_get_mvp_prio(p, with_inherit);
+
+	return -1;
+}
+
+static inline unsigned int moto_task_get_mvp_limit(struct task_struct *p, int mvp_prio) {
+	if (moto_sched_ops != NULL && moto_sched_ops->task_get_mvp_limit != NULL)
+		return moto_sched_ops->task_get_mvp_limit(p, mvp_prio);
+
+	return 0;
+}
+
+static inline void moto_binder_inherit_ux_type(struct task_struct *task) {
+	if (moto_sched_ops != NULL && moto_sched_ops->binder_inherit_ux_type != NULL)
+		return moto_sched_ops->binder_inherit_ux_type(task);
+}
+
+static inline void moto_binder_clear_inherited_ux_type(struct task_struct *task) {
+	if (moto_sched_ops != NULL && moto_sched_ops->binder_clear_inherited_ux_type != NULL)
+		return moto_sched_ops->binder_clear_inherited_ux_type(task);
+}
+
+static inline void moto_binder_ux_type_set(struct task_struct *task) {
+	if (moto_sched_ops != NULL && moto_sched_ops->binder_ux_type_set != NULL)
+		return moto_sched_ops->binder_ux_type_set(task);
+}
+
+static inline void moto_queue_ux_task(struct rq *rq, struct task_struct *task, int enqueue) {
+	if (moto_sched_ops != NULL && moto_sched_ops->queue_ux_task != NULL)
+		return moto_sched_ops->queue_ux_task(rq, task, enqueue);
+}
+#endif
 
 struct notifier_block;
 extern void core_ctl_notifier_register(struct notifier_block *n);
