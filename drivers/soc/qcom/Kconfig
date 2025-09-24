@@ -127,12 +127,6 @@ config MOT_DRV_PROBE_SUB_DEVICE
 	help
 	  This is enabling PROBE SUB DEVICE.
 
-config CAM_SENSOR_CTLE_FOR_URUS
-	default n
-	bool "enable camera sensor ctle for urus"
-	help
-	  This is enabling camera sensor ctle for urus feature.
-
 config MOT_PON_LOG
 	default n
 	bool "enable saving pon log"
