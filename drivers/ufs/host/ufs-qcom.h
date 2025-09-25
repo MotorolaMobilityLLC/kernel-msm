@@ -19,6 +19,9 @@
 #if defined(CONFIG_UFSFEATURE)
 #include "vendor/ufsfeature.h"
 #endif
+#if defined(CONFIG_UFS_SHID_FEATURE)
+#include "shid_vendor/ufsfeature.h"
+#endif
 #if defined(CONFIG_SCSI_SKHID)
 #include "vendor/ufs-manual-gc.h"
 #endif
@@ -44,7 +47,7 @@
 #define IS_HYNIX_DEVICE(mfrid)   (0 == strncasecmp(mfrid,"HYNIX", sizeof("HYNIX")))
 #endif
 
-#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_SCSI_SKHID)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE) || defined(CONFIG_SCSI_SKHID)
 #ifndef ufshcd_set_eh_in_progress
 	/* UFSHCD error handling flags */
 	enum {
@@ -648,7 +651,7 @@ struct ufs_qcom_host {
 	unsigned int boost_monitor_timer;
 	u32 min_boost_thres;
 	u32 max_boost_thres;
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
 	struct ufsf_feature ufsf;
 #endif
 #if defined(CONFIG_SCSI_SKHID)
@@ -788,7 +791,7 @@ static inline void ufs_qcom_ice_debug(struct ufs_qcom_host *host)
 }
 #endif /* !CONFIG_SCSI_UFS_CRYPTO */
 
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
 static inline struct ufsf_feature *ufs_qcom_get_ufsf(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);

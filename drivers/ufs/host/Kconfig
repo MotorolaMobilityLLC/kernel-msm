@@ -187,9 +187,31 @@ config UFSHID_POC
 	  3. set flag bDefragOperation
 	  4. debug msg enable (default : disable)
 
+config UFS_SHID_FEATURE
+	bool "UFS feature activate"
+	depends on SCSI_UFSHCD
+	help
+	  UFS feature activate such as tw, hid and etc.
+
+config UFS_SHID
+	bool "UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFS_SHID_FEATURE
+	help
+	  UFS HID Feature Enable
+
+config UFS_SHID_POC
+	bool "UFS_SHID_POC test"
+	depends on SCSI_UFSHCD && UFS_SHID_FEATURE && UFS_SHID
+	help
+	  UFS HID POC test
+	  1. block to enter suspend state
+	  2. auto_hibern8 enable/disable (HCI)
+	  3. set flag bDefragOperation
+	  4. debug msg enable (default : disable)
+
 config MICRON_UFSHID
 	tristate "micron Host Initiated Defrag support"
-	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
+	depends on SCSI_UFSHCD && (UFSFEATURE || UFS_SHID_FEATURE) && (UFSHID || UFS_SHID)
 	help
 	  Enable Micron HID feature
 

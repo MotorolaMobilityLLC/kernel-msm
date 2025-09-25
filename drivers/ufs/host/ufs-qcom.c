@@ -2130,7 +2130,7 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	int err = 0;
 
 	if (status == PRE_CHANGE) {
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
 		ufsf_suspend(ufs_qcom_get_ufsf(hba), pm_op == UFS_SYSTEM_PM);
 #endif
 		return 0;
@@ -2176,7 +2176,7 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err;
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
        struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
 
        schedule_work(&ufsf->resume_work);
@@ -4320,7 +4320,9 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		if (err)
 			dev_err(host->hba->dev, "Fail to register UFS panic notifier\n");
 	}
-
+#if defined(CONFIG_UFS_SHID_FEATURE)
+	ufsf_set_init(hba);
+#endif
 	return 0;
 
 out_disable_parent_vreg:
@@ -4739,7 +4741,7 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 	bool ber_th_exceeded = false;
 	bool disable_ber = true;
 
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
 	if (evt == UFS_EVT_WL_SUSP_ERR)
 		ufsf_resume(ufs_qcom_get_ufsf(hba), true);
 #endif
@@ -5344,7 +5346,7 @@ static int ufs_qcom_device_reset(struct ufs_hba *hba)
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int ret = 0;
 
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
 	ufsf_reset_host(ufs_qcom_get_ufsf(hba));
 #endif
 	/* reset gpio is optional */
@@ -6484,9 +6486,12 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, err, "ufshcd_pltfrm_init() failed\n");
 
 	ufs_qcom_register_hooks();
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
 	/* Register hook for Samsung feature */
 	ufs_samsung_register_hooks();
+#endif
+#if defined(CONFIG_UFS_SHID_FEATURE)
+	ufs_host_exception_event_hook(platform_get_drvdata(pdev));
 #endif
 	return err;
 }
@@ -6524,7 +6529,7 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 	if (msm_minidump_enabled())
 		atomic_notifier_chain_unregister(&panic_notifier_list,
 				&host->ufs_qcom_panic_nb);
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS_SHID_FEATURE)
 	ufsf_remove(ufs_qcom_get_ufsf(hba));
 #endif
 	ufshcd_remove(hba);
