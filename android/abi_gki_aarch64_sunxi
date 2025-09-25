@@ -96,3 +96,4 @@
   drm_panel_remove_follower
   hid_driver_reset_resume
   hid_driver_suspend
+  devm_power_supply_register_no_ws

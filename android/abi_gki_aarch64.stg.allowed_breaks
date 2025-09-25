@@ -239,3 +239,21 @@ type 'struct dma_buf' changed
   member 'u64 android_kabi_reserved1' was removed
   member 'union { atomic64_t nr_task_refs; struct { u64 android_kabi_reserved1; }; union { }; }' was added
 
+type 'struct xt_match' changed
+  member 'bool has_compat_metadata' was added
+
+type 'struct xt_target' changed
+  member 'bool has_compat_metadata' was added
+
+type 'struct drm_framebuffer' changed
+  member 'unsigned int internal_flags' was added
+
+type 'struct cgroup' changed
+  member 'u64 android_backport_reserved1' was removed
+  member 'union { struct cgroup_kmi_ext_info* kmi_ext_info; struct { u64 android_backport_reserved1; }; union { }; }' was added
+
+type 'struct io_ring_ctx' changed
+  member changed from 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; }' to 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; struct llist_head retry_llist; }'
+    type changed from 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; }' to 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; struct llist_head retry_llist; }'
+      member 'struct llist_head retry_llist' was added
+

@@ -131,6 +131,7 @@ enum {
 	Opt_noinline_data,
 	Opt_data_flush,
 	Opt_reserve_root,
+	Opt_reserve_node,
 	Opt_resgid,
 	Opt_resuid,
 	Opt_mode,
@@ -210,6 +211,7 @@ static match_table_t f2fs_tokens = {
 	{Opt_noinline_data, "noinline_data"},
 	{Opt_data_flush, "data_flush"},
 	{Opt_reserve_root, "reserve_root=%u"},
+	{Opt_reserve_node, "reserve_node=%u"},
 	{Opt_resgid, "resgid=%u"},
 	{Opt_resuid, "resuid=%u"},
 	{Opt_mode, "mode=%s"},
@@ -323,22 +325,30 @@ static void f2fs_destroy_casefold_cache(void) { }
 
 static inline void limit_reserve_root(struct f2fs_sb_info *sbi)
 {
-	block_t limit = min((sbi->user_block_count >> 3),
+	block_t block_limit = min((sbi->user_block_count >> 3),
 			sbi->user_block_count - sbi->reserved_blocks);
+	block_t node_limit = sbi->total_node_count >> 3;
 
 	/* limit is 12.5% */
 	if (test_opt(sbi, RESERVE_ROOT) &&
-			F2FS_OPTION(sbi).root_reserved_blocks > limit) {
-		F2FS_OPTION(sbi).root_reserved_blocks = limit;
+			F2FS_OPTION(sbi).root_reserved_blocks > block_limit) {
+		F2FS_OPTION(sbi).root_reserved_blocks = block_limit;
 		f2fs_info(sbi, "Reduce reserved blocks for root = %u",
 			  F2FS_OPTION(sbi).root_reserved_blocks);
 	}
-	if (!test_opt(sbi, RESERVE_ROOT) &&
+	if (test_opt(sbi, RESERVE_NODE) &&
+			F2FS_OPTION(sbi).root_reserved_nodes > node_limit) {
+		F2FS_OPTION(sbi).root_reserved_nodes = node_limit;
+		f2fs_info(sbi, "Reduce reserved nodes for root = %u",
+			  F2FS_OPTION(sbi).root_reserved_nodes);
+	}
+	if (!test_opt(sbi, RESERVE_ROOT) && !test_opt(sbi, RESERVE_NODE) &&
 		(!uid_eq(F2FS_OPTION(sbi).s_resuid,
 				make_kuid(&init_user_ns, F2FS_DEF_RESUID)) ||
 		!gid_eq(F2FS_OPTION(sbi).s_resgid,
 				make_kgid(&init_user_ns, F2FS_DEF_RESGID))))
-		f2fs_info(sbi, "Ignore s_resuid=%u, s_resgid=%u w/o reserve_root",
+		f2fs_info(sbi, "Ignore s_resuid=%u, s_resgid=%u w/o reserve_root"
+				" and reserve_node",
 			  from_kuid_munged(&init_user_ns,
 					   F2FS_OPTION(sbi).s_resuid),
 			  from_kgid_munged(&init_user_ns,
@@ -847,6 +857,17 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 			} else {
 				F2FS_OPTION(sbi).root_reserved_blocks = arg;
 				set_opt(sbi, RESERVE_ROOT);
+			}
+			break;
+		case Opt_reserve_node:
+			if (args->from && match_int(args, &arg))
+				return -EINVAL;
+			if (test_opt(sbi, RESERVE_NODE)) {
+				f2fs_info(sbi, "Preserve previous reserve_node=%u",
+					  F2FS_OPTION(sbi).root_reserved_nodes);
+			} else {
+				F2FS_OPTION(sbi).root_reserved_nodes = arg;
+				set_opt(sbi, RESERVE_NODE);
 			}
 			break;
 		case Opt_resuid:
@@ -1743,22 +1764,28 @@ int f2fs_sync_fs(struct super_block *sb, int sync)
 
 static int f2fs_freeze(struct super_block *sb)
 {
+	struct f2fs_sb_info *sbi = F2FS_SB(sb);
+
 	if (f2fs_readonly(sb))
 		return 0;
 
 	/* IO error happened before */
-	if (unlikely(f2fs_cp_error(F2FS_SB(sb))))
+	if (unlikely(f2fs_cp_error(sbi)))
 		return -EIO;
 
 	/* must be clean, since sync_filesystem() was already called */
-	if (is_sbi_flag_set(F2FS_SB(sb), SBI_IS_DIRTY))
+	if (is_sbi_flag_set(sbi, SBI_IS_DIRTY))
 		return -EINVAL;
 
+	sbi->umount_lock_holder = current;
+
 	/* Let's flush checkpoints and stop the thread. */
-	f2fs_flush_ckpt_thread(F2FS_SB(sb));
+	f2fs_flush_ckpt_thread(sbi);
+
+	sbi->umount_lock_holder = NULL;
 
 	/* to avoid deadlock on f2fs_evict_inode->SB_FREEZE_FS */
-	set_sbi_flag(F2FS_SB(sb), SBI_IS_FREEZING);
+	set_sbi_flag(sbi, SBI_IS_FREEZING);
 	return 0;
 }
 
@@ -2071,9 +2098,11 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	else if (F2FS_OPTION(sbi).fs_mode == FS_MODE_FRAGMENT_BLK)
 		seq_puts(seq, "fragment:block");
 	seq_printf(seq, ",active_logs=%u", F2FS_OPTION(sbi).active_logs);
-	if (test_opt(sbi, RESERVE_ROOT))
-		seq_printf(seq, ",reserve_root=%u,resuid=%u,resgid=%u",
+	if (test_opt(sbi, RESERVE_ROOT) || test_opt(sbi, RESERVE_NODE))
+		seq_printf(seq, ",reserve_root=%u,reserve_node=%u,resuid=%u,"
+				"resgid=%u",
 				F2FS_OPTION(sbi).root_reserved_blocks,
+				F2FS_OPTION(sbi).root_reserved_nodes,
 				from_kuid_munged(&init_user_ns,
 					F2FS_OPTION(sbi).s_resuid),
 				from_kgid_munged(&init_user_ns,
@@ -2351,6 +2380,8 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 	org_mount_opt = sbi->mount_opt;
 	old_sb_flags = sb->s_flags;
 
+	sbi->umount_lock_holder = current;
+
 #ifdef CONFIG_QUOTA
 	org_mount_opt.s_jquota_fmt = F2FS_OPTION(sbi).s_jquota_fmt;
 	for (i = 0; i < MAXQUOTAS; i++) {
@@ -2574,6 +2605,8 @@ skip:
 
 	limit_reserve_root(sbi);
 	*flags = (*flags & ~SB_LAZYTIME) | (sb->s_flags & SB_LAZYTIME);
+
+	sbi->umount_lock_holder = NULL;
 	return 0;
 restore_checkpoint:
 	if (need_enable_checkpoint) {
@@ -2614,6 +2647,8 @@ restore_opts:
 #endif
 	sbi->mount_opt = org_mount_opt;
 	sb->s_flags = old_sb_flags;
+
+	sbi->umount_lock_holder = NULL;
 	return err;
 }
 
@@ -2930,7 +2965,7 @@ out:
 	return ret;
 }
 
-int f2fs_quota_sync(struct super_block *sb, int type)
+int f2fs_do_quota_sync(struct super_block *sb, int type)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
 	struct quota_info *dqopt = sb_dqopt(sb);
@@ -2978,11 +3013,21 @@ int f2fs_quota_sync(struct super_block *sb, int type)
 	return ret;
 }
 
+static int f2fs_quota_sync(struct super_block *sb, int type)
+{
+	int ret;
+
+	F2FS_SB(sb)->umount_lock_holder = current;
+	ret = f2fs_do_quota_sync(sb, type);
+	F2FS_SB(sb)->umount_lock_holder = NULL;
+	return ret;
+}
+
 static int f2fs_quota_on(struct super_block *sb, int type, int format_id,
 							const struct path *path)
 {
 	struct inode *inode;
-	int err;
+	int err = 0;
 
 	/* if quota sysfile exists, deny enabling quota with specific file */
 	if (f2fs_sb_has_quota_ino(F2FS_SB(sb))) {
@@ -2993,31 +3038,34 @@ static int f2fs_quota_on(struct super_block *sb, int type, int format_id,
 	if (path->dentry->d_sb != sb)
 		return -EXDEV;
 
-	err = f2fs_quota_sync(sb, type);
+	F2FS_SB(sb)->umount_lock_holder = current;
+
+	err = f2fs_do_quota_sync(sb, type);
 	if (err)
-		return err;
+		goto out;
 
 	inode = d_inode(path->dentry);
 
 	err = filemap_fdatawrite(inode->i_mapping);
 	if (err)
-		return err;
+		goto out;
 
 	err = filemap_fdatawait(inode->i_mapping);
 	if (err)
-		return err;
+		goto out;
 
 	err = dquot_quota_on(sb, type, format_id, path);
 	if (err)
-		return err;
+		goto out;
 
 	inode_lock(inode);
 	F2FS_I(inode)->i_flags |= F2FS_QUOTA_DEFAULT_FL;
 	f2fs_set_inode_flags(inode);
 	inode_unlock(inode);
 	f2fs_mark_inode_dirty_sync(inode, false);
-
-	return 0;
+out:
+	F2FS_SB(sb)->umount_lock_holder = NULL;
+	return err;
 }
 
 static int __f2fs_quota_off(struct super_block *sb, int type)
@@ -3028,7 +3076,7 @@ static int __f2fs_quota_off(struct super_block *sb, int type)
 	if (!inode || !igrab(inode))
 		return dquot_quota_off(sb, type);
 
-	err = f2fs_quota_sync(sb, type);
+	err = f2fs_do_quota_sync(sb, type);
 	if (err)
 		goto out_put;
 
@@ -3051,6 +3099,8 @@ static int f2fs_quota_off(struct super_block *sb, int type)
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
 	int err;
 
+	F2FS_SB(sb)->umount_lock_holder = current;
+
 	err = __f2fs_quota_off(sb, type);
 
 	/*
@@ -3060,6 +3110,9 @@ static int f2fs_quota_off(struct super_block *sb, int type)
 	 */
 	if (is_journalled_quota(sbi))
 		set_sbi_flag(sbi, SBI_QUOTA_NEED_REPAIR);
+
+	F2FS_SB(sb)->umount_lock_holder = NULL;
+
 	return err;
 }
 
@@ -3192,7 +3245,7 @@ int f2fs_dquot_initialize(struct inode *inode)
 	return 0;
 }
 
-int f2fs_quota_sync(struct super_block *sb, int type)
+int f2fs_do_quota_sync(struct super_block *sb, int type)
 {
 	return 0;
 }
@@ -4748,6 +4801,7 @@ try_onemore:
 	if (err)
 		goto free_compress_inode;
 
+	sbi->umount_lock_holder = current;
 #ifdef CONFIG_QUOTA
 	/* Enable quota usage during mount */
 	if (f2fs_sb_has_quota_ino(sbi) && !f2fs_readonly(sb)) {
@@ -4878,6 +4932,8 @@ reset_checkpoint:
 	clear_sbi_flag(sbi, SBI_CP_DISABLED_QUICK);
 
 	cleancache_init_fs(sb);
+
+	sbi->umount_lock_holder = NULL;
 	return 0;
 
 sync_free_meta:
@@ -4982,6 +5038,8 @@ static void kill_f2fs_super(struct super_block *sb)
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
 
 	if (sb->s_root) {
+		sbi->umount_lock_holder = current;
+
 		set_sbi_flag(sbi, SBI_IS_CLOSE);
 		f2fs_stop_gc_thread(sbi);
 		f2fs_stop_discard_thread(sbi);

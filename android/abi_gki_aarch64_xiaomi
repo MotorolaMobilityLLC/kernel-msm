@@ -79,6 +79,9 @@
   scsi_device_set_state
   blk_mq_quiesce_tagset
   blk_mq_unquiesce_tagset
+  dev_pm_opp_find_freq_floor_indexed
+  scsi_host_busy
+  dev_pm_opp_find_freq_ceil_indexed
   memblock_free
   __mem_cgroup_charge
   __mem_cgroup_uncharge
