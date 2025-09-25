@@ -1108,12 +1108,12 @@ static int hgsl_dbcq_issue_cmd(struct hgsl_priv  *priv,
 	msg_dwords_aligned = ALIGN(msg_dwords, 4);
 
 	// check if we need to do batch submission
-	if ((msg_dwords_aligned >= dbcq->queue_size) ||
+	if ((msg_dwords_aligned >= (dbcq->queue_size >> 1)) ||
 		(msg_dwords_aligned > (MSG_SZ_MASK >> MSG_SZ_SHIFT))) {
 		msg_dwords = MSG_ISSUE_INF_SZ();
 		msg_dwords_aligned = ALIGN(msg_dwords, 4);
 		is_batch_ibdesc = true;
-		LOGI("Number of IBs exceeded. Proceeding with CMDBATCH_IBDESC");
+		LOGI("Number of IBs exceeded %#x. Proceeding with CMDBATCH_IBDESC", num_ibs);
 	}
 
 	msg_buf_sz = msg_dwords_aligned << 2;
