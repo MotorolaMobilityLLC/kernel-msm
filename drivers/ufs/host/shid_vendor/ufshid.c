@@ -50,6 +50,10 @@ const struct ufshid_offset ufshid_idn[] = {
 	[QUERY_ATTR_IDN_HID_OPERATION_3_1] = { 0x20 },
 	[QUERY_ATTR_IDN_HID_FRAG_LEVEL] = { 0x81 },
 	[QUERY_ATTR_IDN_HID_FRAG_LEVEL_3_1] = { 0x21 },
+#if defined(CONFIG_MICRON_UFSHID)
+	[QUERY_ATTR_IDN_HID_FRAG_STATUS] = { 0x81 },
+	[QUERY_ATTR_IDN_HID_PROGRESS] = { 0x82 },
+#endif
 	[HID_SEPARATION_BOUNDARY] = { 0x00 },
 	/* UFS 4.0 / 3.1 Use Common HID IDN */
 	/* Attribute */
@@ -179,6 +183,51 @@ err_out:
 	return ret;
 }
 
+#if defined(CONFIG_MICRON_UFSHID)
+static int ufshid_set_flag(struct ufshid_dev *hid, u8 idn)
+{
+	struct ufs_hba *hba = hid->ufsf->hba;
+	int ret = 0;
+	bool flag_result;
+	ufshcd_rpm_get_sync(hba);
+
+	ret = ufshcd_query_flag_retry(hba, UPIU_QUERY_OPCODE_SET_FLAG, idn, 0,&flag_result);
+
+	if (ret) {
+		ERR_MSG("set flag [0x%.2X] fail. (%d)", idn, ret);
+		goto err_out;
+	}
+
+	HID_DEBUG(hid, "hid_flag set [0x%.2X] result [0x%.2X] ", idn, flag_result);
+err_out:
+	pm_runtime_mark_last_busy(hba->dev);
+	ufsf_rpm_put_noidle(hba);
+
+	return ret;
+}
+
+static int ufshid_clear_flag(struct ufshid_dev *hid, u8 idn)
+{
+	struct ufs_hba *hba = hid->ufsf->hba;
+	int ret = 0;
+
+	ufshcd_rpm_get_sync(hba);
+
+	ret = ufshcd_query_flag_retry(hba, UPIU_QUERY_OPCODE_CLEAR_FLAG, idn, 0,NULL);
+	if (ret) {
+		ERR_MSG("clear flag [0x%.2X] fail. (%d)", idn, ret);
+		goto err_out;
+	}
+
+	HID_DEBUG(hid, "hid_flag set [0x%.2X] ", idn);
+err_out:
+	pm_runtime_mark_last_busy(hba->dev);
+	ufsf_rpm_put_noidle(hba);
+
+	return ret;
+}
+#endif
+
 static inline void ufshid_version_print(int spec_version)
 {
 	INFO_MSG("Support HID Spec : Driver = (%.4x), Device = (%.4x)",
@@ -214,23 +263,33 @@ void ufshid_get_dev_info(struct ufsf_feature *ufsf, u8 *desc_buf)
 	u8 ver_offset;
 
 	ufsf->hid_dev = NULL;
+	struct ufs_hba *hba = ufsf->hba;
 
-	if (!ufsf->samsung_sel) {
-		if (!(get_unaligned_be32(desc_buf + DEVICE_DESC_PARAM_SAMSUNG_SUP) &
-				UFS_FEATURE_SUPPORT_HID_BIT_4_0)) {
-			INFO_MSG("bUFSExFeaturesSupport: HID not support");
-			goto err_out;
+	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG) {
+		if (!ufsf->samsung_sel) {
+			if (!(get_unaligned_be32(desc_buf +	DEVICE_DESC_PARAM_SAMSUNG_SUP) &
+					UFS_FEATURE_SUPPORT_HID_BIT_4_0)) {
+				INFO_MSG("bUFSExFeaturesSupport: HID not support");
+				goto err_out;
+			}
+		} else {
+			if (!(get_unaligned_be32(desc_buf +
+					DEVICE_DESC_PARAM_EX_FEAT_SUP) &
+					UFS_FEATURE_SUPPORT_HID_BIT_3_1)) {
+				INFO_MSG("bUFSExFeaturesSupport: HID not support");
+				goto err_out;
+			}
 		}
-	} else {
-		if (!(get_unaligned_be32(desc_buf +
-				DEVICE_DESC_PARAM_EX_FEAT_SUP) &
-				UFS_FEATURE_SUPPORT_HID_BIT_3_1)) {
-			INFO_MSG("bUFSExFeaturesSupport: HID not support");
-			goto err_out;
-		}
+		INFO_MSG("bUFSExFeaturesSupport: HID support");
 	}
-
-	INFO_MSG("bUFSExFeaturesSupport: HID support");
+#ifndef CONFIG_MICRON_UFSHID
+	else if (hba->dev_info.wmanufacturerid == UFS_VENDOR_MICRON) {
+		INFO_MSG(" ufshid support Micron HID");
+	} else {
+		INFO_MSG("ufshid can not support this ufs !!!");
+		goto err_out;
+	}
+#endif
 
 	ufsf->hid_dev = kzalloc(sizeof(struct ufshid_dev), GFP_KERNEL);
 	if (!ufsf->hid_dev) {
@@ -411,11 +470,53 @@ static int ufshid_get_analyze_and_issue_execute(struct ufshid_dev *hid)
 		HID_REQUIRED : HID_NOT_REQUIRED;
 }
 
+#if defined(CONFIG_MICRON_UFSHID)
+static int ufshid_get_analyze_and_issue_execute_for_micro(struct ufshid_dev *hid)
+{
+	u32 attr_val;
+	int frag_level;
+	//get micron ufs frag level
+	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &frag_level))
+		return -EINVAL;
+	//get micron ufs hid execution progress
+	if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+		return -EINVAL;
+	HID_DEBUG(hid, "micron frag_level= %d attr_val= %d",frag_level,attr_val);
+
+	if (attr_val != HID_PROG_ONGOING) {
+		if(frag_level!= HID_LEV_GREEN_MICRON) {
+			ufshid_set_flag(hid, QUERY_FLAG_IDN_HID_EN);
+			return HID_REQUIRED;
+		} else {
+			return HID_NOT_REQUIRED;
+		}
+	} else {
+		return HID_REQUIRED;
+	}
+}
+#endif
+
 static inline void ufshid_issue_disable(struct ufshid_dev *hid)
 {
 	u32 attr_val;
+	struct ufs_hba *hba = hid->ufsf->hba;
 
-	ufshid_execute_query_op(hid, HID_OP_DISABLE, &attr_val);
+	if(hba->dev_info.wmanufacturerid == UFS_VENDOR_MICRON) {
+#if defined(CONFIG_MICRON_UFSHID)
+		//get micron ufs hid execution progress
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_PROGRESS, &attr_val))
+			return;
+		HID_DEBUG(hid, "micron hid progress = %d",attr_val);
+
+		if(attr_val == HID_PROG_ONGOING) {
+			if (ufshid_clear_flag(hid, QUERY_FLAG_IDN_HID_EN))
+				return;
+		}
+#endif
+	}else if(hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG) {
+		ufshid_execute_query_op(hid, HID_OP_DISABLE, &attr_val);
+	}
+	return;
 }
 
 /* HID 3.0 */
@@ -985,6 +1086,58 @@ resched:
 	HID_DEBUG(hid, "end hid_trigger_work_fn");
 }
 
+#if defined(CONFIG_MICRON_UFSHID)
+static void ufshid_trigger_work_fn_for_micro(struct work_struct *dwork)
+{
+	struct ufshid_dev *hid;
+	int ret;
+
+	hid = container_of(dwork, struct ufshid_dev, hid_trigger_work.work);
+
+	if (ufshid_is_not_present(hid))
+		return;
+
+	HID_DEBUG(hid, "start hid_trigger_work_fn");
+
+	ret = ufshid_get_analyze_and_issue_execute_for_micro(hid);
+
+	mutex_lock(&hid->sysfs_lock);
+	if (!hid->hid_trigger) {
+		HID_DEBUG(hid, "hid_trigger == false, return");
+		goto finish_work;
+	}
+
+	if (ret == HID_NOT_REQUIRED) {
+		ret = ufshid_trigger_off(hid);
+		if (likely(!ret))
+			goto finish_work;
+
+		WARN_MSG("trigger off fail.. must check it");
+
+	} else if (ret == HID_REQUIRED) {
+		HID_DEBUG(hid, "HID_REQUIRED, so sched (%d ms)",
+			  hid->hid_trigger_delay);
+
+	} else {
+		HID_DEBUG(hid, "issue_HID ERR(%X), so resched for retry", ret);
+	}
+	mutex_unlock(&hid->sysfs_lock);
+
+	ufshid_schedule_delayed_work(&hid->hid_trigger_work,
+			      msecs_to_jiffies(hid->hid_trigger_delay));
+
+	HID_DEBUG(hid, "end hid_trigger_work_fn");
+	return;
+finish_work:
+	mutex_unlock(&hid->sysfs_lock);
+}
+#else
+static void ufshid_trigger_work_fn_for_micro(struct work_struct *dwork)
+{
+	return;
+}
+#endif
+
 static void ufshid_init_attr(struct ufshid_dev *hid)
 {
 	u32 attr_val;
@@ -1134,6 +1287,7 @@ void ufshid_init(struct ufsf_feature *ufsf)
 	struct ufshid_dev *hid = ufsf->hid_dev;
 	int ret;
 	u32 spec_ver;
+	struct ufs_hba *hba = ufsf->hba;
 
 	INFO_MSG("HID_INIT_START");
 
@@ -1157,10 +1311,16 @@ void ufshid_init(struct ufsf_feature *ufsf)
 		ufshid_clear_lba_param(hid);
 	} else {
 		hid->ufshid_temp = &ufshid_3_0;
-		ufshid_init_attr(hid);
+		if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG) {
+			ufshid_init_attr(hid);
+		}
 	}
 
-	INIT_DELAYED_WORK(&hid->hid_trigger_work, ufshid_trigger_work_fn);
+	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG) {
+		INIT_DELAYED_WORK(&hid->hid_trigger_work, ufshid_trigger_work_fn);
+	} else if (hba->dev_info.wmanufacturerid == UFS_VENDOR_MICRON) {
+		INIT_DELAYED_WORK(&hid->hid_trigger_work, ufshid_trigger_work_fn_for_micro);
+	}
 
 	hid->hid_debug = false;
 #ifdef CONFIG_UFS_SHID_POC
@@ -1203,6 +1363,7 @@ void ufshid_reset_host(struct ufsf_feature *ufsf)
 void ufshid_reset(struct ufsf_feature *ufsf)
 {
 	struct ufshid_dev *hid = ufsf->hid_dev;
+	struct ufs_hba *hba = ufsf->hba;
 
 	if (!hid)
 		return;
@@ -1215,10 +1376,12 @@ void ufshid_reset(struct ufsf_feature *ufsf)
 	if (hid->hid_trigger)
 		ufshid_schedule_delayed_work(&hid->hid_trigger_work, 0);
 
-	if (hid->l2p_defrag_sup)
-		/* Since it is a volatile attribute, write it again */
-		ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_L2P_DEFRAG_THRESHOLD,
-				  hid->l2p_defrag_threshold);
+	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG) {
+		if (hid->l2p_defrag_sup)
+			/* Since it is a volatile attribute, write it again */
+			ufshid_write_attr(hid, QUERY_ATTR_IDN_HID_L2P_DEFRAG_THRESHOLD,
+					hid->l2p_defrag_threshold);
+	}
 
 	INFO_MSG("reset completed.");
 }
@@ -1416,6 +1579,12 @@ static ssize_t ufshid_sysfs_store_on_idle_delay(struct ufshid_dev *hid,
 
 static ssize_t ufshid_sysfs_show_hid_size(struct ufshid_dev *hid, char *buf)
 {
+	struct ufs_hba *hba = hid->ufsf->hba;
+
+	if (hba->dev_info.wmanufacturerid != UFS_VENDOR_SAMSUNG) {
+		return -EINVAL;
+	}
+
 	if (ufshid_spec_chk(hid) < HID_3_0_VER) {
 		INFO_MSG("do not support hid version %.4x", hid->hid_ver);
 		return snprintf(buf, PAGE_SIZE, "hid ver %.4x\n", hid->hid_ver);
@@ -1432,6 +1601,11 @@ static ssize_t ufshid_sysfs_store_hid_size(struct ufshid_dev *hid,
 {
 	u32 val;
 	int ret;
+	struct ufs_hba *hba = hid->ufsf->hba;
+
+	if (hba->dev_info.wmanufacturerid != UFS_VENDOR_SAMSUNG) {
+		return -EINVAL;
+	}
 
 	if (kstrtou32(buf, 0, &val))
 		return -EINVAL;
@@ -1455,6 +1629,12 @@ static ssize_t ufshid_sysfs_store_hid_size(struct ufshid_dev *hid,
 static ssize_t ufshid_sysfs_show_lba_trigger_mode(struct ufshid_dev *hid,
 						  char *buf)
 {
+	struct ufs_hba *hba = hid->ufsf->hba;
+
+	if (hba->dev_info.wmanufacturerid != UFS_VENDOR_SAMSUNG) {
+		return -EINVAL;
+	}
+
 	INFO_MSG("lba_trigger_mode %d", hid->lba_trigger_mode);
 
 	return snprintf(buf, PAGE_SIZE, "%d\n", hid->lba_trigger_mode);
@@ -1553,6 +1733,11 @@ static ssize_t ufshid_sysfs_store_l2p_defrag_threshold(struct ufshid_dev *hid,
 {
 	int ret;
 	u8 val;
+	struct ufs_hba *hba = hid->ufsf->hba;
+
+	if (hba->dev_info.wmanufacturerid != UFS_VENDOR_SAMSUNG) {
+		return -EINVAL;
+	}
 
 	if (ufshid_spec_chk(hid) < HID_3_0_VER) {
 		INFO_MSG("do not support hid version %.4x", hid->hid_ver);
@@ -1620,6 +1805,23 @@ static ssize_t ufshid_sysfs_show_color(struct ufshid_dev *hid, char *buf)
 	bool param_mode;
 	int ret = 0;
 	u32 spec_ver;
+
+#if defined(CONFIG_MICRON_UFSHID)
+	struct ufs_hba *hba = hid->ufsf->hba;
+	if(hba->dev_info.wmanufacturerid == UFS_VENDOR_MICRON){
+		if (ufshid_read_attr(hid, QUERY_ATTR_IDN_HID_FRAG_STATUS, &attr_val))
+			return -EINVAL;
+		frag_level = attr_val;
+
+		HID_DEBUG(hid, "hid stauts:%s\n", ((frag_level == HID_LEV_GREEN_MICRON)) ? "GREEN" :
+			((frag_level ==HID_LEV_RED_MICRON))?"RED":"UNKNOWN");
+
+		/*Micron only has two levels RED & GREEN*/
+		return snprintf(buf, PAGE_SIZE, "%s\n",
+			((frag_level == HID_LEV_GREEN_MICRON)) ? "GREEN" :
+			((frag_level ==HID_LEV_RED_MICRON))?"RED":"UNKNOWN");
+	}
+#endif
 
 	if (hid->hid_trigger) {
 		INFO_MSG("HID is in progress...");

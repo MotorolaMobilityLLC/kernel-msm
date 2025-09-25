@@ -106,6 +106,13 @@ static int ufsf_read_dev_desc(struct ufsf_feature *ufsf, u8 selector)
 	u32 max_size = ufsf_get_desc(ufsf, DESC_DEVICE_MAX_SIZE);
 	u32 idn = ufsf_get_idn(ufsf, DESC_IDN_DEVICE);
 
+#if defined(CONFIG_MICRON_UFSHID)
+	struct ufs_hba *hba = ufsf->hba;
+	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_MICRON) {
+			idn = QUERY_DESC_IDN_DEVICE;
+	}
+#endif
+
 	desc_buf = kmalloc(max_size, GFP_KERNEL);
 	if (!desc_buf) {
 		ret = -ENOMEM;
@@ -219,6 +226,11 @@ static inline void ufsf_init_ufs_ver_info(struct ufs_hba *hba)
 			ufsf->samsung_sel = NOT_SUPPORT_VER;
 			break;
 	}
+#if defined(CONFIG_MICRON_UFSHID)
+	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_MICRON) {
+		ufsf->samsung_sel = NON_SELECTOR;
+	}
+#endif
 }
 
 #define UTS_LEN 64

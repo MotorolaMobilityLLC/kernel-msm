@@ -260,4 +260,9 @@ struct utp_upiu_task_req {
 #define QUERY_REQ_RETRIES 3
 /* Query request timeout */
 #define QUERY_REQ_TIMEOUT 1500 /* 1.5 seconds */
+
+#if defined(CONFIG_MICRON_UFSHID)
+#define QUERY_FLAG_IDN_HID_EN					0x83
+#endif
+
 #endif /* End of Header */
