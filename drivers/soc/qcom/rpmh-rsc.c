@@ -789,13 +789,15 @@ int rpmh_rsc_send_data(struct rsc_drv *drv, const struct tcs_request *msg, int c
 {
 	struct tcs_group *tcs;
 	int tcs_id;
-	unsigned long flags;
+	unsigned long flags = 0;
+
+	might_sleep();
 
 	tcs = get_tcs_for_msg(drv, msg->state, ch);
 	if (IS_ERR(tcs))
 		return PTR_ERR(tcs);
 
-	spin_lock_irqsave(&drv->lock, flags);
+	spin_lock_irq(&drv->lock);
 
 	/* Controller is busy in 'solver' mode */
 	if (drv->in_solver_mode) {

@@ -221,8 +221,7 @@ void __kernel_map_pages(struct page *page, int numpages, int enable)
 
 /*
  * This function is used to determine if a linear map page has been marked as
- * not-valid. Walk the page table and check the PTE_VALID bit. This is based
- * on kern_addr_valid(), which almost does what we need.
+ * not-valid. Walk the page table and check the PTE_VALID bit.
  *
  * Because this is only called on the kernel linear map,  p?d_sect() implies
  * p?d_present(). When debug_pagealloc is enabled, sections mappings are
@@ -236,9 +235,6 @@ bool kernel_page_present(struct page *page)
 	pmd_t *pmdp, pmd;
 	pte_t *ptep;
 	unsigned long addr = (unsigned long)page_address(page);
-
-	if (!can_set_direct_map())
-		return true;
 
 	pgdp = pgd_offset_k(addr);
 	if (pgd_none(READ_ONCE(*pgdp)))

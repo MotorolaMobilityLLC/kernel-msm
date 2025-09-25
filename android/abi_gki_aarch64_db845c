@@ -447,6 +447,7 @@
   misc_register
   mod_delayed_work_on
   mod_timer
+  __module_get
   module_layout
   __msecs_to_jiffies
   msleep
@@ -577,6 +578,7 @@
   prepare_to_wait_event
   print_hex_dump
   _printk
+  __pskb_copy_fclone
   pskb_expand_head
   __pskb_pull_tail
   put_device
@@ -848,6 +850,7 @@
   vunmap
   vzalloc
   wait_for_completion_interruptible
+  wait_for_completion_interruptible_timeout
   wait_for_completion_timeout
   __wake_up
   wake_up_process
@@ -1142,6 +1145,8 @@
   geni_se_rx_dma_unprep
   geni_se_tx_dma_prep
   geni_se_tx_dma_unprep
+  geni_se_rx_init_dma
+  geni_se_tx_init_dma
   i2c_get_dma_safe_msg_buf
   i2c_put_dma_safe_msg_buf
 
@@ -1260,6 +1265,7 @@
   can_ethtool_op_get_ts_info_hwts
   can_fd_dlc2len
   can_fd_len2dlc
+  can_free_echo_skb
   can_put_echo_skb
   can_rx_offload_add_manual
   can_rx_offload_del
@@ -1292,6 +1298,7 @@
   timecounter_read
   unregister_candev
   __vmalloc
+  work_busy
 
 # required by mhi.ko
   get_random_u32

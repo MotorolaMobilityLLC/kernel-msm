@@ -290,7 +290,9 @@ retry:
 		 * Do not perform a synchronous scan because callers can hold
 		 * other locks.
 		 */
-		xfs_blockgc_flush_all(mp);
+		error = xfs_blockgc_flush_all(mp);
+		if (error)
+			return error;
 		want_retry = false;
 		goto retry;
 	}
@@ -953,13 +955,6 @@ __xfs_trans_commit(
 
 	trace_xfs_trans_commit(tp, _RET_IP_);
 
-	error = xfs_trans_run_precommits(tp);
-	if (error) {
-		if (tp->t_flags & XFS_TRANS_PERM_LOG_RES)
-			xfs_defer_cancel(tp);
-		goto out_unreserve;
-	}
-
 	/*
 	 * Finish deferred items on final commit. Only permanent transactions
 	 * should ever have deferred ops.
@@ -971,6 +966,10 @@ __xfs_trans_commit(
 		if (error)
 			goto out_unreserve;
 	}
+
+	error = xfs_trans_run_precommits(tp);
+	if (error)
+		goto out_unreserve;
 
 	/*
 	 * If there is nothing to be logged by the transaction,
