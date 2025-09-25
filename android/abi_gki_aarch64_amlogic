@@ -1,5 +1,3 @@
-
-
 [abi_symbol_list]
   add_cpu
   add_device_randomness
@@ -133,6 +131,7 @@
   cec_notifier_set_phys_addr
   cec_notifier_set_phys_addr_from_edid
   __check_object_size
+  class_compat_register
   class_create
   class_create_file_ns
   class_destroy
@@ -345,6 +344,7 @@
   device_del
   device_destroy
   device_for_each_child
+  device_for_each_child_reverse
   device_get_child_node_count
   device_get_match_data
   device_get_next_child_node
@@ -369,6 +369,7 @@
   dev_kfree_skb_any_reason
   __devm_add_action
   devm_alloc_etherdev_mqs
+  devm_backlight_device_register
   devm_blk_crypto_profile_init
   devm_clk_bulk_get
   devm_clk_bulk_get_all
@@ -392,6 +393,7 @@
   devm_hwrng_register
   devm_iio_channel_get
   devm_iio_device_alloc
+  devm_iio_trigger_register
   devm_input_allocate_device
   devm_ioremap
   devm_ioremap_resource
@@ -446,6 +448,7 @@
   _dev_notice
   dev_open
   dev_pm_clear_wake_irq
+  dev_pm_domain_attach
   dev_pm_domain_attach_by_id
   dev_pm_domain_attach_by_name
   dev_pm_domain_detach
@@ -575,6 +578,7 @@
   dput
   dql_completed
   dql_reset
+  driver_register
   driver_unregister
   drm_add_modes_noedid
   drm_atomic_add_affected_connectors
@@ -584,6 +588,7 @@
   drm_atomic_get_new_bridge_state
   drm_atomic_get_new_connector_for_encoder
   drm_atomic_get_new_private_obj_state
+  drm_atomic_get_old_private_obj_state
   drm_atomic_get_plane_state
   drm_atomic_get_private_obj_state
   drm_atomic_helper_async_commit
@@ -626,6 +631,7 @@
   drm_atomic_helper_wait_for_dependencies
   drm_atomic_helper_wait_for_fences
   drm_atomic_helper_wait_for_vblanks
+  drm_atomic_private_obj_fini
   drm_atomic_private_obj_init
   drm_atomic_set_crtc_for_connector
   drm_atomic_set_crtc_for_plane
@@ -646,6 +652,7 @@
   drm_connector_list_iter_begin
   drm_connector_list_iter_end
   drm_connector_list_iter_next
+  drm_connector_register
   drm_connector_set_vrr_capable_property
   drm_connector_unregister
   drm_connector_update_edid_property
@@ -654,6 +661,7 @@
   drm_crtc_arm_vblank_event
   drm_crtc_cleanup
   __drm_crtc_commit_free
+  drm_crtc_commit_wait
   drm_crtc_enable_color_mgmt
   drm_crtc_from_index
   drm_crtc_handle_vblank
@@ -665,13 +673,23 @@
   drm_crtc_vblank_off
   drm_crtc_vblank_on
   drm_crtc_vblank_put
+  drm_crtc_wait_one_vblank
   ___drm_dbg
+  __drm_debug
   drm_debugfs_create_files
   drm_dev_alloc
   __drm_dev_dbg
+  drm_dev_printk
   drm_dev_put
   drm_dev_register
   drm_dev_unregister
+  drm_display_mode_from_cea_vic
+  drm_edid_dup
+  drm_edid_duplicate
+  drm_edid_free
+  drm_edid_get_monitor_name
+  drm_edid_raw
+  drm_edid_read_ddc
   drm_encoder_cleanup
   drm_encoder_init
   __drm_err
@@ -719,6 +737,7 @@
   drm_mode_duplicate
   drm_mode_get_hv_timing
   drm_mode_object_find
+  drm_mode_object_get
   drm_mode_object_put
   drm_mode_probed_add
   drm_modeset_acquire_fini
@@ -729,11 +748,16 @@
   drm_modeset_lock
   drm_modeset_lock_all
   drm_modeset_lock_all_ctx
+  drm_modeset_lock_single_interruptible
   drm_modeset_unlock
   drm_modeset_unlock_all
   drm_mode_vrefresh
   drm_object_attach_property
+  drm_object_property_set_value
   drm_open
+  drm_panel_add
+  drm_panel_init
+  drm_panel_of_backlight
   drm_plane_cleanup
   drm_plane_create_alpha_property
   drm_plane_create_blend_mode_property
@@ -916,6 +940,7 @@
   __genphy_config_aneg
   genphy_handle_interrupt_no_ack
   genphy_read_abilities
+  genphy_read_lpa
   genphy_read_mmd_unsupported
   genphy_read_status
   genphy_restart_aneg
@@ -993,6 +1018,8 @@
   gpio_request
   gpio_to_desc
   grab_cache_page_write_begin
+  guid_gen
+  guid_null
   handle_fasteoi_irq
   handle_simple_irq
   handle_sysrq
@@ -1095,6 +1122,7 @@
   input_event
   input_free_device
   input_register_device
+  input_set_abs_params
   input_set_capability
   input_unregister_device
   insert_inode_locked
@@ -1369,6 +1397,7 @@
   mmc_release_host
   mmc_remove_host
   mmc_request_done
+  mmc_send_abort_tuning
   mmc_send_tuning
   mmc_set_data_timeout
   mmc_switch
@@ -1475,6 +1504,8 @@
   of_device_get_match_data
   of_device_is_available
   of_device_is_compatible
+  of_device_modalias
+  of_device_uevent_modalias
   of_dma_configure_id
   of_dma_is_coherent
   of_find_compatible_node
@@ -1529,6 +1560,7 @@
   of_prop_next_string
   of_prop_next_u32
   of_pwm_xlate_with_flags
+  of_remove_property
   of_reserved_mem_device_init_by_idx
   of_reserved_mem_device_init_by_name
   of_reserved_mem_device_release
@@ -1864,7 +1896,6 @@
   release_firmware
   __release_region
   release_resource
-  release_sock
   release_sock
   remap_pfn_range
   remap_vmalloc_range
@@ -2247,6 +2278,7 @@
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_zone_bind_cooling_device
+  thermal_zone_device_critical
   thermal_zone_device_disable
   thermal_zone_device_enable
   thermal_zone_device_register_with_trips

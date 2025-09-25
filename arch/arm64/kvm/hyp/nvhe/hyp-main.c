@@ -1469,6 +1469,8 @@ static void handle___pkvm_hyp_alloc_mgt_refill(struct kvm_cpu_context *host_ctxt
 	};
 
 	cpu_reg(host_ctxt, 1) = hyp_alloc_mgt_refill(id, &mc);
+	cpu_reg(host_ctxt, 2) = mc.head;
+	cpu_reg(host_ctxt, 3) = mc.nr_pages;
 }
 
 static void handle___pkvm_hyp_alloc_mgt_reclaimable(struct kvm_cpu_context *host_ctxt)

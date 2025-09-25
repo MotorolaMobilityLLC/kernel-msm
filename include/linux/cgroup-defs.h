@@ -406,7 +406,45 @@ struct cgroup_freezer_state {
 	 * frozen, SIGSTOPped, and PTRACEd.
 	 */
 	int nr_frozen_tasks;
+
 };
+
+/**
+ * struct cgroup_kmi_ext_info is meant to hold extensions to struct cgroup while
+ * maintaining KMI stability.
+ *
+ * Hide the definition of struct cgroup_kmi_ext_info from MODVERSIONS so that it
+ * can be modified to accommodate additional backports in the future. This type
+ * is meant to be opaque to vendor modules.
+ */
+#ifdef __GENKSYMS__
+struct cgroup_kmi_ext_info;
+#else
+struct cgroup_kmi_ext_info {
+	/*
+	 * Metadata for cgroup v2 freeze time. Writes protected
+	 * by css_set_lock.
+	 */
+	struct {
+		/* Freeze time data consistency protection */
+		seqcount_t freeze_seq;
+
+		/*
+		 * Most recent time the cgroup was requested to freeze.
+		 * Accesses guarded by freeze_seq counter. Writes serialized
+		 * by css_set_lock.
+		 */
+		u64 freeze_start_nsec;
+
+		/*
+		 * Total duration the cgroup has spent freezing.
+		 * Accesses guarded by freeze_seq counter. Writes serialized
+		 * by css_set_lock.
+		 */
+		u64 frozen_nsec;
+	} freezer;
+};
+#endif /* __GENKSYMS__ */
 
 struct cgroup {
 	/* self css with NULL ->ss, points back to this cgroup */
@@ -558,7 +596,12 @@ struct cgroup {
 	struct bpf_local_storage __rcu  *bpf_cgrp_storage;
 #endif
 
-	ANDROID_BACKPORT_RESERVE(1);
+	/*
+	 * Used to store KMI-compliant extensions to struct cgroup.
+	 * For further additions, modify the definition for struct
+	 * cgroup_kmi_ext_info.
+	 */
+	ANDROID_BACKPORT_USE(1, struct cgroup_kmi_ext_info *kmi_ext_info);
 
 	/* All ancestors including self */
 	struct cgroup *ancestors[];

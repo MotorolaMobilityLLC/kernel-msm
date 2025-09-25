@@ -3687,6 +3687,27 @@ static int cgroup_stat_show(struct seq_file *seq, void *v)
 	return 0;
 }
 
+static int cgroup_core_local_stat_show(struct seq_file *seq, void *v)
+{
+	struct cgroup *cgrp = seq_css(seq)->cgroup;
+	unsigned int sequence;
+	u64 freeze_time;
+
+	do {
+		sequence = read_seqcount_begin(&cgrp->kmi_ext_info->freezer.freeze_seq);
+		freeze_time = cgrp->kmi_ext_info->freezer.frozen_nsec;
+		/* Add in current freezer interval if the cgroup is freezing. */
+		if (test_bit(CGRP_FREEZE, &cgrp->flags))
+			freeze_time += (ktime_get_ns() -
+					cgrp->kmi_ext_info->freezer.freeze_start_nsec);
+	} while (read_seqcount_retry(&cgrp->kmi_ext_info->freezer.freeze_seq, sequence));
+
+	do_div(freeze_time, NSEC_PER_USEC);
+	seq_printf(seq, "frozen_usec %llu\n", freeze_time);
+
+	return 0;
+}
+
 #ifdef CONFIG_CGROUP_SCHED
 /**
  * cgroup_tryget_css - try to get a cgroup's css for the specified subsystem
@@ -5303,6 +5324,11 @@ static struct cftype cgroup_base_files[] = {
 		.seq_show = cgroup_stat_show,
 	},
 	{
+		.name = "cgroup.stat.local",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.seq_show = cgroup_core_local_stat_show,
+	},
+	{
 		.name = "cgroup.freeze",
 		.flags = CFTYPE_NOT_ON_ROOT,
 		.seq_show = cgroup_freeze_show,
@@ -5677,11 +5703,16 @@ static struct cgroup *cgroup_create(struct cgroup *parent, const char *name,
 			goto out_psi_free;
 	}
 
+	cgrp->kmi_ext_info = kzalloc(sizeof(*cgrp->kmi_ext_info), GFP_KERNEL);
+	if (!cgrp->kmi_ext_info)
+		goto out_psi_free;
+
 	/*
 	 * New cgroup inherits effective freeze counter, and
 	 * if the parent has to be frozen, the child has too.
 	 */
 	cgrp->freezer.e_freeze = parent->freezer.e_freeze;
+	seqcount_init(&cgrp->kmi_ext_info->freezer.freeze_seq);
 	if (cgrp->freezer.e_freeze) {
 		/*
 		 * Set the CGRP_FREEZE flag, so when a process will be
@@ -5690,6 +5721,7 @@ static struct cgroup *cgroup_create(struct cgroup *parent, const char *name,
 		 * consider it frozen immediately.
 		 */
 		set_bit(CGRP_FREEZE, &cgrp->flags);
+		cgrp->kmi_ext_info->freezer.freeze_start_nsec = ktime_get_ns();
 		set_bit(CGRP_FROZEN, &cgrp->flags);
 	}
 
@@ -5965,6 +5997,7 @@ static int cgroup_destroy_locked(struct cgroup *cgrp)
 	spin_lock_irq(&css_set_lock);
 	list_for_each_entry(link, &cgrp->cset_links, cset_link)
 		link->cset->dead = true;
+	kfree(cgrp->kmi_ext_info);
 	spin_unlock_irq(&css_set_lock);
 
 	/* initiate massacre of all css's */
