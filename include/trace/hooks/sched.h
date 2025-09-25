@@ -497,6 +497,14 @@ DECLARE_HOOK(android_vh_set_task_comm,
 	TP_PROTO(struct task_struct *p),
 	TP_ARGS(p));
 
+DECLARE_HOOK(android_vh_chk_task,
+	TP_PROTO(struct task_struct **pp, struct rq *rq),
+	TP_ARGS(pp, rq));
+
+DECLARE_HOOK(android_vh_put_task,
+	TP_PROTO(struct task_struct *p),
+	TP_ARGS(p));
+
 #endif /* _TRACE_HOOK_SCHED_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
