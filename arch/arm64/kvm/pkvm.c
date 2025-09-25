@@ -1050,8 +1050,13 @@ EXPORT_SYMBOL(__pkvm_register_el2_call);
 
 int __pkvm_topup_hyp_alloc_mgt_mc(unsigned long id, struct kvm_hyp_memcache *mc)
 {
-	return kvm_call_hyp_nvhe(__pkvm_hyp_alloc_mgt_refill, id, mc->head,
-				 mc->nr_pages);
+	struct arm_smccc_res res;
+
+	res = kvm_call_hyp_nvhe_smccc(__pkvm_hyp_alloc_mgt_refill,
+				      id, mc->head, mc->nr_pages);
+	mc->head = res.a2;
+	mc->nr_pages = res.a3;
+	return res.a1;
 }
 EXPORT_SYMBOL(__pkvm_topup_hyp_alloc_mgt_mc);
 
@@ -1068,8 +1073,11 @@ int __pkvm_topup_hyp_alloc_mgt_gfp(unsigned long id, unsigned long nr_pages,
 		return ret;
 
 	ret = __pkvm_topup_hyp_alloc_mgt_mc(id, &mc);
-	if (ret)
+	if (ret) {
+		kvm_err("Failed topup %ld pages = %ld, size = %ld err = %d, freeing %ld pages\n",
+			id, nr_pages, sz_alloc, ret, mc.nr_pages);
 		free_hyp_memcache(&mc);
+	}
 
 	return ret;
 }

@@ -702,6 +702,8 @@ static void wake_oom_reaper(struct timer_list *timer)
 #define OOM_REAPER_DELAY (2*HZ)
 static void queue_oom_reaper(struct task_struct *tsk)
 {
+	bool bypass = false;
+
 	/* mm is already queued? */
 	if (test_and_set_bit(MMF_OOM_REAP_QUEUED, &tsk->signal->oom_mm->flags))
 		return;
@@ -709,6 +711,9 @@ static void queue_oom_reaper(struct task_struct *tsk)
 	get_task_struct(tsk);
 	timer_setup(&tsk->oom_reaper_timer, wake_oom_reaper, 0);
 	tsk->oom_reaper_timer.expires = jiffies + OOM_REAPER_DELAY;
+	trace_android_vh_oom_reaper_delay_bypass(tsk, &bypass);
+	if (bypass)
+		tsk->oom_reaper_timer.expires = jiffies;
 	add_timer(&tsk->oom_reaper_timer);
 }
 
