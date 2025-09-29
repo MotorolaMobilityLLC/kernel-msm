@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 qcom_cpu_vendor_hooks.ko
 qcom_ipc_logging.ko
 ns.ko
@@ -65,6 +67,7 @@ qcom-vadc-common.ko
 qcom-spmi-adc5.ko
 qti-adc-tm.ko
 rtc-pm8xxx.ko
+pmic-pon-log.ko
 qpnp-power-on.ko
 spmi-pmic-arb.ko
 nvmem_qcom-spmi-sdam.ko
