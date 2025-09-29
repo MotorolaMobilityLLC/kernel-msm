@@ -153,7 +153,7 @@ static int qpnp_vibrator_play_on(struct vib_ldo_chip *chip)
 		pr_err("set voltage = %duV failed, ret=%d\n", volt_uV, ret);
 		return ret;
 	}
-	pr_debug("voltage set to %d uV\n", volt_uV);
+	pr_info("voltage set to %d uV\n", volt_uV);
 
 	ret = qpnp_vib_ldo_enable(chip, true);
 	if (ret < 0) {
@@ -305,7 +305,7 @@ static int qpnp_vib_brightness_set(struct led_classdev *cdev,
 		ret = qpnp_vib_ldo_enable(chip, false);
 	}
 
-	pr_debug("vibrator state=%d\n", chip->state);
+	pr_info("vibrator state=%d\n", chip->state);
 	return ret;
 }
 
