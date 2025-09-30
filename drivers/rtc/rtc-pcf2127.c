@@ -1383,11 +1383,6 @@ static int pcf2127_i2c_probe(struct i2c_client *client)
 		variant = &pcf21xx_cfg[type];
 	}
 
-	if (variant->type == PCF2131) {
-		config.read_flag_mask = 0x0;
-		config.write_flag_mask = 0x0;
-	}
-
 	config.max_register = variant->max_register,
 
 	regmap = devm_regmap_init(&client->dev, &pcf2127_i2c_regmap,
@@ -1459,6 +1454,11 @@ static int pcf2127_spi_probe(struct spi_device *spi)
 		if (type >= PCF21XX_LAST_ID)
 			return -ENODEV;
 		variant = &pcf21xx_cfg[type];
+	}
+
+	if (variant->type == PCF2131) {
+		config.read_flag_mask = 0x0;
+		config.write_flag_mask = 0x0;
 	}
 
 	config.max_register = variant->max_register;
