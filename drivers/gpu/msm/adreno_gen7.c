@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023,2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/io.h>
@@ -1325,6 +1325,7 @@ int gen7_perfcounter_update(struct adreno_device *adreno_dev,
 	int i, offset = (lock->ifpc_list_len + lock->preemption_list_len) * 2;
 	unsigned long irq_flags;
 	int ret = 0;
+	u32 pending_triplets = 2;
 
 	if (!ADRENO_ACQUIRE_CP_SEMAPHORE(adreno_dev, irq_flags))
 		return -EBUSY;
@@ -1350,6 +1351,12 @@ int gen7_perfcounter_update(struct adreno_device *adreno_dev,
 			break;
 
 		offset += 3;
+	}
+
+	/* Ensure there is enough space in the reglist buffer for new triplets */
+	if ((offset + (pending_triplets * 3)) >=
+		(adreno_dev->pwrup_reglist->size / sizeof(u32))) {
+		return -ENOSPC;
 	}
 
 	/*
