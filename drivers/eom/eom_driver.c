@@ -16,57 +16,7 @@
 #include <linux/uaccess.h>
 
 #include "buffer_manager.h"
-#include "pcie_eom_reg.h"
-
-#define EOM_MAX_LANES 32
-#define POSITIVE_SEQUENCE 1
-#define NEGATIVE_SEQUENCE 0
-#define TIME_100MS_US 100000
-
-static atomic_t g_eom_seq_stop = ATOMIC_INIT(0);
-
-struct eom_entry {
-	int x;
-	int y;
-	int error_count;
-};
-
-struct eom_lane;
-
-typedef int (*eom_sequence_fn)(struct eom_lane *lane);
-
-struct eom_dev_sequence {
-	/* Device name */
-	char name[32];
-	/* Type identifier (PCIE, USB, etc.) */
-	u8 type;
-	/* Function pointer to EOM sequence */
-	eom_sequence_fn run_eom;
-};
-
-/* Per lane structure */
-struct eom_lane {
-	struct miscdevice miscdev;
-	struct eom_buffer *buffer;
-	struct eom_phy_device *phy_dev;
-	struct eom_dev_sequence *seq;
-	int lane_num;
-	u32 dwell_time_us;
-	atomic_t eom_seq_stop;
-	struct eventfd_ctx *eventfd;
-};
-
-/* EOM Context */
-struct eom_context {
-	int index;
-	u8 type;
-	struct eom_phy_device *phy_dev;
-	struct eom_lane *lanes[EOM_MAX_LANES];
-	int num_lanes;
-	/* global context list */
-	struct list_head list;
-	struct mutex lock;
-};
+#include "eom_driver.h"
 
 /* Global list of active contexts */
 static LIST_HEAD(eom_context_list);
@@ -96,283 +46,6 @@ static int dummy_eom_sequence(struct eom_lane *lane)
 	return 0;
 }
 
-#define read_phy_reg(eom_phy_dev, offset, p_val)                                       \
-	({                                                                                 \
-		int ret = phy_read(eom_phy_dev, offset, p_val);                                \
-		if (ret < 0) {                                                                 \
-			pr_err("EOM PHY Dev type %d [index %d] unable to read phy registers\n", \
-				  eom_phy_dev->type, eom_phy_dev->index);                      \
-		}                                                                              \
-		ret;                                                                           \
-	})
-#define write_phy_reg(eom_phy_dev, offset, val)                                        \
-	({                                                                                 \
-		int ret = phy_write(eom_phy_dev, offset, val);                                 \
-		if (ret < 0) {                                                                 \
-			pr_err("EOM PHY Dev type %d [index %d] unable to read phy registers\n", \
-				  eom_phy_dev->type, eom_phy_dev->index);                      \
-		}                                                                              \
-		ret;                                                                           \
-	})
-
-#if IS_ENABLED(CONFIG_PCI_MSM_EOM)
-static int msm_pcie_eom_init(struct eom_phy_device *phy, struct eom_lane *lane,
-			      u32 is_positive_seq)
-{
-	u32 lanenum = lane->lane_num;
-	int ret = -EINVAL;
-
-	if (atomic_read(&g_eom_seq_stop) || atomic_read(&lane->eom_seq_stop))
-		return 0;
-
-	pr_debug("RC%d EOM Initializing lanes\n", phy->index);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_TX0_RESET_GEN_MUXES + LANE_SIZE(lanenum), 0x3);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_CDR_RESET_OVERRIDE + LANE_SIZE(lanenum),
-			    0xa);
-	if (ret < 0)
-		return ret;
-
-	if (is_positive_seq)
-		ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_EOM_CTRL1 + LANE_SIZE(lanenum),
-				    0x28);
-	else
-		ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_EOM_CTRL1 + LANE_SIZE(lanenum),
-				    0x38);
-
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_EOM_CTRL2 + LANE_SIZE(lanenum), 0x08);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_AUX_CONTROL + LANE_SIZE(lanenum), 0x40);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RCLK_AUXDATA_SEL + LANE_SIZE(lanenum), 0xfc);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL2 + LANE_SIZE(lanenum), 0x80);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xea);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_AUXDATA_TB + LANE_SIZE(lanenum), 0x08);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_VERTICAL_CODE + LANE_SIZE(lanenum),
-			    0x00);
-	if (ret < 0)
-		return ret;
-
-	/* Delay to allow register value to take effect */
-	ndelay(100);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xeb);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xef);
-	if (ret < 0)
-		return ret;
-
-	/* Delay to allow register value to take effect */
-	ndelay(100);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xeb);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RCLK_AUXDATA_SEL + LANE_SIZE(lanenum), 0xfc);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RCLK_AUXDATA_SEL + LANE_SIZE(lanenum), 0xf4);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xea);
-
-	return ret;
-}
-
-static int msm_pcie_eom_process_eye_sample(struct eom_lane *lane, struct eom_phy_device *phy,
-					u32 lanenum, u32 xcoord, u32 vthreshold, u32 ycoord,
-					u32 dtime, u32 is_positive_seq)
-{
-	u32 temp_err_low, temp_err_high;
-	u32 absolute_ycoord;
-	u32 errorcntr;
-	u32 xtmp;
-	int ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_VERTICAL_CODE + LANE_SIZE(lanenum),
-			    ycoord);
-	if (ret < 0)
-		return ret;
-
-	xtmp = (xcoord | 0x40);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_AUX_CONTROL + LANE_SIZE(lanenum), xtmp);
-	if (ret < 0)
-		return ret;
-
-	/* Delay to allow register value to take effect */
-	ndelay(100);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xEB);
-	if (ret < 0)
-		return ret;
-
-	/* Delay to allow register value to take effect */
-	ndelay(100);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xEF);
-	if (ret < 0)
-		return ret;
-
-	/* Delay to allow register value to take effect */
-	ndelay(100);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xEB);
-	if (ret < 0)
-		return ret;
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RCLK_AUXDATA_SEL + LANE_SIZE(lanenum), 0xfc);
-	if (ret < 0)
-		return ret;
-
-	/* Delay to allow register value to take effect */
-	ndelay(100);
-
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RCLK_AUXDATA_SEL + LANE_SIZE(lanenum), 0xf4);
-	if (ret < 0)
-		return ret;
-
-	/* dwell for sufficient transactions to occur */
-	msleep(dtime);
-
-	ret = read_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_IA_ERROR_COUNTER_LOW + LANE_SIZE(lanenum),
-			   &temp_err_low);
-	if (ret < 0)
-		return ret;
-
-	ret = read_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_IA_ERROR_COUNTER_HIGH + LANE_SIZE(lanenum),
-			   &temp_err_high);
-	if (ret < 0)
-		return ret;
-
-	errorcntr = (temp_err_low & 0xff);
-	errorcntr = errorcntr | ((temp_err_high & 0xff) << 8);
-	absolute_ycoord = ycoord + (vthreshold * MAX_VERTICAL_THRESHOLD);
-	struct eom_entry entry = { (xcoord > 31) ? xcoord - 64 : xcoord,
-				   (is_positive_seq ? 1 : -1) * absolute_ycoord,
-				   errorcntr };
-	eom_buffer_write(lane->buffer, (char *)&entry, sizeof(entry));
-	ret = write_phy_reg(phy, PCIE0_PHY_QSERDES_RX0_RX_MARG_CTRL3 + LANE_SIZE(lanenum), 0xEA);
-	if (ret < 0)
-		return ret;
-
-	return 0;
-}
-
-static int msm_pcie_eom_eye_seq(struct eom_lane *lane, u32 is_positive_seq, u32 lanenum)
-{
-	struct eom_phy_device *phy = lane->phy_dev;
-	u32 vthreshold, ycoord;
-	u32 dtime = lane->dwell_time_us / 1000;
-	int ret = -EINVAL;
-	u32 xcoord = 0;
-	u32 ytemp;
-
-	vthreshold = 0;
-
-	if (atomic_read(&g_eom_seq_stop) || atomic_read(&lane->eom_seq_stop))
-		return 0;
-
-	while (xcoord < MAX_EYE_WIDTH) {
-		vthreshold = 0;
-		while (vthreshold < MAX_VERTICAL_THRESHOLD) {
-			ycoord = 0;
-			ytemp = vthreshold | 0x08;
-			ret = write_phy_reg(phy,
-					    PCIE0_PHY_QSERDES_RX0_AUXDATA_TB +
-						    LANE_SIZE(lanenum),
-					    ytemp);
-			if (ret < 0)
-				return ret;
-
-			while (ycoord < MAX_EYE_HEIGHT) {
-				ret = msm_pcie_eom_process_eye_sample(lane, phy, lanenum, xcoord,
-								   vthreshold, ycoord, dtime,
-								   is_positive_seq);
-				if (ret < 0)
-					return ret;
-
-				ycoord = ycoord + 1;
-				if (atomic_read(&g_eom_seq_stop) ||
-				    atomic_read(&lane->eom_seq_stop)) {
-					break;
-				}
-			}
-			vthreshold++;
-			if (atomic_read(&g_eom_seq_stop) || atomic_read(&lane->eom_seq_stop))
-				break;
-		}
-		xcoord = xcoord + 1;
-		if (atomic_read(&g_eom_seq_stop) || atomic_read(&lane->eom_seq_stop))
-			break;
-	}
-
-	return 0;
-}
-
-static int pcie_eom_sequence(struct eom_lane *lane)
-{
-	struct eom_phy_device *phy = lane->phy_dev;
-	int ret = 0;
-
-	pr_debug("Running PCIe EOM for %s instance %u lane %d\n",
-		lane->seq->name, lane->phy_dev->index, lane->lane_num);
-
-	pr_debug("Initializing Phy and running EOM for positive sequence\n");
-	ret = msm_pcie_eom_init(phy, lane, true);
-	if (ret < 0)
-		return ret;
-
-	ret = msm_pcie_eom_eye_seq(lane, 1, lane->lane_num);
-	if (ret < 0)
-		return ret;
-
-	if (atomic_read(&g_eom_seq_stop) || atomic_read(&lane->eom_seq_stop))
-		return 0;
-
-	/* Wait for some time rerun EOM for negative sequence */
-	ndelay(1000);
-
-	pr_debug("Initializing Phy and running EOM for negative sequence\n");
-	ret = msm_pcie_eom_init(phy, lane, false);
-	if (ret < 0)
-		return ret;
-
-	ret = msm_pcie_eom_eye_seq(lane, 0, lane->lane_num);
-	if (ret < 0)
-		return ret;
-
-	return 0;
-}
-#endif /* CONFIG_PCI_MSM_EOM */
-
 #if IS_ENABLED(CONFIG_USB_MSM_EOM)
 static int usb_eom_sequence(struct eom_lane *lane)
 {
@@ -382,13 +55,22 @@ static int usb_eom_sequence(struct eom_lane *lane)
 }
 #endif
 
-enum eom_dev_sequence_index {
-	EOM_DUMMY_INDEX = TYPE_DUMMY,
-	EOM_PCIE_INDEX = TYPE_PCIE,
-	EOM_USB_INDEX = TYPE_USB,
-	/* Add more devices as needed */
-	EOM_MAX_DEVICES
-};
+/**
+ * phy_pcie_eom_sequence - Weak fallback for PCIe EOM sequence
+ * @lane: EOM lane structure
+ *
+ * This weak symbol provides a fallback implementation when no architecture-specific
+ * PCIe EOM implementation is compiled. It will be overridden by strong symbols
+ * from pcie_eom_<target>_phy.c when they are compiled.
+ *
+ * Return: -EOPNOTSUPP indicating no implementation available
+ */
+int __weak phy_pcie_eom_sequence(struct eom_lane *lane)
+{
+	pr_err("PCIe EOM sequence not implemented for this architecture\n");
+	pr_err("Please enable relevant CONFIG_ARCH\n");
+	return -EOPNOTSUPP;
+}
 
 static struct eom_dev_sequence eom_devices[] = {
 	[EOM_DUMMY_INDEX] = { .name = "dummy",
@@ -397,7 +79,7 @@ static struct eom_dev_sequence eom_devices[] = {
 #if IS_ENABLED(CONFIG_PCI_MSM_EOM)
 	[EOM_PCIE_INDEX] = { .name = "pcie",
 			     .type = TYPE_PCIE,
-			     .run_eom = pcie_eom_sequence },
+			     .run_eom = phy_pcie_eom_sequence },
 #endif
 #if IS_ENABLED(CONFIG_USB_MSM_EOM)
 	[EOM_USB_INDEX] = { .name = "usb",
@@ -475,8 +157,8 @@ static long eom_lane_ioctl(struct file *file, unsigned int cmd,
 		atomic_set(&lane->eom_seq_stop, 0);
 		/* clean up old pages if any and reset the buffer counter and read pointer */
 		eom_buffer_free(lane->buffer);
-		task = kthread_run(eom_run, lane, "eom_lane_%d",
-				   lane->lane_num);
+		task = kthread_run(eom_run, lane, "eom_%s_lane_%d",
+				   lane->seq->name, lane->lane_num);
 		if (IS_ERR(task))
 			return PTR_ERR(task);
 
@@ -548,12 +230,16 @@ static long eom_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (!phy_dev)
 			return -ENODEV;
 
-		if (phy_dev->ops->get_caps)
-			phy_dev->ops->get_caps(phy_dev->priv);
+		if (phy_dev->ops->get_caps) {
+			if (phy_dev->ops->get_caps(phy_dev->priv) < 0) {
+				pr_err("EOM: Phy not present for RC %d\n", dev.index);
+				return -ENODEV;
+			}
+		}
 
 		seq_index = get_seq_index(dev.type, dev.name);
 		if (seq_index < 0) {
-			pr_err("EOM: Unsupported device type/name\n");
+			pr_err("EOM: Unsupported device type/name %s\n", dev.name);
 			return seq_index;
 		}
 
@@ -574,6 +260,7 @@ static long eom_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		for (i = 0; i < phy_dev->lanes; i++) {
 			struct eom_lane *lane = kzalloc(sizeof(*lane), GFP_KERNEL);
 			char dev_name[32];
+			int ret = 0;
 
 			if (!lane)
 				continue;
@@ -591,8 +278,19 @@ static long eom_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			lane->miscdev.fops = &eom_lane_fops;
 			eom_buffer_init(lane->buffer);
 			eom_ctx->lanes[i] = lane;
-			pr_debug("EOM: Registered lane device %s\n", dev_name);
-			misc_register(&lane->miscdev);
+			pr_debug("EOM: Register lane device %s\n", dev_name);
+
+			ret = misc_register(&lane->miscdev);
+			if (ret < 0) {
+				pr_err("EOM: Failed to register lane device %s: err: %d\n",
+					dev_name, ret);
+				eom_buffer_free(lane->buffer);
+				kfree(lane->buffer);
+				kfree(lane);
+				eom_ctx->lanes[i] = NULL;
+				continue;
+			}
+
 		}
 
 		mutex_lock(&eom_context_list_lock);
