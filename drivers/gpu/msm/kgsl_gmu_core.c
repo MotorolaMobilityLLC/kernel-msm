@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/iopoll.h>
@@ -186,7 +186,7 @@ int gmu_core_timed_poll_check(struct kgsl_device *device,
 int gmu_core_map_memdesc(struct iommu_domain *domain, struct kgsl_memdesc *memdesc,
 		u64 gmuaddr, int attrs)
 {
-	size_t mapped;
+	ssize_t mapped;
 
 	if (!memdesc->pages) {
 		mapped = iommu_map_sg(domain, gmuaddr, memdesc->sgt->sgl,
@@ -205,5 +205,8 @@ int gmu_core_map_memdesc(struct iommu_domain *domain, struct kgsl_memdesc *memde
 		sg_free_table(&sgt);
 	}
 
-	return mapped == 0 ? -ENOMEM : 0;
+	if (!mapped)
+		mapped = -ENOMEM;
+
+	return (mapped < 0) ? mapped : 0;
 }
