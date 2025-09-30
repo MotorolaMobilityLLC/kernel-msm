@@ -387373,6 +387373,15 @@ elf_symbol {
   full_name: "dget_parent"
 }
 elf_symbol {
+  id: 0x30dd6796
+  name: "disable_hardirq"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xbd3fe1e3
+  type_id: 0xefc5028b
+  full_name: "disable_hardirq"
+}
+elf_symbol {
   id: 0x573e2956
   name: "disable_irq"
   is_defined: true
@@ -442242,6 +442251,7 @@ interface {
   symbol_id: 0x7ae5eeb4
   symbol_id: 0x317870a4
   symbol_id: 0xf34ac6e1
+  symbol_id: 0x30dd6796
   symbol_id: 0x573e2956
   symbol_id: 0xe5bfa8c8
   symbol_id: 0xd48a6769
