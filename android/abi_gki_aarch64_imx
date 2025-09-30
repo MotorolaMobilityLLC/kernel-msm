@@ -519,6 +519,7 @@
   devres_remove_group
   dev_set_name
   _dev_warn
+  disable_hardirq
   disable_irq
   disable_irq_nosync
   disable_percpu_irq
