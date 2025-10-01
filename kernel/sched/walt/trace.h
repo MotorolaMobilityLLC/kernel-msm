@@ -2232,6 +2232,36 @@ TRACE_EVENT(walt_oscillate,
 		__entry->pid, __entry->src_cpu, __entry->dst_cpu,
 		__entry->oscillate_cpu, __entry->reason)
 );
+
+/*
+ * Tracepoint for skip force migrate vip task.
+ */
+TRACE_EVENT(sched_long_preempt_migrate,
+
+	TP_PROTO(struct task_struct *tsk, int cpu, int des_cpu, u64 offset),
+	TP_ARGS(tsk, cpu, des_cpu, offset),
+
+	TP_STRUCT__entry(
+		__array(char, comm, TASK_COMM_LEN)
+	        __field(pid_t, pid)
+                __field(int,  cpu)
+                __field(int,  des_cpu)
+				__field(u64, offset)
+                ),
+
+        TP_fast_assign(
+		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
+                __entry->pid = tsk->pid;
+                __entry->cpu = cpu;
+                __entry->des_cpu = des_cpu;
+				__entry->offset = offset;
+                ),
+
+        TP_printk("comm=%s pid=%d cpu=%d des_cpu=%d, offset=%llu",
+                __entry->comm, __entry->pid,
+                __entry->cpu, __entry->des_cpu, __entry->offset)
+);
+
 #endif /* _TRACE_WALT_H */
 
 #undef TRACE_INCLUDE_PATH

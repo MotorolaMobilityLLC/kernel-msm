@@ -292,6 +292,7 @@ static inline bool need_active_lb(struct task_struct *p, int dst_cpu,
 
 	return true;
 }
+unsigned int sysctl_sched_long_preemption_ns = 2000000;
 
 static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct **pulled_task_struct)
 {
@@ -305,6 +306,10 @@ static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct **pul
 	struct task_struct *pull_me;
 	int task_visited;
 
+	struct task_struct *long_wait_task = NULL;
+	u64 max_wait_time = 0;
+	u64 now = rq_clock(src_rq);
+
 	BUG_ON(src_cpu == dst_cpu);
 
 	to_lower = check_for_higher_capacity(src_cpu, dst_cpu);
@@ -315,6 +320,7 @@ static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct **pul
 	pull_me = NULL;
 	task_visited = 0;
 	list_for_each_entry_reverse(p, &src_rq->cfs_tasks, se.group_node) {
+		struct walt_task_struct *pvtask = (struct walt_task_struct *) p->android_vendor_data1;
 		if (!cpumask_test_cpu(dst_cpu, p->cpus_ptr))
 			continue;
 
@@ -324,6 +330,16 @@ static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct **pul
 		if (!_walt_can_migrate_task(p, dst_cpu, to_lower, to_higher,
 					false))
 			continue;
+
+		if (pvtask->on_rq_timestamp > 0) {
+			u64 wait_time = now - pvtask->on_rq_timestamp;
+
+			if (wait_time > sysctl_sched_long_preemption_ns && wait_time > max_wait_time) {
+				max_wait_time = wait_time;
+				long_wait_task = p;
+				trace_sched_long_preempt_migrate(p, src_rq->cpu, dst_cpu, wait_time);
+			}
+		}
 
 		if (pull_me == NULL) {
 			pull_me = p;
@@ -340,6 +356,11 @@ static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct **pul
 		if (task_visited > 5)
 			break;
 	}
+
+	if (long_wait_task) {
+		pull_me = long_wait_task;
+	}
+
 	if (pull_me) {
 		walt_detach_task(pull_me, src_rq, dst_rq);
 		goto unlock;

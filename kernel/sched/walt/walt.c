@@ -4781,6 +4781,8 @@ static void android_rvh_enqueue_task(void *unused, struct rq *rq,
 	if (unlikely(walt_disabled))
 		return;
 
+	wts->on_rq_timestamp = rq_clock(rq);
+
 	walt_lockdep_assert_rq(rq, p);
 
 	if (flags & ENQUEUE_WAKEUP)
@@ -4868,6 +4870,8 @@ static void android_rvh_dequeue_task(void *unused, struct rq *rq,
 
 	if (unlikely(walt_disabled))
 		return;
+
+	wts->on_rq_timestamp = 0;
 
 	walt_lockdep_assert_rq(rq, p);
 
