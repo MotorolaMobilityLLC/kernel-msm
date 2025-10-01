@@ -176,7 +176,9 @@ struct walt_task_struct {
 	int				pipeline_activity_cnt;
 	atomic_t			event_windows;
 	u8				lib_app_state;
-
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	u64 on_rq_timestamp;
+#endif
 };
 
 #define wts_to_ts(wts) ({ \

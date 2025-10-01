@@ -5249,6 +5249,10 @@ static void android_rvh_enqueue_task(void *unused, struct rq *rq,
 	if (unlikely(walt_disabled))
 		return;
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	wts->on_rq_timestamp = rq_clock(rq);
+#endif
+
 	get_entry_instr(ENQUEUE_TASK);
 	walt_lockdep_assert_rq(rq, p);
 
@@ -5351,6 +5355,10 @@ static void android_rvh_dequeue_task(void *unused, struct rq *rq,
 
 	if (unlikely(walt_disabled))
 		return;
+
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+	wts->on_rq_timestamp = 0;
+#endif
 
 	get_entry_instr(DEQUEUE_TASK);
 	walt_lockdep_assert_rq(rq, p);
