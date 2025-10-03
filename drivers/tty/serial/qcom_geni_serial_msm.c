@@ -28,6 +28,23 @@
 #include <linux/tty_flip.h>
 #include <dt-bindings/interconnect/qcom,icc.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/qup_buses_trace.h>
+
+void serial_trace_log(struct device *dev, const char *fmt, ...)
+{
+	struct va_format vaf = {
+		.fmt = fmt,
+	};
+
+	va_list args;
+
+	va_start(args, fmt);
+	vaf.va = &args;
+	trace_buses_log_info(dev_name(dev), &vaf);
+	va_end(args);
+}
+
 /* UART specific GENI registers */
 #define SE_DMA_RX_LEN_IN               0xd54
 #define SE_UART_LOOPBACK_CFG		0x22c
@@ -227,7 +244,7 @@ static unsigned int qcom_geni_serial_get_mctrl(struct uart_port *uport)
 {
 	unsigned int mctrl = TIOCM_DSR | TIOCM_CAR;
 	struct qcom_geni_serial_port *port = to_dev_port(uport);
-	u32 geni_ios;
+	u32 geni_ios = 0;
 
 	if (uart_console(uport)) {
 		mctrl |= TIOCM_CTS;
@@ -237,6 +254,8 @@ static unsigned int qcom_geni_serial_get_mctrl(struct uart_port *uport)
 			mctrl |= TIOCM_CTS;
 	}
 
+	serial_trace_log(uport->dev, "%s: geni_ios: %d, mctrl:%d\n",
+			 __func__, geni_ios, mctrl);
 	return mctrl;
 }
 
@@ -255,6 +274,7 @@ static void qcom_geni_serial_set_mctrl(struct uart_port *uport,
 	if (!(mctrl & TIOCM_RTS) && !uport->suspended)
 		uart_manual_rfr = UART_MANUAL_RFR_EN | UART_RFR_NOT_READY;
 	writel(uart_manual_rfr, uport->membase + SE_UART_MANUAL_RFR);
+	serial_trace_log(uport->dev, "%s: uart_manual_rfr: %0x%x\n", __func__, uart_manual_rfr);
 }
 
 static const char *qcom_geni_serial_get_type(struct uart_port *uport)
@@ -597,6 +617,8 @@ static void handle_rx_uart(struct uart_port *uport, u32 bytes, bool drop)
 	}
 	uport->icount.rx += ret;
 	tty_flip_buffer_push(tport);
+
+	trace_serial_transmit_data_rx(uport->dev, port->rx_buf, bytes);
 }
 
 static unsigned int qcom_geni_serial_tx_empty(struct uart_port *uport)
@@ -633,15 +655,18 @@ static void qcom_geni_serial_stop_tx_dma(struct uart_port *uport)
 	}
 
 	writel(M_CMD_CANCEL_EN, uport->membase + SE_GENI_M_IRQ_CLEAR);
+	trace_serial_info(uport->dev, __func__, "Done");
 }
 
 static void qcom_geni_serial_start_tx_dma(struct uart_port *uport)
 {
 	struct qcom_geni_serial_port *port = to_dev_port(uport);
 	struct circ_buf *xmit = &uport->state->xmit;
+	size_t pending = uart_circ_chars_pending(xmit);
 	unsigned int xmit_size;
 	int ret;
 
+	trace_serial_info(uport->dev, __func__, "Start");
 	if (port->tx_dma_addr)
 		return;
 
@@ -660,6 +685,11 @@ static void qcom_geni_serial_start_tx_dma(struct uart_port *uport)
 		return;
 	}
 
+	if (pending) {
+		serial_trace_log(uport->dev, "%s: TX transfer length: %d\n",
+				 __func__, pending);
+		trace_serial_transmit_data_tx(uport->dev, (char *)&xmit->buf[xmit->tail], pending);
+	}
 	port->tx_remaining = xmit_size;
 }
 
@@ -804,6 +834,7 @@ static void qcom_geni_serial_stop_rx_dma(struct uart_port *uport)
 				      DMA_RX_BUF_SIZE);
 		port->rx_dma_addr = 0;
 	}
+	trace_serial_info(uport->dev, __func__, "Done");
 }
 
 static void qcom_geni_serial_start_rx_dma(struct uart_port *uport)
@@ -811,6 +842,7 @@ static void qcom_geni_serial_start_rx_dma(struct uart_port *uport)
 	struct qcom_geni_serial_port *port = to_dev_port(uport);
 	int ret;
 
+	trace_serial_info(uport->dev, __func__, "start");
 	if (qcom_geni_serial_secondary_active(uport))
 		qcom_geni_serial_stop_rx_dma(uport);
 
@@ -1006,24 +1038,38 @@ static irqreturn_t qcom_geni_serial_isr(int isr, void *dev)
 	writel(dma_tx_status, uport->membase + SE_DMA_TX_IRQ_CLR);
 	writel(dma_rx_status, uport->membase + SE_DMA_RX_IRQ_CLR);
 
+	serial_trace_log(uport->dev, "%s: s_irq_status: 0x%x, m_irq_status: 0x%x",
+			 __func__, s_irq_status, m_irq_status);
 	if (WARN_ON(m_irq_status & M_ILLEGAL_CMD_EN))
 		goto out_unlock;
 
 	if (s_irq_status & S_RX_FIFO_WR_ERR_EN) {
 		uport->icount.overrun++;
 		tty_insert_flip_char(tport, 0, TTY_OVERRUN);
+		if (!uart_console(uport))
+			serial_trace_log(uport->dev, "%s: overrun: %d\n",
+					 __func__,  uport->icount.overrun);
 	}
 
 	if (s_irq_status & (S_GP_IRQ_0_EN | S_GP_IRQ_1_EN)) {
 		if (s_irq_status & S_GP_IRQ_0_EN)
 			uport->icount.parity++;
+		if (!uart_console(uport))
+			serial_trace_log(uport->dev, "%s: parity: %d\n",
+					 __func__, uport->icount.parity);
+
 		drop_rx = true;
 	} else if (s_irq_status & (S_GP_IRQ_2_EN | S_GP_IRQ_3_EN)) {
 		uport->icount.brk++;
 		port->brk = true;
+		if (!uart_console(uport))
+			serial_trace_log(uport->dev, "%s: break: %d\n",
+					 __func__, uport->icount.brk);
 	}
 
 	if (dma) {
+		serial_trace_log(uport->dev, "%s: dma_tx_status: 0x%x, dma_rx_status: 0x%x",
+				 __func__, dma_tx_status, dma_rx_status);
 		if (dma_tx_status & TX_DMA_DONE)
 			qcom_geni_serial_handle_tx_dma(uport);
 
@@ -1245,8 +1291,8 @@ static int geni_serial_set_rate(struct uart_port *uport, unsigned long baud)
 		return -EINVAL;
 	}
 
-	dev_dbg(port->se.dev, "desired_rate = %u, clk_rate = %lu, clk_div = %u\n",
-			baud * sampling_rate, clk_rate, clk_div);
+	serial_trace_log(port->se.dev, "baud: %u, desired_rate: %u, clk_rate: %lu, clk_div: %u\n",
+			 baud, baud * sampling_rate, clk_rate, clk_div);
 
 	uport->uartclk = clk_rate;
 	port->clk_rate = clk_rate;
@@ -1967,6 +2013,7 @@ static int qcom_geni_serial_sys_suspend(struct device *dev)
 	struct uart_port *uport = &port->uport;
 	struct qcom_geni_private_data *private_data = uport->private_data;
 
+	trace_serial_info(uport->dev, __func__, "Start");
 	/*
 	 * This is done so we can hit the lowest possible state in suspend
 	 * even with no_console_suspend
@@ -1983,6 +2030,7 @@ static int qcom_geni_serial_sys_resume(struct device *dev)
 	struct uart_port *uport = &port->uport;
 	struct qcom_geni_private_data *private_data = uport->private_data;
 
+	trace_serial_info(uport->dev, __func__, "Start");
 	if (pm_suspend_target_state == PM_SUSPEND_MEM)
 		port->setup = false;
 
@@ -2002,6 +2050,7 @@ static int qcom_geni_serial_sys_hib_resume(struct device *dev)
 	uport = &port->uport;
 	private_data = uport->private_data;
 
+	trace_serial_info(uport->dev, __func__, "Start");
 	if (uart_console(uport)) {
 		geni_icc_set_bw(&port->se);
 		ret = uart_resume_port(private_data->drv, uport);
