@@ -1207,6 +1207,14 @@ config QCOM_VM_ALIVE_LOG_ENCRYPT
 	  wrapping. This needs to be enabled on both Primary VM and the other VM
 	  whose kmsg is desired.
 
+config QCOM_VM_CRASH_DMESG_DUMP
+	bool "Enable crash log access from VM to PVM"
+	depends on QCOM_VM_DMESG_DUMPER
+	help
+	  Enable support for accessing crash logs from VM to PVM.
+	  This is useful for debugging and post-mortem analysis of VM crashes.
+	  If not sure, say N.
+
 config MSM_SYSTEM_HEALTH_MONITOR
 	tristate "System Health Monitor"
 	help
