@@ -1480,7 +1480,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 	struct phy		*temp_phy = NULL;
 	char phy_name[9];
 	int ret;
-	int i;
+	u8 i;
 
 	if (node) {
 		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);
@@ -1510,7 +1510,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 		if (vdwc->num_usb2_ports == 1)
 			snprintf(phy_name, sizeof(phy_name), "usb2-phy");
 		else
-			snprintf(phy_name, sizeof(phy_name),  "usb2-%d", i);
+			snprintf(phy_name, sizeof(phy_name),  "usb2-%u", i);
 
 		temp_phy = devm_phy_get(dev, phy_name);
 		if (IS_ERR(temp_phy)) {
@@ -1532,7 +1532,7 @@ static int dwc3_core_get_phy(struct dwc3 *dwc)
 		if (vdwc->num_usb3_ports == 1)
 			snprintf(phy_name, sizeof(phy_name), "usb3-phy");
 		else
-			snprintf(phy_name, sizeof(phy_name), "usb3-%d", i);
+			snprintf(phy_name, sizeof(phy_name), "usb3-%u", i);
 
 		temp_phy = devm_phy_get(dev, phy_name);
 		if (IS_ERR(temp_phy)) {

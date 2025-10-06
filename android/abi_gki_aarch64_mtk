@@ -152,6 +152,7 @@
   class_dev_iter_next
   class_find_device
   class_for_each_device
+  class_interface_register
   __class_register
   class_unregister
   clear_page
