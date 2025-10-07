@@ -156,6 +156,9 @@ struct export_desc_super *habmem_add_export(
 	exp->domid_local = vchan->pchan->vmid_local;
 	exp->domid_remote = vchan->pchan->vmid_remote;
 
+	if ((HABMM_EXP_MEM_TYPE_LOOPBACK & flags) != 0)
+		exp_super->is_loopback = true;
+
 	/*
 	 * In new protocol, exp_desc will not be sent to remote during hab export.
 	 * Below pointers are required for local usage and will be removed before sending.

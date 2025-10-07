@@ -348,6 +348,21 @@
 #required by zram.ko
   bioset_init
   bioset_exit
+  bio_crypt_set_ctx
+  blk_crypto_evict_key
+  blk_crypto_init_key
+  blk_crypto_start_using_key
+  mem_cgroup_move_account
+  cgroup_rm_cftypes
+  __traceiter_android_vh_mem_cgroup_charge
+  __traceiter_android_vh_filemap_add_folio
+  __traceiter_android_vh_shrink_node
+  __tracepoint_android_vh_mem_cgroup_charge
+  __tracepoint_android_vh_filemap_add_folio
+  __tracepoint_android_vh_shrink_node
+  __alloc_pages_bulk
+  __xa_cmpxchg
+  lookup_user_key
 
 #required by mi_asap.ko
   __traceiter_android_vh_read_pages
@@ -505,3 +520,7 @@ __traceiter_android_vh_filemap_read
 __tracepoint_android_vh_filemap_read
 __traceiter_android_vh_filemap_map_pages_range
 __tracepoint_android_vh_filemap_map_pages_range
+
+#required by rtase.ko
+proc_get_parent_data
+netdev_stats_to_stats64

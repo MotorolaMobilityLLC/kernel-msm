@@ -811,11 +811,17 @@ int msm_geni_serial_resources_off(struct msm_geni_serial_port *port)
 		return ret;
 	}
 
-	ret = pinctrl_select_state(rsc->geni_pinctrl, rsc->geni_gpio_sleep);
-	if (ret) {
-		UART_LOG_DBG(port->ipc_log_misc, port->uport.dev,
-			"%s: Error %d pinctrl_select_state failed\n", __func__, ret);
-		return ret;
+	if (!IS_ERR_OR_NULL(port->serial_rsc.geni_gpio_shutdown) &&
+	    port->port_state == UART_PORT_CLOSED_SHUTDOWN) {
+		ret = pinctrl_select_state(rsc->geni_pinctrl, rsc->geni_gpio_shutdown);
+		if (ret)
+			UART_LOG_DBG(port->ipc_log_misc, port->uport.dev,
+				     "%s: Error %d pinctrl shutdown state failed\n", __func__, ret);
+	} else {
+		ret = pinctrl_select_state(rsc->geni_pinctrl, rsc->geni_gpio_sleep);
+		if (ret)
+			UART_LOG_DBG(port->ipc_log_misc, port->uport.dev,
+				     "%s: Error %d pinctrl sleep failed\n", __func__, ret);
 	}
 	return ret;
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <dt-bindings/interconnect/qcom,neo.h>
@@ -31,6 +31,8 @@ enum target_msm_id {
 	NEO_LE = 525,
 	NEO_LA_V1 = 554,
 	NEO_LA_V2 = 579,
+	ALISO_LA = 739,
+	ALISO_LUNA_V2 = 740,
 };
 
 static const struct regmap_config icc_regmap_config = {
@@ -2212,6 +2214,7 @@ static int qnoc_probe(struct platform_device *pdev)
 	u32 *msm_id;
 	size_t len;
 	int ret;
+	enum target_msm_id device_id;
 
 	msm_id = qcom_smem_get(QCOM_SMEM_HOST_ANY, MSM_ID_SMEM, &len);
 	if (IS_ERR(msm_id))
@@ -2221,7 +2224,9 @@ static int qnoc_probe(struct platform_device *pdev)
 	if (!compat || (compatlen <= 0))
 		return -EINVAL;
 
-	if ((enum target_msm_id) *(++msm_id) == NEO_LA_V1) {
+	device_id = (enum target_msm_id) *(++msm_id);
+
+	if ((device_id == NEO_LA_V1) || (device_id == ALISO_LA)) {
 		if (!strcmp(compat, "qcom,neo-gem_noc")) {
 			bcm_sh0_disp.voter_idx = VOTER_IDX_HLOS;
 			bcm_sh1_disp.voter_idx = VOTER_IDX_HLOS;

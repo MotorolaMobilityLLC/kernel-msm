@@ -251,7 +251,7 @@ struct qcom_hgsl {
 	struct idr isync_timeline_idr;
 	spinlock_t isync_timeline_lock;
 	atomic64_t total_mem_size;
-	bool default_iocoherency;
+	struct hgsl_cache_flags cache_flags;
 
 	/* Debug nodes */
 	struct kobject sysfs;
@@ -377,14 +377,12 @@ static inline bool hgsl_mem_rb_empty(struct hgsl_priv *priv)
 /**
  * lightweight function to increase the ref count of context
  */
-static inline int hgsl_context_get(struct hgsl_context *ctxt)
+static inline struct hgsl_context *hgsl_context_get(struct hgsl_context *ctxt)
 {
-	int ret = 0;
+	if (ctxt && kref_get_unless_zero(&ctxt->kref))
+		return ctxt;
 
-	if (ctxt)
-		ret = kref_get_unless_zero(&ctxt->kref);
-
-	return ret;
+	return NULL;
 }
 
 static inline u32 hgsl_hnd2id(u32 dev_hnd)
@@ -596,9 +594,6 @@ struct hgsl_context *hgsl_get_context(struct qcom_hgsl *hgsl,
 void hgsl_put_context(struct hgsl_context *ctxt);
 
 int hgsl_db_next_timestamp(struct hgsl_context *ctxt, uint32_t *timestamp);
-
-struct hgsl_context *hgsl_get_context(struct qcom_hgsl *hgsl, uint32_t dev_hnd,
-		uint32_t context_id);
 
 int hgsl_read_timestamp(struct hgsl_context *ctxt, enum gsl_timestamp_type_t type,
 		u32 *timestamp);

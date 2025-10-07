@@ -1007,7 +1007,7 @@ static int hgsl_dbcq_open(struct hgsl_priv *priv,
 		goto err;
 	}
 
-	dbcq->queue_mem = hgsl_mem_node_zalloc(hgsl->default_iocoherency);
+	dbcq->queue_mem = hgsl_mem_node_zalloc(hgsl->cache_flags);
 	if (!dbcq->queue_mem) {
 		LOGE("out of memory");
 		ret = -ENOMEM;
@@ -2312,7 +2312,7 @@ static int hgsl_ioctl_mem_alloc(
 		goto out;
 	}
 
-	mem_node = hgsl_mem_node_zalloc(hgsl->default_iocoherency);
+	mem_node = hgsl_mem_node_zalloc(hgsl->cache_flags);
 	if (mem_node == NULL) {
 		ret = -ENOMEM;
 		goto out;
@@ -2323,7 +2323,6 @@ static int hgsl_ioctl_mem_alloc(
 	ret = hgsl_sharedmem_alloc(hgsl->dev, params->sizebytes, params->flags, mem_node);
 	if (ret)
 		goto out;
-
 	ret = hgsl_hyp_mem_map_smmu(hab_channel, mem_node->memdesc.size, 0, mem_node);
 	LOGD("%d, %d, gpuaddr 0x%llx",
 		ret, mem_node->export_id, mem_node->memdesc.gpuaddr);
@@ -2484,7 +2483,7 @@ static int hgsl_ioctl_mem_map_smmu(
 		goto out;
 	}
 
-	mem_node = hgsl_mem_node_zalloc(hgsl->default_iocoherency);
+	mem_node = hgsl_mem_node_zalloc(hgsl->cache_flags);
 	if (mem_node == NULL) {
 		ret = -ENOMEM;
 		goto out;
@@ -4403,8 +4402,10 @@ static int qcom_hgsl_probe(struct platform_device *pdev)
 	if (!hgsl_dev->db_off)
 		hgsl_init_global_hyp_channel(hgsl_dev);
 
-	hgsl_dev->default_iocoherency = of_property_read_bool(pdev->dev.of_node,
+	hgsl_dev->cache_flags.default_iocoherency = of_property_read_bool(pdev->dev.of_node,
 							"default_iocoherency");
+	hgsl_dev->cache_flags.writecombine_enable = of_property_read_bool(pdev->dev.of_node,
+							"writecombine_enable");
 	platform_set_drvdata(pdev, hgsl_dev);
 	hgsl_sysfs_init(pdev);
 	hgsl_debugfs_init(pdev);

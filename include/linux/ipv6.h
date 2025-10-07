@@ -90,7 +90,7 @@ struct ipv6_devconf {
 
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
-	ANDROID_KABI_RESERVE(4);
+	ANDROID_KABI_BACKPORT_OK(4);
 };
 
 struct ipv6_params {

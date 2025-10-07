@@ -27,3 +27,8 @@
   usbnet_disconnect
   usbnet_suspend
   usbnet_resume
+#scanner
+  v4l2_pipeline_pm_put
+  v4l2_pipeline_pm_get
+  vb2_video_unregister_device
+  v4l2_get_link_freq

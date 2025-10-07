@@ -67,7 +67,7 @@ static void _process_event_group(struct qcom_hgsl *hgsl,
 	 * Sanity check to be sure that we aren't racing with the context
 	 * getting destroyed
 	 */
-	if (WARN_ON(ctxt && !hgsl_context_get(ctxt)))
+	if (WARN_ON(!hgsl_context_get(ctxt)))
 		return;
 
 	spin_lock(&group->lock);
@@ -191,7 +191,7 @@ int hgsl_add_event(struct hgsl_priv *hgsl_priv, struct hgsl_event_group *group,
 		return -ENOMEM;
 
 	/* Get a reference to the context while the event is active */
-	if (ctxt && !hgsl_context_get(ctxt)) {
+	if (!hgsl_context_get(ctxt)) {
 		kmem_cache_free(events_cache, event);
 		return -ENOENT;
 	}
@@ -250,7 +250,7 @@ void hgsl_del_event_group(struct qcom_hgsl *hgsl,
 	WARN_ON(!list_empty(&group->events));
 
 	write_lock(&hgsl->event_groups_lock);
-	list_del(&group->node);
+	list_del_init(&group->node);
 	write_unlock(&hgsl->event_groups_lock);
 }
 
@@ -293,7 +293,7 @@ void hgsl_events_deinit(struct qcom_hgsl *hgsl)
 	write_lock(&hgsl->event_groups_lock);
 	list_for_each_entry_safe(group, tmp, &hgsl->event_groups, node) {
 		WARN_ON(!list_empty(&group->events));
-		list_del(&group->node);
+		list_del_init(&group->node);
 	}
 	write_unlock(&hgsl->event_groups_lock);
 

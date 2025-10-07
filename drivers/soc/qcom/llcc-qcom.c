@@ -82,9 +82,12 @@
 #define LLCC_TRP_ALGO_CFG7            0x21F28 // ALLOC_OTHER_LP_OC_ON_OC
 #define LLCC_TRP_ALGO_CFG8            0x21F30 // ALLOC_VICTIM_PL_ON_UC
 
-#define SLC_SCT_MEM_LAYOUT_VERSION      (0) /* SCT Memory layout version */
+#define SLC_SCT_MEM_LAYOUT_V0           (0) /* SCT Memory layout version 0 */
+#define SLC_SCT_MEM_LAYOUT_V1           (1) /* SCT Memory layout version 1 */
+#define SLC_SCT_MEM_LAYOUT_VERSION      SLC_SCT_MEM_LAYOUT_V0 /* SCT Memory layout version */
 #define SLC_SCT_DONE                    (0x00534354444f4e45) /* SCT programming OK */
 #define SLC_SCT_FAIL                    (0x005343544641494c) /* SCT programming failed */
+#define SLC_SCT_NAME_LEN                (15)
 
 
 /**
@@ -196,6 +199,26 @@ struct slc_sct_status {
 };
 
 /**
+ * slc_sct_details - SCT tables details
+ * @revision:  revision of the SCT table
+ * @name: name of the SCT table
+ */
+struct slc_sct_details {
+	uint8_t revision;
+	char name[SLC_SCT_NAME_LEN];
+};
+
+/**
+ * tcm_mem_details - SC TCM Shared memory details
+ * @is_present: is TCM regions present
+ * @offset: offset of TCM shared memory details
+ */
+struct slc_tcm_mem_info {
+	uint32_t is_present;
+	uint32_t offset;
+};
+
+/**
  * slc_sct_slice_desc - Slice descriptor definition used in shmem
  * @slice_id:  SCID of the slice
  * @usecase_id: Usecase ID of the slice
@@ -216,6 +239,24 @@ struct slc_sct_slice_desc {
  */
 struct slc_sct_mem {
 	struct slc_sct_status sct_status;
+	uint32_t slice_descs_count;
+	uint32_t scid_max;
+	struct slc_sct_slice_desc slice_descs[];
+};
+
+/**
+ * slc_sct_mem_v1 - Shared memory structure V1
+ * @sct_status: Status of SCT programming
+ * @sct_details: Sct revision and name details
+ * @tcm_mem_info: TCM shared memory presence & offset info
+ * @slice_descs_count: Number of slice desc present in SCT
+ * @scid_max: Maximum no. of SCIDs supported
+ * @slice_descs: Array of SCT slice desc
+ */
+struct slc_sct_mem_v1 {
+	struct slc_sct_status sct_status;
+	struct slc_sct_details sct_details;
+	struct slc_tcm_mem_info tcm_mem_info;
 	uint32_t slice_descs_count;
 	uint32_t scid_max;
 	struct slc_sct_slice_desc slice_descs[];
@@ -1563,33 +1604,47 @@ static int qcom_llcc_cfg_program(struct platform_device *pdev)
 static int _qcom_llcc_mem_verification(struct device *dev, struct slc_sct_mem *slc_mem)
 {
 	const struct slc_sct_status *slc_status = &slc_mem->sct_status;
+	const struct slc_sct_mem_v1 *slc_mem_v1 = (struct slc_sct_mem_v1 *)slc_mem;
 
 	if (!slc_status->program_status)
 		return -EPROBE_DEFER;
 
 	if (slc_status->program_status == SLC_SCT_DONE) {
-		if (slc_mem->slice_descs_count <= slc_mem->scid_max) {
+		if ((slc_status->version == SLC_SCT_MEM_LAYOUT_VERSION) &&
+		    slc_mem->slice_descs_count <= slc_mem->scid_max) {
 			dev_info(dev, "SCT initialized with slice descriptor : %d\n",
 					slc_mem->slice_descs_count);
+			return 0;
+		} else if ((slc_status->version == SLC_SCT_MEM_LAYOUT_V1) &&
+			   slc_mem_v1->slice_descs_count <= slc_mem_v1->scid_max) {
+			dev_info(dev, "SCT initialized with slice descriptor : %d\n",
+					slc_mem_v1->slice_descs_count);
 			return 0;
 		}
 
 	} else if (slc_status->program_status == SLC_SCT_FAIL) {
-		if (slc_status->version == SLC_SCT_MEM_LAYOUT_VERSION)
+		switch (slc_status->version) {
+		case SLC_SCT_MEM_LAYOUT_VERSION:
+		case SLC_SCT_MEM_LAYOUT_V1:
 			dev_err(dev, "SCT Initialization failed with error : %d and param: %d\n",
 					slc_status->error.code, slc_status->error.param);
-		else
+			break;
+		default:
 			dev_err(dev, "Error Undefined version\n");
-	} else
+			break;
+		}
+	} else {
 		dev_err(dev, "Unknown SCT Initialization error\n");
+	}
 
+	dev_err(dev, "LLCC memory based init memory verification failed\n");
 	return -EINVAL;
 }
 
 static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 {
 	int ret = -EINVAL;
-	u32 i, sz;
+	u32 i, sz, scid_max;
 	struct slc_sct_slice_desc *memslice;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
@@ -1610,7 +1665,28 @@ static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 	if (ret)
 		goto end;
 
-	sz = slc_mem->slice_descs_count;
+	switch (slc_mem->sct_status.version) {
+	case SLC_SCT_MEM_LAYOUT_VERSION:
+		sz = slc_mem->slice_descs_count;
+		scid_max = slc_mem->scid_max;
+		memslice = &slc_mem->slice_descs[0];
+		break;
+	case SLC_SCT_MEM_LAYOUT_V1:
+		sz = ((struct slc_sct_mem_v1 *)slc_mem)->slice_descs_count;
+		scid_max = ((struct slc_sct_mem_v1 *)slc_mem)->scid_max;
+		memslice = &((struct slc_sct_mem_v1 *)slc_mem)->slice_descs[0];
+
+		dev_dbg(dev, "SCT Table revision: %i\n",
+				((struct slc_sct_mem_v1 *)slc_mem)->sct_details.revision);
+		dev_dbg(dev, "SCT Table name: %s\n",
+				((struct slc_sct_mem_v1 *)slc_mem)->sct_details.name);
+		break;
+	default:
+		dev_err(dev, "Invalid slc_sct_mem version\n");
+		ret = -EINVAL;
+		goto end;
+
+	}
 
 	drv_data->desc = devm_kzalloc(dev, sizeof(struct llcc_slice_desc)*sz, GFP_KERNEL);
 	drv_data->uid_slice_lookup = devm_kzalloc(dev, sizeof(struct llcc_uid_slice_pair)*sz,
@@ -1622,7 +1698,6 @@ static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < sz; i++) {
-		memslice = &slc_mem->slice_descs[i];
 
 		/* Assign slice desc info from shared mem */
 		drv_data->desc[i].slice_id = memslice->slice_id;
@@ -1633,9 +1708,11 @@ static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 
 		/* Add uid slice lookup entry */
 		drv_data->uid_slice_lookup[i].desc = &drv_data->desc[i];
+
+		memslice++;
 	}
 
-	drv_data->bitmap = devm_kcalloc(dev, BITS_TO_LONGS(slc_mem->scid_max),
+	drv_data->bitmap = devm_kcalloc(dev, BITS_TO_LONGS(scid_max),
 					sizeof(unsigned long), GFP_KERNEL);
 	if (!drv_data->bitmap) {
 		ret = -ENOMEM;
@@ -1644,7 +1721,7 @@ static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 
 	drv_data->cfg = NULL;
 	drv_data->cfg_size = sz;
-	drv_data->max_slices = slc_mem->scid_max;
+	drv_data->max_slices = scid_max;
 
 	dev_warn(dev, "llcc slice size not supported and is set to 0\n");
 end:

@@ -26,7 +26,7 @@ static int hgsl_stat_show(struct seq_file *s, void *unused)
 
 	seq_printf(s, "DEVICE INFO:\n"
 		"{ default_iocoherency=%d, db_off=%d, total_mem_size=%lld; }\n",
-		hgsl->default_iocoherency, hgsl->db_off,
+		hgsl->cache_flags.default_iocoherency, hgsl->db_off,
 		atomic64_read(&hgsl->total_mem_size));
 
 	seq_printf(s, "\n%s\n%s\n", "ACTIVE ISYNCS:", "{");

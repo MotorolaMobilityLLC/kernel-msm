@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include "hgsl_memory.h"
@@ -132,7 +132,7 @@ static int hgsl_mem_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 
 	vm_flags_set(vma, VM_DONTDUMP | VM_DONTEXPAND | VM_DONTCOPY);
 	vma->vm_private_data = mem_node;
-	if (!mem_node->default_iocoherency) {
+	if (!mem_node->cache_flags.default_iocoherency) {
 		cache_mode = mem_node->flags & GSL_MEMFLAGS_CACHEMODE_MASK;
 		switch (cache_mode) {
 		case GSL_MEMFLAGS_WRITECOMBINE:
@@ -262,7 +262,8 @@ static int hgsl_mem_dma_buf_vmap(struct dma_buf *dmabuf, struct iosys_map *map)
 		return -EINVAL;
 
 	mutex_lock(&hgsl_map_global_lock);
-	if (!mem_node->default_iocoherency)
+	if ((!mem_node->cache_flags.default_iocoherency) ||
+		(mem_node->cache_flags.writecombine_enable))
 		prot = pgprot_writecombine(prot);
 
 	if (IS_ERR_OR_NULL(mem_node->vmapping))
@@ -612,15 +613,15 @@ void hgsl_sharedmem_free(struct hgsl_mem_node *mem_node)
 
 }
 
-void *hgsl_mem_node_zalloc(bool iocoherency)
+void *hgsl_mem_node_zalloc(struct hgsl_cache_flags cache_flags)
 {
 	struct hgsl_mem_node *mem_node = NULL;
 
 	mem_node = hgsl_zalloc(sizeof(*mem_node));
 	if (mem_node == NULL)
 		goto out;
-
-	mem_node->default_iocoherency = iocoherency;
+	mem_node->cache_flags.default_iocoherency = cache_flags.default_iocoherency;
+	mem_node->cache_flags.writecombine_enable = cache_flags.writecombine_enable;
 
 out:
 	return mem_node;

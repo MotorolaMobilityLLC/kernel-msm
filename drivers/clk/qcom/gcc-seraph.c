@@ -3669,6 +3669,7 @@ static const struct qcom_reset_map gcc_seraph_resets[] = {
 	[GCC_LSR_AXI0_CLK_ARES] = { 0xb3008, 2 },
 	[GCC_LSR_AXI_CV_CPU_CLK_ARES] = { 0xb301c, 2 },
 	[GCC_LSR_BCR] = { 0xb3000 },
+	[GCC_LSR_XO_CLK_ARES] = { 0xb3024, 2 },
 	[GCC_PCIE_0_BCR] = { 0x6b000 },
 	[GCC_PCIE_0_LINK_DOWN_BCR] = { 0x6c014 },
 	[GCC_PCIE_0_NOCSR_COM_PHY_BCR] = { 0x6c020 },

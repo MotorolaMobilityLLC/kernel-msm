@@ -333,8 +333,10 @@ static void hgsl_isync_timeline_release(struct kref *kref)
 					struct hgsl_isync_timeline,
 					kref);
 
-	trace_isync_release(timeline->id);
-	kfree(timeline);
+	if (!IS_ERR_OR_NULL(timeline)) {
+		trace_isync_release(timeline->id);
+		kfree(timeline);
+	}
 }
 
 struct hgsl_isync_timeline *

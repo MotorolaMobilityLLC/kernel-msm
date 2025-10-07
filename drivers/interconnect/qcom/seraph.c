@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  */
 
@@ -758,7 +758,7 @@ static struct qcom_icc_node qhm_qdss_bam = {
 static struct qcom_icc_qosbox qhm_i3c_s_qos = {
 	.regs = icc_qnoc_qos_regs[ICC_QNOC_QOSGEN_TYPE_RPMH],
 	.num_ports = 1,
-	.offsets = { 0x2a000 },
+	.offsets = { 0x2a080 },
 	.config = &(struct qos_config) {
 		.prio = 2,
 		.urg_fwd = 0,

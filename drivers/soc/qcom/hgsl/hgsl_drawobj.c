@@ -97,9 +97,6 @@ static void syncobj_timer(struct timer_list *t)
 	struct hgsl_drawobj_sync_event *event;
 	unsigned int i;
 
-	if (syncobj == NULL)
-		return;
-
 	drawobj = DRAWOBJ(syncobj);
 	if (!kref_get_unless_zero(&drawobj->refcount))
 		return;
@@ -516,16 +513,20 @@ int hgsl_drawobj_add_timeline(struct hgsl_priv *hgsl_priv,
 	if (!cmd.count)
 		return -EINVAL;
 
+	/* Get the last queued timestamp on the drawobj context */
+	ret = hgsl_read_timestamp(ctxt, GSL_TIMESTAMP_QUEUED, &queued);
+	if (ret)
+		return ret;
+
+	/*
+	 * Allocate memory for timelines after validating timestamp
+	 * to avoid unnecessary allocation.
+	 */
 	timelineobj->timelines = kvcalloc(cmd.count,
 		sizeof(*timelineobj->timelines),
 		GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN);
 	if (!timelineobj->timelines)
 		return -ENOMEM;
-
-	/* Get the last queued timestamp on the drawobj context */
-	ret = hgsl_read_timestamp(ctxt, GSL_TIMESTAMP_QUEUED, &queued);
-	if (ret)
-		return ret;
 
 	src = USRPTR(cmd.timelines);
 	for (i = 0; i < cmd.count; i++) {

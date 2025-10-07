@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
 /*
- * Copyright (c) 2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _DT_BINDINGS_CLK_QCOM_LSR_CC_SERAPH_H
@@ -32,5 +32,6 @@
 #define LSR_CC_MVS0_FREERUN_CLK_ARES				4
 #define LSR_CC_MVS0C_CLK_ARES					5
 #define LSR_CC_MVS0C_FREERUN_CLK_ARES				6
+#define LSR_CC_XO_CLK_ARES					7
 
 #endif

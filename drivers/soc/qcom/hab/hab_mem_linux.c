@@ -376,9 +376,41 @@ err:
 	return ERR_PTR(ret);
 }
 
+static int habmem_prepare_lb_mem(struct export_desc_super *exp_super,
+		struct mem_share_metadata *metadata,
+		uint32_t *data_size)
+{
+	struct pages_list *pglist = NULL;
+	struct page **pages = NULL;
+	struct exp_platform_data *platform_data =
+		(struct exp_platform_data *) exp_super->platform_data;
+	struct dma_buf *dmabuf = (struct dma_buf *) platform_data->dmabuf;
+
+	if (dmabuf->ops != &dma_buf_ops) {
+		pr_err("cannot loopback unrecognized memory buf, not imported by HAB\n");
+		return -EINVAL;
+	}
+
+	pglist = dmabuf->priv;
+	pages = pglist->pages;
+	if (pglist->type != HAB_PAGE_LIST_IMPORT) {
+		pr_err("cannot loopback export type memory buf\n");
+		return -EINVAL;
+	}
+
+	metadata->lb_mem.origin_exp_id = pglist->export_id;
+	metadata->lb_mem.origin_mmid = pglist->pchan->habdev->id;
+	metadata->lb_mem.reserved = 0U;
+	pr_debug("assemble lb memory, origin expid %u, mmid %d\n",
+		pglist->export_id, pglist->pchan->habdev->id);
+	*data_size = (uint32_t)sizeof(struct lb_mem_info);
+
+	return 0;
+}
+
 static int habmem_compress_pfns(
 		struct export_desc_super *exp_super,
-		struct compressed_pfns *pfns,
+		struct mem_share_metadata *metadata,
 		uint32_t *data_size,
 		int dev_idx)
 {
@@ -399,7 +431,7 @@ static int habmem_compress_pfns(
 	unsigned long page_offset;
 	uint32_t spage_size = 0;
 
-	if (IS_ERR_OR_NULL(dmabuf) || !pfns || !data_size)
+	if (IS_ERR_OR_NULL(dmabuf) || !metadata || !data_size)
 		return -EINVAL;
 
 	pr_debug("dmabuf size: %u, page_count: %d\n", dmabuf->size, page_count);
@@ -444,59 +476,63 @@ static int habmem_compress_pfns(
 
 			page = sg_page(s);
 			if (j == 0) {
-				pfns->first_pfn = page_to_pfn(nth_page(page,
+				metadata->pfns.first_pfn = page_to_pfn(nth_page(page,
 							page_offset));
 			} else {
-				pfns->region[j-1].space =
+				metadata->pfns.region[j-1].space =
 					page_to_pfn(nth_page(page, 0)) -
 					page_to_pfn(pre_page) - 1;
 				pr_debug("j %d, space %d, ppfn %lu, pfn %lu\n",
-					j, pfns->region[j-1].space,
+					j, metadata->pfns.region[j-1].space,
 					page_to_pfn(pre_page),
 					page_to_pfn(nth_page(page, 0)));
 			}
 
-			pfns->region[j].size = spage_size - page_offset;
-			if (pfns->region[j].size >= page_count) {
-				pfns->region[j].size = page_count;
-				pfns->region[j].space = 0;
+			metadata->pfns.region[j].size = spage_size - page_offset;
+			if (metadata->pfns.region[j].size >= page_count) {
+				metadata->pfns.region[j].size = page_count;
+				metadata->pfns.region[j].space = 0;
 				break;
 			}
 
-			page_count -= pfns->region[j].size;
-			pre_page = nth_page(page, pfns->region[j].size - 1);
+			page_count -= metadata->pfns.region[j].size;
+			pre_page = nth_page(page, metadata->pfns.region[j].size - 1);
 			page_offset = 0;
 			j++;
 		}
-		pfns->nregions = j+1;
+		metadata->pfns.nregions = j+1;
 	} else {
 		pglist = dmabuf->priv;
 		pages = pglist->pages;
+		if (pglist->type == HAB_PAGE_LIST_IMPORT) {
+			pr_err("missing loopback flag? or incorrect memory handle\n");
+			return -EINVAL;
+		}
 
-		pfns->first_pfn = page_to_pfn(pages[0]);
+		metadata->pfns.first_pfn = page_to_pfn(pages[0]);
 		for (i = 1; i < page_count; i++) {
 			if ((page_to_pfn(pages[i]) - 1) ==
 					page_to_pfn(pages[i-1])) {
 				region_size++;
 			} else {
-				pfns->region[j].size = region_size;
-				pfns->region[j].space =
+				metadata->pfns.region[j].size = region_size;
+				metadata->pfns.region[j].space =
 					page_to_pfn(pages[i]) -
 					page_to_pfn(pages[i-1]) - 1;
 				j++;
 				region_size = 1;
 			}
 		}
-		pfns->region[j].size = region_size;
-		pfns->region[j].space = 0;
-		pfns->nregions = j+1;
+		metadata->pfns.region[j].size = region_size;
+		metadata->pfns.region[j].space = 0;
+		metadata->pfns.nregions = j+1;
 	}
 
 	*data_size = sizeof(struct compressed_pfns) +
-		sizeof(struct region) * pfns->nregions;
+		sizeof(struct region) * metadata->pfns.nregions;
 
 	pr_debug("first_pfn %lu, nregions %d, data_size %u\n",
-			pfns->first_pfn, pfns->nregions, *data_size);
+			metadata->pfns.first_pfn, metadata->pfns.nregions, *data_size);
 	return 0;
 err:
 	if (!IS_ERR_OR_NULL(attach)) {
@@ -522,14 +558,19 @@ static int habmem_add_export_compress(struct virtual_channel *vchan,
 	struct export_desc *exp = NULL;
 	struct export_desc_super *exp_super = NULL;
 	struct exp_platform_data *platform_data = NULL;
-	struct compressed_pfns *pfns = NULL;
-	uint32_t sizebytes = sizeof(*exp_super) +
+	struct mem_share_metadata *metadata = NULL;
+	uint32_t sizebytes;
+
+	if (flags & HABMM_EXP_MEM_TYPE_LOOPBACK)
+		sizebytes = (uint32_t)sizeof(*exp_super) + (uint32_t)sizeof(struct lb_mem_info);
+	else
+		sizebytes = sizeof(*exp_super) +
 				sizeof(struct compressed_pfns) +
 				page_count * sizeof(struct region);
 
-	pr_debug("exp_desc %zu, comp_pfns %zu, region %zu, page_count %d\n",
+	pr_debug("exp_desc %zu, comp_metadata %zu, region %zu, page_count %d\n",
 		sizeof(struct export_desc),
-		sizeof(struct compressed_pfns),
+		sizeof(struct mem_share_metadata),
 		sizeof(struct region), page_count);
 
 	exp_super = habmem_add_export(vchan,
@@ -554,7 +595,10 @@ static int habmem_add_export_compress(struct virtual_channel *vchan,
 	exp_super->platform_data = (void *)platform_data;
 	kref_init(&exp_super->refcount);
 
-	pfns = (struct compressed_pfns *)&exp->payload[0];
+	metadata = (struct mem_share_metadata *)&exp->payload[0];
+	if (unlikely(exp_super->is_loopback))
+		ret = habmem_prepare_lb_mem(exp_super, metadata, payload_size);
+	else
 	/*
 	 * always use the mmid group specific device to attach to the dma-buf
 	 * the mmid_grp_index in ctx cannot be used because:
@@ -562,9 +606,10 @@ static int habmem_add_export_compress(struct virtual_channel *vchan,
 	 *    lack of permission to the specific /dev/hab-xxx entry (fallback).
 	 * 2. The dma_coherent attribute cannot be managed per MMID group.
 	 */
-	ret = habmem_compress_pfns(exp_super, pfns, payload_size, (vchan->pchan->habdev->id / 100));
+		ret = habmem_compress_pfns(exp_super, metadata, payload_size,
+			(vchan->pchan->habdev->id / 100));
 	if (ret) {
-		pr_err("hab compressed pfns failed %d\n", ret);
+		pr_err("%x compressed metadata failed %d\n", vchan->id, ret);
 		*payload_size = 0;
 		goto err_compress_pfns;
 	}
@@ -610,8 +655,11 @@ int habmem_hyp_grant_user(struct virtual_channel *vchan,
 					page_count, &off);
 	else if (HABMM_EXPIMP_FLAGS_FD & flags)
 		dmabuf = dma_buf_get(address);
-	else
+	else if ((HABMM_EXP_MEM_TYPE_LOOPBACK & flags) == 0)
 		dmabuf = habmem_get_dma_buf_from_uva(address, page_count);
+	else
+		pr_err("%x Cannot loopback memory via uva without existing dma-buf\n",
+			vchan->id);
 
 	if (IS_ERR_OR_NULL(dmabuf))
 		return -EINVAL;
@@ -656,7 +704,7 @@ int habmem_hyp_grant(struct virtual_channel *vchan,
 			get_dma_buf(dmabuf);
 	} else if (HABMM_EXPIMP_FLAGS_FD & flags)
 		dmabuf = dma_buf_get(address);
-	else { /*Input is kva;*/
+	else if ((HABMM_EXP_MEM_TYPE_LOOPBACK & flags) == 0) { /*Input is kva;*/
 		pages = vmalloc((page_count *
 				sizeof(struct page *)));
 		if (!pages) {
@@ -691,7 +739,9 @@ int habmem_hyp_grant(struct virtual_channel *vchan,
 		exp_info.flags = O_RDWR;
 		exp_info.priv = pglist;
 		dmabuf = dma_buf_export(&exp_info);
-	}
+	} else
+		pr_err("%x Cannot loopback memory via kva without existing dma-buf\n",
+			vchan->id);
 
 	if (IS_ERR_OR_NULL(dmabuf)) {
 		pr_err("dmabuf get failed %d\n", PTR_ERR(dmabuf));
@@ -724,14 +774,16 @@ int habmem_exp_release(struct export_desc_super *exp_super)
 	struct sg_table *sg_table = NULL;
 
 	if (!IS_ERR_OR_NULL(dmabuf)) {
-		attach = (struct dma_buf_attachment *) platform_data->attach;
-		if (!IS_ERR_OR_NULL(attach)) {
-			sg_table = (struct sg_table *) platform_data->sg_table;
-			if (!IS_ERR_OR_NULL(sg_table))
-				dma_buf_unmap_attachment(attach,
-						sg_table,
-						DMA_BIDIRECTIONAL);
-			dma_buf_detach(dmabuf, attach);
+		if (!exp_super->is_loopback) {
+			attach = (struct dma_buf_attachment *) platform_data->attach;
+			if (!IS_ERR_OR_NULL(attach)) {
+				sg_table = (struct sg_table *) platform_data->sg_table;
+				if (!IS_ERR_OR_NULL(sg_table))
+					dma_buf_unmap_attachment(attach,
+							sg_table,
+							DMA_BIDIRECTIONAL);
+				dma_buf_detach(dmabuf, attach);
+			}
 		}
 		dma_buf_put(dmabuf);
 	} else
@@ -996,6 +1048,59 @@ static struct dma_buf_ops dma_buf_ops = {
 	.vunmap = hab_mem_dma_buf_vunmap,
 };
 
+static struct dma_buf *habmem_get_lb_dmabuf(struct export_desc *exp)
+{
+	struct dma_buf *dmabuf = NULL;
+	struct export_desc *origin_exp_desc;
+	struct export_desc_super *origin_exp_super;
+	uint32_t origin_exp_id;
+	int origin_mmid;
+	struct mem_share_metadata *metadata;
+	struct hab_device *dev;
+	struct physical_channel *origin_pchan;
+	struct exp_platform_data *platform_data = NULL;
+
+	/* extract exp_id and pchan */
+	metadata = (struct mem_share_metadata *)exp->payload;
+	origin_exp_id = metadata->lb_mem.origin_exp_id;
+	origin_mmid = metadata->lb_mem.origin_mmid;
+	pr_debug("importing lb mem, origin expid %u, mmid %d\n", origin_exp_id, origin_mmid);
+	dev = find_hab_device(origin_mmid);
+	if (dev == NULL) {
+		pr_err("invalid mmid %d, hab dev not found\n", origin_mmid);
+		goto out;
+	}
+
+	/* loopback memory is received from BE, FE does not care the VMID due to always 0 */
+	origin_pchan = hab_pchan_find_domid(dev, HABCFG_VMID_DONT_CARE);
+	if (origin_pchan == NULL) {
+		pr_err("pchan not found for lb mem\n");
+		goto out;
+	}
+
+	spin_lock_bh(&origin_pchan->expid_lock);
+	origin_exp_desc = idr_find(&origin_pchan->expid_idr, origin_exp_id);
+	if (origin_exp_desc == NULL) {
+		spin_unlock_bh(&origin_pchan->expid_lock);
+		pr_err("lb mem not found, expid %u, mmid %d\n", origin_exp_id, origin_mmid);
+		hab_pchan_put(origin_pchan);
+		goto out;
+	}
+
+	origin_exp_super = container_of(origin_exp_desc, struct export_desc_super, exp);
+	platform_data = (struct exp_platform_data *)origin_exp_super->platform_data;
+	dmabuf = platform_data->dmabuf;
+	if (dmabuf)
+		get_dma_buf(dmabuf);
+	else
+		pr_err("invalid exp desc, NULL dmabuf pointer\n");
+	spin_unlock_bh(&origin_pchan->expid_lock);
+	hab_pchan_put(origin_pchan);
+
+out:
+	return dmabuf;
+}
+
 static struct dma_buf *habmem_import_to_dma_buf(
 	struct physical_channel *pchan,
 	struct export_desc *exp,
@@ -1003,29 +1108,34 @@ static struct dma_buf *habmem_import_to_dma_buf(
 {
 	struct pages_list *pglist = NULL;
 	struct dma_buf *dmabuf = NULL;
+	struct export_desc_super *exp_super = container_of(exp, struct export_desc_super, exp);
 	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
 
-	pglist = pages_list_lookup(exp->export_id, pchan, true);
-	if (pglist)
-		goto buffer_ready;
+	if (exp_super->is_loopback)
+		dmabuf = habmem_get_lb_dmabuf(exp);
+	else {
+		pglist = pages_list_lookup(exp->export_id, pchan, true);
+		if (pglist)
+			goto buffer_ready;
 
-	pglist = pages_list_create(exp, userflags);
-	if (IS_ERR(pglist))
-		return (void *)pglist;
+		pglist = pages_list_create(exp, userflags);
+		if (IS_ERR(pglist))
+			return (void *)pglist;
 
-	pages_list_add(pglist);
-	pglist->type = HAB_PAGE_LIST_IMPORT;
+		pages_list_add(pglist);
+		pglist->type = HAB_PAGE_LIST_IMPORT;
 
 buffer_ready:
-	exp_info.ops = &dma_buf_ops;
-	exp_info.size = pglist->npages << PAGE_SHIFT;
-	exp_info.flags = O_RDWR;
-	exp_info.priv = pglist;
-	dmabuf = dma_buf_export(&exp_info);
-	if (IS_ERR(dmabuf)) {
-		pr_err("export to dmabuf failed, exp %d, pchan %s\n",
-			exp->export_id, pchan->name);
-		pages_list_put(pglist);
+		exp_info.ops = &dma_buf_ops;
+		exp_info.size = pglist->npages << PAGE_SHIFT;
+		exp_info.flags = O_RDWR;
+		exp_info.priv = pglist;
+		dmabuf = dma_buf_export(&exp_info);
+		if (IS_ERR(dmabuf)) {
+			pr_err("export to dmabuf failed, exp %d, pchan %s\n",
+				exp->export_id, pchan->name);
+			pages_list_put(pglist);
+		}
 	}
 
 	return dmabuf;
@@ -1136,40 +1246,49 @@ int habmm_imp_hyp_unmap(void *imp_ctx, struct export_desc *exp, long fcnt_idle)
 	int ret = 0;
 	struct dma_buf *buf;
 	long cnt;
+	struct export_desc_super *exp_super = container_of(exp, struct export_desc_super, exp);
 
 	buf = (struct dma_buf *)exp->kva;
 	if (buf == NULL)
 		ret = -EINVAL;
 	else {
-		/*
-		* mmap/sharing fd would increase the file count.
-		* A file with its count value higher than expected indicates that the
-		* memory is still in use out there.
-		* In the current design, strong unimport semantic, HAB unimport invoker should
-		* ensure the memory is not in use anymore before calling unimport.
-		*
-		* Thus, HAB driver can check the memory in use status by reading the dma-buf file
-		* count. Meanwhile, HAB driver/uhab is the last one to decrease count from 1 to 0.
-		* HAB driver then can notify the remote OS that the buf is not needed by the local
-		* OS. The unimport message is sent immediately, rather than waiting for the dma-buf
-		* file release, if the current function returned successfully.
-		* It ensures all of the unimport actions are finished as early as possible because
-		* the file release callback is usually deferred.
-		*/
-		cnt = file_count(buf->file);
-		if (cnt > fcnt_idle) {
-			ret = -EBUSY;
-			pr_err("the buf (exp id %u) still in use on %x, refcnt %ld, expect %d\n",
-				exp->export_id, exp->vcid_local, cnt, fcnt_idle);
-		} else if (cnt < fcnt_idle) {
-			ret = -ENOENT;
-			pr_err("the dmabuf (exp id %u) cnt is invalid %ld, expect %d, vcid %X\n",
-			    exp->export_id, cnt, fcnt_idle, exp->vcid_local);
+		if (!exp_super->is_loopback) {
+			/*
+			 * mmap/sharing fd would increase the file count.
+			 * A file with its count value higher than expected indicates that the
+			 * memory is still in use out there.
+			 * In the current design, strong unimport semantic, HAB unimport invoker
+			 * should ensure the memory is not in use anymore before calling unimport.
+			 *
+			 * Thus, HAB driver can check the memory in use status by reading the
+			 * dma-buf file count. Meanwhile, HAB driver/uhab is the last one to
+			 * decrease count from 1 to 0. HAB driver then can notify the remote OS
+			 * that the buf is not needed by the local OS. The unimport message is
+			 * sent immediately, rather than waiting for the dma-buf file release,
+			 * if the current function returned successfully. It ensures all of the
+			 * unimport actions are finished as early as possible because the file
+			 * release callback is usually deferred.
+			 */
+			cnt = file_count(buf->file);
+			if (cnt > fcnt_idle) {
+				ret = -EBUSY;
+				pr_err("the buf (exp id %u) still in use on %x, refcnt %ld, expect %d\n",
+					exp->export_id, exp->vcid_local, cnt, fcnt_idle);
+			} else if (cnt < fcnt_idle) {
+				ret = -ENOENT;
+				pr_err("the dmabuf (exp id %u) cnt is invalid %ld, expect %d, vcid %X\n",
+					exp->export_id, cnt, fcnt_idle, exp->vcid_local);
+			} else {
+				exp->kva = NULL;
+				dma_buf_put(buf);
+				pr_debug("dmabuf put for exp id %d on %x\n",
+					exp->export_id, exp->vcid_local);
+			}
 		} else {
-			exp->kva = NULL;
-			dma_buf_put(buf);
-			pr_debug("dmabuf put for exp id %d on %x\n",
+			/* loopback memory */
+			pr_debug("unimport lb memory expid %u on %x\n",
 				exp->export_id, exp->vcid_local);
+			dma_buf_put(buf);
 		}
 	}
 
