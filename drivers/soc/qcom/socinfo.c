@@ -606,6 +606,8 @@ static const struct soc_id soc_id[] = {
 	{ 700, "SG_CLIFFS7P" },
 	{ 549, "ANORAK" },
 	{ 554, "NEO-LA" },
+	{ 739, "ALISO-SG" },
+	{ 740, "ALISO-SG2" },
 	{ 525, "NEO-LE" },
 	{ 579, "NEO-LA-V2" },
 	{ 645, "QCM_PINEAPPLE" },
