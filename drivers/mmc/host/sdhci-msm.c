@@ -4653,6 +4653,7 @@ static unsigned int sdhci_msm_get_sup_clk_rate(struct sdhci_host *host,
 	return sup_clk;
 }
 
+#ifdef CONFIG_SMP
 /**
  * sdhci_msm_irq_affinity_notify - Callback for affinity changes
  * @notify: context as to what irq was changed
@@ -4694,7 +4695,7 @@ sdhci_msm_irq_affinity_notify(struct irq_affinity_notify *notify,
 	sdhci_msm_vote_pmqos(msm_host->mmc,
 			msm_host->sdhci_qos->active_mask);
 }
-
+#endif
 /**
  * sdhci_msm_irq_affinity_release - Callback for affinity notifier release
  * @ref: internal core kernel usage
@@ -4713,13 +4714,14 @@ static int sdhci_msm_setup_qos(struct sdhci_msm_host *msm_host)
 	struct platform_device *pdev = msm_host->pdev;
 	struct sdhci_msm_qos_req *qr = msm_host->sdhci_qos;
 	struct qos_cpu_group *qcg = qr->qcg;
-	struct mmc_host *mmc = msm_host->mmc;
-	struct sdhci_host *host = mmc_priv(mmc);
 	int i, err;
 
 	if (!msm_host->sdhci_qos)
 		return 0;
 
+#ifdef CONFIG_SMP
+	struct mmc_host *mmc = msm_host->mmc;
+	struct sdhci_host *host = mmc_priv(mmc);
 	/* Affine irq to first set of mask */
 	WARN_ON(irq_set_affinity_hint(host->irq, &qcg->mask));
 
@@ -4727,6 +4729,7 @@ static int sdhci_msm_setup_qos(struct sdhci_msm_host *msm_host)
 	msm_host->affinity_notify.notify = sdhci_msm_irq_affinity_notify;
 	msm_host->affinity_notify.release = sdhci_msm_irq_affinity_release;
 	irq_set_affinity_notifier(host->irq, &msm_host->affinity_notify);
+#endif
 
 	for (i = 0; i < qr->num_groups; i++, qcg++) {
 		qcg->qos_req = kcalloc(cpumask_weight(&qcg->mask),
