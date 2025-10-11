@@ -33,6 +33,13 @@ config BLANC_DTB
     help
         Only include Motorola Leap device specific device tree.
 
+config AVR_DTB
+    depends on MMI_DEVICE_DTBS
+    default n
+    bool "Motorola Mobility Aviator Device DTB"
+    help
+        Only include Motorola Aviator device specific device tree.
+
 config CCI_DEBUG_INTF
 	default n
 	bool "enable cci debug"
