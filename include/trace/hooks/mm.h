@@ -578,9 +578,6 @@ DECLARE_HOOK(android_vh_copy_page_from_user,
 DECLARE_HOOK(android_vh_page_private_mod,
 	TP_PROTO(struct page *page, unsigned long private),
 	TP_ARGS(page, private));
-DECLARE_HOOK(android_vh_cma_alloc_fail,
-	TP_PROTO(char *name, unsigned long count, unsigned long req_count),
-	TP_ARGS(name, count, req_count));
 DECLARE_HOOK(android_vh_filemap_map_pages_range,
 	TP_PROTO(struct file *file, pgoff_t orig_start_pgoff,
 		pgoff_t last_pgoff, vm_fault_t ret),
