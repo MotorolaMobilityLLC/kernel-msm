@@ -82,7 +82,6 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_do_sched_yield);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_before_do_sched_yield);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_sched_fork_init);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_ttwu_cond);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_schedule_bug);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_sched_exec);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_update_topology_flags_workfn);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_update_thermal_stats);
