@@ -88,6 +88,12 @@ config MOT_DRV_OIS_AFTER_SALES_SERVICE
 	help
 	  This is enabling OIS_AFTER_SALES_SERVICE.
 
+config MOT_DRV_OIS_MODIFY_VDDIO
+        default n
+        bool "enable OIS modify vddio"
+        help
+          This is enabling OIS modify vddio.
+
 config MOT_SENSOR_PRE_POWERUP
 	default n
 	bool "enable camera sensor pre powerup"
