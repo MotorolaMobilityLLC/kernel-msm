@@ -3388,17 +3388,12 @@ static int geni_i2c_runtime_resume(struct device *dev)
 			return ret;
 		}
 
-		ret = geni_icc_set_bw(&gi2c->i2c_rsc);
+		ret = geni_common_icc_set_bw(&gi2c->i2c_rsc, gi2c->ipcl);
 		if (ret) {
 			I2C_LOG_ERR(gi2c->ipcl, true, gi2c->dev,
 			"%s failing at icc set bw ret=%d\n", __func__, ret);
 			return ret;
 		}
-		I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
-			"%s: GENI_TO_CORE:%d CPU_TO_GENI:%d GENI_TO_DDR:%d\n",
-			__func__, gi2c->i2c_rsc.icc_paths[GENI_TO_CORE].avg_bw,
-			gi2c->i2c_rsc.icc_paths[CPU_TO_GENI].avg_bw,
-			gi2c->i2c_rsc.icc_paths[GENI_TO_DDR].avg_bw);
 
 skip_bw_vote:
 		if (gi2c->is_i2c_hub) {
