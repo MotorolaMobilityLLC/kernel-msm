@@ -469,10 +469,6 @@ DECLARE_RESTRICTED_HOOK(android_rvh_update_blocked_fair,
 
 struct sched_attr;
 
-DECLARE_HOOK(android_vh_set_sugov_sched_attr,
-	TP_PROTO(struct sched_attr *attr),
-	TP_ARGS(attr));
-
 DECLARE_RESTRICTED_HOOK(android_rvh_set_iowait,
 	TP_PROTO(struct task_struct *p, struct rq *rq, int *should_iowait_boost),
 	TP_ARGS(p, rq, should_iowait_boost), 1);
