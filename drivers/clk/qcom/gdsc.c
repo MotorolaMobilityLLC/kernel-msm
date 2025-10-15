@@ -484,7 +484,7 @@ static void gdsc_pm_subdomain_remove(struct gdsc_desc *desc, size_t num)
 int gdsc_register(struct gdsc_desc *desc,
 		  struct reset_controller_dev *rcdev, struct regmap *regmap)
 {
-	int i, ret;
+	int i, ret = 0;
 	struct genpd_onecell_data *data;
 	struct device *dev = desc->dev;
 	struct gdsc **scs = desc->scs;
