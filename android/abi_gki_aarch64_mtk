@@ -90,6 +90,7 @@
   __bitmap_xor
   bitmap_zalloc
   bit_wait
+  bit_wait_io
   bit_wait_timeout
   __blk_alloc_disk
   blkdev_get_by_dev
@@ -296,6 +297,7 @@
   crc8
   crc8_populate_msb
   crc_ccitt
+  cred_fscmp
   crypto_aead_decrypt
   crypto_aead_encrypt
   crypto_aead_setauthsize
@@ -338,6 +340,7 @@
   dapm_kcontrol_get_value
   dapm_regulator_event
   datagram_poll
+  d_delete
   deactivate_task
   debugfs_attr_read
   debugfs_attr_write
@@ -644,6 +647,7 @@
   disable_irq
   disable_irq_nosync
   disable_percpu_irq
+  d_lookup
   dma_alloc_attrs
   dma_alloc_pages
   dma_async_device_register
@@ -727,6 +731,7 @@
   dma_unmap_resource
   dma_unmap_sg_attrs
   dma_vmap_noncontiguous
+  d_obtain_root
   do_trace_netlink_extack
   double_rq_lock
   do_wait_intr_irq
@@ -742,6 +747,7 @@
   down_write
   down_write_killable
   d_path
+  d_prune_aliases
   dput
   dql_completed
   dql_reset
@@ -943,6 +949,7 @@
   em_dev_register_perf_domain
   enable_irq
   enable_percpu_irq
+  errseq_sample
   ether_setup
   eth_header
   eth_header_cache
@@ -1003,9 +1010,13 @@
   __folio_lock
   __folio_put
   folio_wait_bit
+  folio_wait_bit_killable
+  folio_wait_private_2_killable
+  folio_wait_writeback
   follow_pfn
   font_vga_8x16
   for_each_kernel_tracepoint
+  forget_all_cached_acls
   fortify_panic
   fput
   __fput_sync
@@ -1015,6 +1026,7 @@
   frame_vector_destroy
   frame_vector_to_pages
   frame_vector_to_pfns
+  free_anon_bdev
   free_contig_range
   free_io_pgtable_ops
   free_iova_fast
@@ -1033,11 +1045,13 @@
   freq_qos_remove_request
   freq_qos_update_request
   fs_bio_set
+  fs_context_for_submount
   fsg_common_create_luns
   fsg_common_set_cdev
   fsg_common_set_inquiry_string
   fsg_common_set_sysfs
   fsg_config_from_params
+  fs_param_is_enum
   fw_devlink_purge_absent_suppliers
   fwnode_device_is_available
   fwnode_get_name
@@ -1064,6 +1078,7 @@
   generic_handle_domain_irq
   generic_handle_irq
   generic_handle_irq_safe
+  generic_parse_monolithic
   genlmsg_multicast_allns
   genlmsg_put
   genl_register_family
@@ -1508,6 +1523,7 @@
   kvfree
   kvfree_call_rcu
   kvmalloc_node
+  lcm
   led_classdev_flash_register_ext
   led_classdev_flash_unregister
   led_get_flash_fault
@@ -1533,12 +1549,19 @@
   list_sort
   __local_bh_enable_ip
   lock_sock_nested
+  locks_copy_lock
+  locks_delete_block
+  locks_init_lock
+  locks_release_private
   log_post_read_mmio
   log_post_write_mmio
   log_read_mmio
   log_threaded_irq_wakeup_reason
   log_write_mmio
+  lookup_constant
+  lookup_one_len
   loops_per_jiffy
+  mark_mounts_for_expiry
   mas_empty_area_rev
   mas_find
   match_hex
@@ -1656,6 +1679,8 @@
   mmc_wait_for_req
   __mmdrop
   mmput
+  mntget
+  mnt_set_expiry
   mod_delayed_work_on
   mod_node_page_state
   mod_timer
@@ -1893,6 +1918,7 @@
   page_pool_destroy
   page_pool_put_defragged_page
   page_pool_release_page
+  page_put_link
   panic
   panic_notifier_list
   param_array_ops
@@ -2139,6 +2165,7 @@
   pm_wakeup_dev_event
   pm_wakeup_ws_event
   pm_wq
+  posix_acl_create
   power_supply_changed
   power_supply_get_by_name
   power_supply_get_drvdata
@@ -2162,6 +2189,7 @@
   proc_create_net_single
   proc_create_seq_private
   proc_create_single_data
+  proc_dobool
   proc_dointvec_jiffies
   proc_dointvec_minmax
   proc_doulongvec_minmax
@@ -2190,6 +2218,7 @@
   __put_cred
   put_device
   put_disk
+  put_fs_context
   __put_net
   put_pid
   __put_task_struct
@@ -2345,6 +2374,7 @@
   remove_proc_entry
   remove_proc_subtree
   remove_wait_queue
+  rename_lock
   report_iommu_fault
   request_firmware
   request_firmware_direct
@@ -2467,7 +2497,11 @@
   sdio_writeb
   sdio_writel
   sdio_writesb
+  security_d_instantiate
   security_file_ioctl
+  security_sb_clone_mnt_opts
+  security_sb_mnt_opts_compat
+  security_sb_set_mnt_opts
   security_sk_classify_flow
   security_sk_clone
   security_sock_graft
@@ -2476,6 +2510,7 @@
   seq_hex_dump
   seq_hlist_next
   seq_hlist_start_head
+  seq_list_start_head
   seq_lseek
   seq_open
   seq_open_private
@@ -2507,6 +2542,7 @@
   serial8250_rpm_put
   serial8250_suspend_port
   serial8250_unregister_port
+  setattr_should_drop_sgid
   set_capacity
   set_capacity_and_notify
   set_cpus_allowed_ptr
@@ -2542,10 +2578,13 @@
   simple_attr_release
   simple_attr_write
   simple_dentry_operations
+  simple_nosetlease
   simple_open
   simple_read_from_buffer
   simple_rmdir
   simple_strtoul
+  simple_transaction_get
+  simple_transaction_release
   simple_unlink
   simple_write_to_buffer
   single_open
@@ -2779,7 +2818,9 @@
   strstr
   submit_bio
   submit_bio_wait
+  super_setup_bdi_name
   suspend_set_ops
+  swapcache_mapping
   __sw_hweight16
   __sw_hweight32
   __sw_hweight64
@@ -3494,7 +3535,12 @@
   vchan_tx_submit
   verify_pkcs7_signature
   vfree
+  vfs_cancel_lock
+  vfs_create_mount
+  vfs_get_tree
   vfs_llseek
+  vfs_lock_file
+  vfs_test_lock
   video_devdata
   video_device_alloc
   video_device_release
@@ -3585,6 +3631,7 @@
   woken_wake_function
   work_busy
   work_on_cpu
+  write_cache_pages
   __write_overflow_field
   ww_mutex_lock
   ww_mutex_trylock
