@@ -471,6 +471,7 @@
   devlink_register
   devlink_unregister
   dev_load
+  dev_lstats_read
   devm_add_action
   devm_alloc_etherdev_mqs
   __devm_alloc_percpu
@@ -836,6 +837,7 @@
   drm_display_mode_from_videomode
   drm_display_mode_to_videomode
   drm_edid_duplicate
+  drm_edid_free
   drm_edid_get_monitor_name
   drm_edid_to_sad
   drm_encoder_cleanup
@@ -3470,6 +3472,7 @@
   videomode_from_timing
   __video_register_device
   video_unregister_device
+  virtio_transport_max_vsock_pkt_buf_size
   virtqueue_add_inbuf
   virtqueue_add_outbuf
   virtqueue_detach_unused_buf
@@ -3510,10 +3513,12 @@
   vsock_addr_init
   vsock_addr_unbind
   vsock_addr_validate
+  vsock_add_tap
   vsock_core_register
   vsock_core_unregister
   vsock_deliver_tap
   vsock_for_each_connected_socket
+  vsock_remove_tap
   vsprintf
   vunmap
   vzalloc

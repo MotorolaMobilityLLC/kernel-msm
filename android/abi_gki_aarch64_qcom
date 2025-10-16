@@ -50,6 +50,7 @@
   argv_free
   argv_split
   arm64_use_ng_mappings
+  arm_smccc_1_1_get_conduit
   __arm_smccc_smc
   __arm_smccc_sve_check
   async_schedule_node
@@ -672,6 +673,7 @@
   __devm_regmap_init_spmi_ext
   devm_regulator_bulk_get
   devm_regulator_get
+  devm_regulator_get_enable_optional
   devm_regulator_get_exclusive
   devm_regulator_get_optional
   devm_regulator_put
@@ -1228,8 +1230,11 @@
   genlmsg_put
   genl_register_family
   genl_unregister_family
+  genphy_c37_config_aneg
+  genphy_c37_read_status
   genphy_c45_an_config_aneg
   genphy_c45_check_and_restart_aneg
+  genphy_c45_fast_retrain
   genphy_c45_pma_setup_forced
   genphy_c45_read_status
   genphy_check_and_restart_aneg
@@ -1278,6 +1283,7 @@
   get_random_u16
   get_random_u32
   __get_random_u32_below
+  get_random_u8
   get_sg_io_hdr
   get_shadow_from_swap_cache
   get_slabinfo
@@ -1929,6 +1935,7 @@
   mdiobus_write
   mdio_device_create
   mdio_device_free
+  mdio_device_reset
   media_device_cleanup
   media_device_init
   __media_device_register
@@ -2338,9 +2345,11 @@
   pcie_capability_clear_and_set_word
   pcie_capability_read_dword
   pcie_capability_read_word
+  pcie_get_width_cap
   pci_enable_device
   pci_enable_pcie_error_reporting
   pci_find_ext_capability
+  pci_find_vsec_capability
   pci_flags
   pci_free_irq_vectors
   pci_generic_config_read
@@ -2807,6 +2816,7 @@
   regulator_is_supported_voltage
   regulator_list_voltage_linear
   regulator_list_voltage_linear_range
+  regulator_list_voltage_table
   regulator_map_voltage_linear
   regulator_notifier_call_chain
   regulator_put
