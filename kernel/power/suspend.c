@@ -88,9 +88,11 @@ static DECLARE_COMPLETION(suspend_fs_sync_complete);
  */
 void suspend_abort_fs_sync(void)
 {
-	spin_lock(&suspend_fs_sync_lock);
+	unsigned long flags;
+
+	spin_lock_irqsave(&suspend_fs_sync_lock, flags);
 	complete(&suspend_fs_sync_complete);
-	spin_unlock(&suspend_fs_sync_lock);
+	spin_unlock_irqrestore(&suspend_fs_sync_lock, flags);
 }
 
 void s2idle_set_ops(const struct platform_s2idle_ops *ops)
@@ -425,12 +427,13 @@ MODULE_PARM_DESC(pm_fs_abort,
 
 static void sync_filesystems_fn(struct work_struct *work)
 {
+	unsigned long flags;
 	ksys_sync_helper();
 
-	spin_lock(&suspend_fs_sync_lock);
+	spin_lock_irqsave(&suspend_fs_sync_lock, flags);
 	suspend_fs_sync_queued = false;
 	complete(&suspend_fs_sync_complete);
-	spin_unlock(&suspend_fs_sync_lock);
+	spin_unlock_irqrestore(&suspend_fs_sync_lock, flags);
 }
 static DECLARE_WORK(sync_filesystems, sync_filesystems_fn);
 
@@ -447,9 +450,10 @@ static int suspend_fs_sync_with_abort(void)
 		return 0;
 	}
 	bool need_suspend_fs_sync_requeue;
+	unsigned long flags;
 
 Start_fs_sync:
-	spin_lock(&suspend_fs_sync_lock);
+	spin_lock_irqsave(&suspend_fs_sync_lock, flags);
 	reinit_completion(&suspend_fs_sync_complete);
 	/*
 	 * Handle the case where a suspend immediately follows a previous
@@ -464,7 +468,7 @@ Start_fs_sync:
 		suspend_fs_sync_queued = true;
 		schedule_work(&sync_filesystems);
 	}
-	spin_unlock(&suspend_fs_sync_lock);
+	spin_unlock_irqrestore(&suspend_fs_sync_lock, flags);
 
 	/*
 	 * Completion is triggered by fs_sync finishing or a suspend abort
