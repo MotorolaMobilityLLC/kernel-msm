@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
-// Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
 
 #include <linux/clk.h>
 #include <linux/dmaengine.h>
@@ -17,6 +19,7 @@
 #include <linux/soc/qcom/geni-se.h>
 #include <linux/spi/spi.h>
 #include <linux/spinlock.h>
+#include <linux/suspend.h>
 
 /* SPI SE specific registers and respective register fields */
 #define SE_SPI_CPHA		0x224
@@ -724,6 +727,9 @@ static int spi_geni_init(struct spi_geni_master *mas)
 	u32 spi_tx_cfg, fifo_disable;
 	int ret = -ENXIO;
 
+	if (mas->cur_xfer_mode != GENI_SE_INVALID)
+		return 0;
+
 	pm_runtime_get_sync(mas->dev);
 
 	proto = geni_se_read_proto(se);
@@ -774,7 +780,6 @@ static int spi_geni_init(struct spi_geni_master *mas)
 
 		dev_warn(mas->dev, "FIFO mode disabled, but couldn't get DMA, fall back to FIFO mode\n");
 		fallthrough;
-
 	case 0:
 		mas->cur_xfer_mode = GENI_SE_FIFO;
 		geni_se_select_mode(se, GENI_SE_FIFO);
@@ -1406,6 +1411,7 @@ static int spi_geni_probe(struct platform_device *pdev)
 	if (device_property_read_bool(&pdev->dev, "spi-slave"))
 		spi->slave = true;
 
+	mas->cur_xfer_mode = GENI_SE_INVALID;
 	ret = spi_geni_init(mas);
 	if (ret)
 		goto spi_geni_probe_runtime_disable;
@@ -1493,11 +1499,21 @@ static int __maybe_unused spi_geni_suspend(struct device *dev)
 static int __maybe_unused spi_geni_resume(struct device *dev)
 {
 	struct spi_master *spi = dev_get_drvdata(dev);
+	struct spi_geni_master *mas = spi_master_get_devdata(spi);
 	int ret;
 
 	ret = pm_runtime_force_resume(dev);
 	if (ret)
 		return ret;
+	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
+		mas->last_mode = 0;
+		mas->cur_xfer_mode = GENI_SE_INVALID;
+		ret = spi_geni_init(mas);
+		if (ret) {
+			dev_err(dev, "Failed to re-initialize SPI after suspend: %d\n", ret);
+			return ret;
+		}
+	}
 
 	ret = spi_master_resume(spi);
 	if (ret)
