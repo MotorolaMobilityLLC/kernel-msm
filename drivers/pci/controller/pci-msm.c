@@ -236,6 +236,9 @@
 
 #define MSM_PCIE_LTSSM_MASK (0x3f)
 
+#define PCI_INTERRUPT_LINE_INT_PIN_MASK  (0xffff00ff)
+#define PCI_INTERRUPT_LINE_INT_PIN_1     (0x00000100)
+
 #define PCIE_ATU_REGION_ENABLE BIT(31)
 #define PCIE_ATU_CFG_SHIFT_MODE BIT(28)
 #define TC_BDF_TO_SID_MAX_PCIE_SID	64
@@ -5041,6 +5044,12 @@ static void msm_pcie_config_core_preset(struct msm_pcie_dev_t *pcie_dev)
 
 	/* enable write access to RO register */
 	msm_pcie_write_mask(pcie_dev->dm_core + PCIE_GEN3_MISC_CONTROL, 0, BIT(0));
+
+	/* Enable legacy IRQs */
+	val = readl_relaxed(pcie_dev->dm_core + PCI_INTERRUPT_LINE);
+	val &= PCI_INTERRUPT_LINE_INT_PIN_MASK;
+	val |= PCI_INTERRUPT_LINE_INT_PIN_1;
+	msm_pcie_write_reg(pcie_dev->dm_core, PCI_INTERRUPT_LINE, val);
 
 	/* Gen3 */
 	if (supported_link_speed >= PCI_EXP_LNKCAP_SLS_8_0GB) {
