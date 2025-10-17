@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 
+#include <linux/soc/qcom/llcc-qcom.h>
 #include "sc_tcm_internal.h"
 
 struct sc_tcm_device {
@@ -143,7 +144,22 @@ err_sc_tcm_add:
 	return ret;
 }
 
-static int sc_tcm_region(phys_addr_t *base, size_t *size)
+/*
+ * This function can be used to register the ddr as proxy_tcm_region.
+ *
+ * cache-controller@25000000 {
+ *	compatible = "qcom,seraph-llcc";
+ *	memory-region = <&proxy_tcm_mem>;
+ * };
+ *
+ * &reserved_memory {
+ *	proxy_tcm_mem: proxy_tcm_mem@0 {
+ *		no-map;
+ *		reg = <0x0 0x82800000 0x0 0xa00000>;
+ *	};
+ *};
+ **/
+static int __maybe_unused sc_tcm_region_proxy(phys_addr_t *base, size_t *size)
 {
 	struct device_node *node;
 	struct device_node *mem_node;
@@ -173,7 +189,21 @@ mem_node_put:
 of_node_put:
 	of_node_put(node);
 	return ret;
+}
 
+static int sc_tcm_region_llcc(phys_addr_t *base, size_t *size)
+{
+	struct llcc_tcm_data *data;
+
+	data = llcc_tcm_activate();
+	if (!IS_ERR_OR_NULL(data)) {
+		*base = data->phys_addr;
+		*size = data->mem_size;
+
+		return 0;
+	}
+
+	return -EINVAL;
 }
 
 static int __init sc_tcm_module_init(void)
@@ -182,7 +212,7 @@ static int __init sc_tcm_module_init(void)
 	phys_addr_t base;
 	size_t size;
 
-	ret = sc_tcm_region(&base, &size);
+	ret = sc_tcm_region_llcc(&base, &size);
 	if (ret) {
 		pr_err("SC TCM region is not defined\n");
 		return ret;
