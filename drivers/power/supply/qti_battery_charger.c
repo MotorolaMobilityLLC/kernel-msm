@@ -265,6 +265,33 @@ struct psy_state {
 	u32			opcode_set;
 };
 
+enum bc_notify_panel_type {
+	BC_NOTIFY_PANEL_MAIN,
+	BC_NOTIFY_PANEL_FOLD,
+	BC_NOTIFY_PANEL_MAX,
+};
+
+struct bc_notify_panel_cfg {
+	char const *panel_name;
+	enum panel_event_notifier_tag tag;
+	enum panel_event_notifier_client client;
+	enum bc_notify_panel_type type;
+};
+
+static const struct bc_notify_panel_cfg notify_panel_cfg[] = {
+        { .panel_name = "qcom,display-panels",
+	  .tag = PANEL_EVENT_NOTIFICATION_PRIMARY,
+          .client = PANEL_EVENT_NOTIFIER_CLIENT_BATTERY_CHARGER,
+	  .type = BC_NOTIFY_PANEL_MAIN
+        },
+        { .panel_name = "qcom,display-panels-fold",
+	  .tag = PANEL_EVENT_NOTIFICATION_SECONDARY,
+          .client = PANEL_EVENT_NOTIFIER_CLIENT_BC_FOLD,
+	  .type = BC_NOTIFY_PANEL_FOLD
+        },
+        {},
+};
+
 struct battery_chg_dev {
 	struct device			*dev;
 	struct class			battery_class;
@@ -277,7 +304,8 @@ struct battery_chg_dev {
 	struct completion		fw_update_ack;
 	struct psy_state		psy_list[PSY_TYPE_MAX];
 	struct dentry			*debugfs_dir;
-	void				*notifier_cookie;
+        void                            *notifier_cookie[BC_NOTIFY_PANEL_MAX];
+        bool                            notify_vote[BC_NOTIFY_PANEL_MAX];
 	/* extcon for VBUS/ID notification for USB for micro USB */
 	struct extcon_dev		*extcon;
 	u32				*thermal_levels;
@@ -2757,6 +2785,10 @@ static void panel_event_notifier_callback(enum panel_event_notifier_tag tag,
 			struct panel_event_notification *notification, void *data)
 {
 	struct battery_chg_dev *bcdev = data;
+	int i;
+	bool notify_vote_prev = false;
+	bool notify_vote_cur = false;
+	const struct bc_notify_panel_cfg *cfg = NULL;
 
 	if (!notification) {
 		pr_debug("Invalid panel notification\n");
@@ -2764,20 +2796,53 @@ static void panel_event_notifier_callback(enum panel_event_notifier_tag tag,
 	}
 
 	pr_debug("panel event received, type: %d\n", notification->notif_type);
-	switch (notification->notif_type) {
-	case DRM_PANEL_EVENT_BLANK:
-		battery_chg_notify_disable(bcdev);
-		break;
-	case DRM_PANEL_EVENT_UNBLANK:
-		battery_chg_notify_enable(bcdev);
-		break;
-	default:
-		pr_debug("Ignore panel event: %d\n", notification->notif_type);
-		break;
+
+	for (i = 0; i < BC_NOTIFY_PANEL_MAX && i < ARRAY_SIZE(notify_panel_cfg); i++) {
+		cfg = &notify_panel_cfg[i];
+		if (cfg->tag == tag && bcdev->notifier_cookie[cfg->type])
+			break;
+		else
+			cfg = NULL;
+	}
+	if (!cfg) {
+		pr_err("No matched panel cfg\n");
+		return;
+	}
+
+	for (i = 0; i < BC_NOTIFY_PANEL_MAX; i++) {
+		if (bcdev->notifier_cookie[i] && bcdev->notify_vote[i]) {
+			notify_vote_prev = true;
+		}
+
+		if (i == cfg->type) {
+			switch (notification->notif_type) {
+			case DRM_PANEL_EVENT_BLANK:
+				bcdev->notify_vote[cfg->type] = false;
+				break;
+			case DRM_PANEL_EVENT_UNBLANK:
+				bcdev->notify_vote[cfg->type] = true;
+				break;
+			default:
+				pr_debug("Ignore panel event: %d\n", notification->notif_type);
+				break;
+			}
+		}
+
+		if (bcdev->notifier_cookie[i] && bcdev->notify_vote[i]) {
+			notify_vote_cur = true;
+		}
+	}
+
+	if (notify_vote_prev != notify_vote_cur) {
+		if (notify_vote_cur)
+			battery_chg_notify_enable(bcdev);
+		else
+			battery_chg_notify_disable(bcdev);
 	}
 }
 
-static int battery_chg_register_panel_notifier(struct battery_chg_dev *bcdev)
+static int battery_chg_register_panel_notifier(struct battery_chg_dev *bcdev,
+		const struct bc_notify_panel_cfg *cfg)
 {
 	struct device_node *np = bcdev->dev->of_node;
 	struct device_node *pnode;
@@ -2785,12 +2850,12 @@ static int battery_chg_register_panel_notifier(struct battery_chg_dev *bcdev)
 	void *cookie = NULL;
 	int i, count, rc;
 
-	count = of_count_phandle_with_args(np, "qcom,display-panels", NULL);
+	count = of_count_phandle_with_args(np, cfg->panel_name, NULL);
 	if (count <= 0)
 		return 0;
 
 	for (i = 0; i < count; i++) {
-		pnode = of_parse_phandle(np, "qcom,display-panels", i);
+		pnode = of_parse_phandle(np, cfg->panel_name, i);
 		if (!pnode)
 			return -ENODEV;
 
@@ -2805,24 +2870,26 @@ static int battery_chg_register_panel_notifier(struct battery_chg_dev *bcdev)
 	if (!active_panel) {
 		rc = PTR_ERR(panel);
 		if (rc != -EPROBE_DEFER)
-			dev_err(bcdev->dev, "Failed to find active panel, rc=%d\n", rc);
+			dev_err(bcdev->dev, "Failed to find active panel: %s, rc=%d\n",
+				cfg->panel_name, rc);
 		return rc;
 	}
 
 	cookie = panel_event_notifier_register(
-			PANEL_EVENT_NOTIFICATION_PRIMARY,
-			PANEL_EVENT_NOTIFIER_CLIENT_BATTERY_CHARGER,
+			cfg->tag,
+			cfg->client,
 			active_panel,
 			panel_event_notifier_callback,
 			(void *)bcdev);
 	if (IS_ERR(cookie)) {
 		rc = PTR_ERR(cookie);
-		dev_err(bcdev->dev, "Failed to register panel event notifier, rc=%d\n", rc);
+		dev_err(bcdev->dev, "Failed to register %s panel event notifier, rc=%d\n",
+			cfg->panel_name, rc);
 		return rc;
 	}
 
-	pr_debug("register panel notifier successful\n");
-	bcdev->notifier_cookie = cookie;
+	pr_debug("register %s panel notifier successful\n", cfg->panel_name);
+	bcdev->notifier_cookie[cfg->type] = cookie;
 	return 0;
 }
 
@@ -3004,9 +3071,11 @@ static int battery_chg_probe(struct platform_device *pdev)
 	INIT_WORK(&bcdev->battery_check_work, battery_chg_check_status_work);
 	bcdev->dev = dev;
 
-	rc = battery_chg_register_panel_notifier(bcdev);
-	if (rc < 0)
-		return rc;
+	for (i = 0; i < BC_NOTIFY_PANEL_MAX && i < ARRAY_SIZE(notify_panel_cfg); i++) {
+		rc = battery_chg_register_panel_notifier(bcdev, &notify_panel_cfg[i]);
+		if (rc < 0)
+			goto reg_error;
+	}
 
 	client_data.id = MSG_OWNER_BC;
 	client_data.name = "battery_charger";
@@ -3130,22 +3199,27 @@ error:
 	unregister_reboot_notifier(&bcdev->reboot_notifier);
 	pmic_glink_unregister_client(bcdev->client);
 reg_error:
-	if (bcdev->notifier_cookie)
-		panel_event_notifier_unregister(bcdev->notifier_cookie);
+	for (i = 0; i < BC_NOTIFY_PANEL_MAX; i++) {
+		if (bcdev->notifier_cookie[i])
+			panel_event_notifier_unregister(bcdev->notifier_cookie[i]);
+	}
 	return rc;
 }
 
 static void battery_chg_remove(struct platform_device *pdev)
 {
 	struct battery_chg_dev *bcdev = platform_get_drvdata(pdev);
+	int i;
 
 	down_write(&bcdev->state_sem);
 	atomic_set(&bcdev->state, PMIC_GLINK_STATE_DOWN);
 	bcdev->initialized = false;
 	up_write(&bcdev->state_sem);
 
-	if (bcdev->notifier_cookie)
-		panel_event_notifier_unregister(bcdev->notifier_cookie);
+	for (i = 0; i < BC_NOTIFY_PANEL_MAX; i++) {
+		if (bcdev->notifier_cookie[i])
+			panel_event_notifier_unregister(bcdev->notifier_cookie[i]);
+	}
 
 	device_init_wakeup(bcdev->dev, false);
 	debugfs_remove_recursive(bcdev->debugfs_dir);
