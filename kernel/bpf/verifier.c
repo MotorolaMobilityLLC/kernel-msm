@@ -460,7 +460,8 @@ static bool reg_not_null(const struct bpf_reg_state *reg)
 		type == PTR_TO_MAP_KEY ||
 		type == PTR_TO_SOCK_COMMON ||
 		(type == PTR_TO_BTF_ID && is_trusted_reg(reg)) ||
-		type == PTR_TO_MEM;
+		type == PTR_TO_MEM ||
+		type == CONST_PTR_TO_MAP;
 }
 
 static bool type_is_ptr_alloc_obj(u32 type)
@@ -7534,6 +7535,10 @@ static int process_timer_func(struct bpf_verifier_env *env, int regno,
 	if (meta->map_ptr) {
 		verbose(env, "verifier bug. Two map pointers in a timer helper\n");
 		return -EFAULT;
+	}
+	if (IS_ENABLED(CONFIG_PREEMPT_RT)) {
+		verbose(env, "bpf_timer cannot be used for PREEMPT_RT.\n");
+		return -EOPNOTSUPP;
 	}
 	meta->map_uid = reg->map_uid;
 	meta->map_ptr = map;
