@@ -677,6 +677,7 @@ struct mlx5e_resources {
 		struct mlx5_sq_bfreg       bfreg;
 	} hw_objs;
 	struct net_device *uplink_netdev;
+	netdevice_tracker tracker;
 	struct mutex uplink_netdev_lock;
 	struct mlx5_crypto_dek_priv *dek_priv;
 };

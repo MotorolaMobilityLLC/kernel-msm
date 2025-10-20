@@ -1610,6 +1610,7 @@
   vscnprintf
   ww_mutex_lock
   ww_mutex_lock_interruptible
+  ww_mutex_trylock
   ww_mutex_unlock
 
 # required by msm_serial.ko
