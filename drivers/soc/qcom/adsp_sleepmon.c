@@ -647,8 +647,7 @@ static int debugfs_panic_state_write(void *data, u64 val)
 	if (!(val & 0x2))
 		g_adspsleepmon.b_panic_lpi = false;
 	else
-		g_adspsleepmon.b_panic_lpi =
-					g_adspsleepmon.b_config_panic_lpi;
+		g_adspsleepmon.b_panic_lpi = true;
 
 	return 0;
 }
@@ -1219,7 +1218,10 @@ static void sleepmon_lpi_exception_check(u64 curr_timestamp, u64 elapsed_time)
 				((curr_lpi_stats.accumulated -
 				g_adspsleepmon.backup_lpi_stats.accumulated) /
 				ADSPSLEEPMON_SYS_CLK_TICKS_PER_MILLISEC));
-
+			if (g_adspsleepmon.b_panic_lpi) {
+				pr_err("ADSP LPI issue detected: Triggering panic\n");
+				panic("ADSP_SLEEPMON: ADSP LPI issue detected");
+			}
 			is_audio_active = sleepmon_is_audio_active(&curr_dsppm_stats);
 			sleepmon_get_dsppm_clients();
 			sleepmon_send_lpi_issue_command();
@@ -1853,15 +1855,13 @@ static int adspsleepmon_driver_probe(struct platform_device *pdev)
 	g_adspsleepmon.b_panic_lpm = g_adspsleepmon.b_config_panic_lpm;
 	g_adspsleepmon.b_panic_lpi = g_adspsleepmon.b_config_panic_lpi;
 
-	if (g_adspsleepmon.b_config_panic_lpm ||
-			g_adspsleepmon.b_config_panic_lpi) {
-		g_adspsleepmon.debugfs_panic_file =
-				debugfs_create_file("panic-state",
-				 0644, g_adspsleepmon.debugfs_dir, NULL, &panic_state_fops);
+	g_adspsleepmon.debugfs_panic_file =
+			debugfs_create_file("panic-state",
+				0644, g_adspsleepmon.debugfs_dir, NULL, &panic_state_fops);
 
-		if (!g_adspsleepmon.debugfs_panic_file)
-			dev_err(dev, "Unable to create file in debugfs\n");
-	}
+	if (!g_adspsleepmon.debugfs_panic_file)
+		dev_err(dev, "Unable to create file in debugfs\n");
+
 
 	g_adspsleepmon.debugfs_read_panic_state =
 			debugfs_create_file("read_panic_state",
