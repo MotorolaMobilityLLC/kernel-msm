@@ -7303,7 +7303,9 @@ int msm_pcie_deenumerate(u32 rc_idx)
 	dev->enumerated = false;
 
 	mutex_unlock(&dev->enumerate_lock);
-	if (!dev->ecam_mode)
+	if (dev->ecam_mode)
+		pci_ecam_free(bridge->sysdata);
+	else
 		kfree(bridge->sysdata);
 
 	PCIE_DBG(dev, "RC%d: exit\n", dev->rc_idx);
