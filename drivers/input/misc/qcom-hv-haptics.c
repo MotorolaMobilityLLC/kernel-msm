@@ -3526,6 +3526,14 @@ static int haptics_upload_effect(struct input_dev *dev,
 			goto restore;
 		}
 
+#ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
+		if (atomic_read(&chip->play.fifo_status.is_busy)) {
+			dev_err(chip->dev, "fifo play is on going\n");
+			rc = -EINVAL;
+			goto restore;
+		}
+#endif
+
 		if (effect->u.periodic.custom_len ==
 				sizeof(struct custom_fifo_data)) {
 			rc = haptics_load_custom_effect(chip,
