@@ -12,12 +12,19 @@
  */
 
 struct wait_queue_head;
+struct fuse_req;
 DECLARE_HOOK(android_vh_queue_request_and_unlock,
 	TP_PROTO(struct wait_queue_head *wq_head, bool sync),
 	TP_ARGS(wq_head, sync));
+DECLARE_HOOK(android_vh_fuse_request_send_ext,
+	TP_PROTO(struct fuse_req *req, struct wait_queue_head *wq_head),
+	TP_ARGS(req, wq_head));
 DECLARE_HOOK(android_vh_fuse_request_end,
 	TP_PROTO(struct task_struct *self),
 	TP_ARGS(self));
+DECLARE_HOOK(android_vh_fuse_request_end_ext,
+	TP_PROTO(struct fuse_req *req, struct task_struct *self),
+	TP_ARGS(req, self));
 DECLARE_HOOK(android_vh_fuse_request_fetch,
 	TP_PROTO(struct fuse_req *req, struct task_struct *self),
 	TP_ARGS(req, self));
