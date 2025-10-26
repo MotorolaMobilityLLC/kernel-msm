@@ -392,6 +392,16 @@ config ARCH_NEO
 	  NEO chipset. If you do not wish to build a kernel that
 	  runs on this chipset or if you are unsure, say 'N' here.
 
+config ARCH_MXR
+	bool "Enable Google MXR Platforms"
+	depends on ARCH_QCOM
+	help
+	  This enables Googles MXR platforms which depends on
+	  base qcom boards
+	  This option includes platform-specific configurations, drivers, and build rules
+	  required to compile and run the kernel on MXR devices. Select this if you are
+	  targeting MXR hardware or working on related kernel features.
+
 config ARCH_REALTEK
 	bool "Realtek Platforms"
 	select RESET_CONTROLLER

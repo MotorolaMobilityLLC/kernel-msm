@@ -515,6 +515,11 @@ reclaim_pages
 #required by mi_iod_debug.ko
 page_swap_info
 
+# required by pte preread
+read_swap_cache_async
+unuse_swap_pte
+vfs_fadvise
+
 # required by launch_boost driver
 __traceiter_android_vh_filemap_read
 __tracepoint_android_vh_filemap_read
@@ -524,3 +529,8 @@ __tracepoint_android_vh_filemap_map_pages_range
 #required by rtase.ko
 proc_get_parent_data
 netdev_stats_to_stats64
+
+__traceiter_android_vh_drain_all_pages_bypass
+__tracepoint_android_vh_drain_all_pages_bypass
+__traceiter_android_vh_pageset_update
+__tracepoint_android_vh_pageset_update

@@ -1,3 +1,14 @@
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+load(
+    "//build:msm_kernel_extensions.bzl",
+    "define_extras",
+    "get_build_config_fragments",
+    "get_dtb_list",
+    "get_dtbo_list",
+    "get_dtstree",
+    "get_gki_ramdisk_prebuilt_binary",
+    "get_vendor_ramdisk_binaries",
+)
 load("//build/bazel_common_rules/dist:dist.bzl", "copy_to_dist_dir")
 load(
     "//build/kernel/kleaf:kernel.bzl",
@@ -13,26 +24,15 @@ load(
     "super_image",
     "unsparsed_image",
 )
-load(
-    "//build:msm_kernel_extensions.bzl",
-    "define_extras",
-    "get_build_config_fragments",
-    "get_dtb_list",
-    "get_dtbo_list",
-    "get_dtstree",
-    "get_gki_ramdisk_prebuilt_binary",
-    "get_vendor_ramdisk_binaries",
-)
-load("@bazel_skylib//rules:write_file.bzl", "write_file")
-load(":msm_common.bzl", "define_top_level_config", "gen_config_without_source_lines", "get_out_dir")
-load(":msm_dtc.bzl", "define_dtc_dist")
-load(":msm_abl.bzl", "define_abl_dist")
 load(":avb_boot_img.bzl", "avb_sign_boot_image")
 load(":dpm_image.bzl", "define_dpm_image")
 load(":image_opts.bzl", "boot_image_opts")
-load(":target_variants.bzl", "la_variants")
 load(":modules.bzl", "COMMON_GKI_MODULES_LIST")
 load(":modules_unprotected.bzl", "get_unprotected_vendor_modules_list")
+load(":msm_abl.bzl", "define_abl_dist")
+load(":msm_common.bzl", "define_top_level_config", "gen_config_without_source_lines", "get_out_dir")
+load(":msm_dtc.bzl", "define_dtc_dist")
+load(":target_variants.bzl", "la_variants")
 
 def _define_build_config(
         msm_target,
@@ -490,7 +490,8 @@ def define_msm_la(
             content = [vendor_unprotected_dlkm, ""],
         )
 
-    in_tree_module_list += vendor_dlkm_module_unprotected_list
+    if vendor_dlkm_module_unprotected_list:
+        in_tree_module_list += vendor_dlkm_module_unprotected_list
 
     _define_build_config(
         msm_target,

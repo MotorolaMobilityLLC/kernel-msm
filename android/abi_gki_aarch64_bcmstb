@@ -1604,6 +1604,7 @@
   sdhci_set_clock
   sdhci_set_uhs_signaling
   sdhci_setup_host
+  __hwspin_trylock
 
 # required by slcan.ko
   hex_asc_upper
