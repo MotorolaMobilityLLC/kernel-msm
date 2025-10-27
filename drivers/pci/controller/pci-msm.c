@@ -4999,6 +4999,42 @@ static int pcie_phy_init(struct msm_pcie_dev_t *dev)
 	return 0;
 }
 
+static void msm_pcie_remove_capability(struct msm_pcie_dev_t *pci, u8 cap)
+{
+	u8 next_cap_ptr, cap_ptr, cap_id, pre_cap_ptr = 0;
+	u16 reg;
+
+	reg = readl_relaxed(pci->dm_core + PCI_CAPABILITY_LIST);
+	cap_ptr = (reg & 0x00ff);
+
+	if (!cap_ptr)
+		return;
+
+	do {
+		reg = readl_relaxed(pci->dm_core + cap_ptr);
+		cap_id = (reg & 0x00ff);
+
+		if (cap_id > PCI_CAP_ID_MAX)
+			return;
+
+		if (cap_id == cap)
+			break;
+
+		pre_cap_ptr = cap_ptr;
+		cap_ptr = (reg & 0xff00) >> 8;
+	} while (cap_ptr);
+
+	if (!cap_ptr)
+		return;
+
+	next_cap_ptr = (reg & 0xff00) >> 8;
+
+	if (pre_cap_ptr == 0)
+		writeb(next_cap_ptr, pci->dm_core + PCI_CAPABILITY_LIST);
+	else
+		writeb(next_cap_ptr, pci->dm_core + pre_cap_ptr + 1);
+}
+
 static u16 msm_pci_find_ext_capability(struct msm_pcie_dev_t *pci, u8 cap)
 {
 	int pos = PCI_CFG_SPACE_SIZE;
@@ -6520,13 +6556,13 @@ static int msm_pcie_enable_link(struct msm_pcie_dev_t *dev)
 		msm_pcie_write_mask(dev->parf + PCIE20_PARF_CFG_BITS_3, 0, BIT(8));
 	msm_pcie_write_mask(dev->dm_core + PCIE20_LANE_SKEW_OFF, 0, BIT(5));
 
+	msm_pcie_write_mask(dev->dm_core + PCIE_GEN3_MISC_CONTROL, 1, BIT(0));
 	/* override the vendor id */
-	if (dev->device_vendor_id) {
-		msm_pcie_write_mask(dev->dm_core + PCIE_GEN3_MISC_CONTROL, 1, BIT(0));
+	if (dev->device_vendor_id)
 		msm_pcie_write_reg(dev->dm_core, 0x0, dev->device_vendor_id);
-		msm_pcie_write_mask(dev->dm_core + PCIE_GEN3_MISC_CONTROL, 0, BIT(0));
-	}
 
+	msm_pcie_remove_capability(dev, PCI_CAP_ID_MSIX);
+	msm_pcie_write_mask(dev->dm_core + PCIE_GEN3_MISC_CONTROL, 0, BIT(0));
 	/* de-assert PCIe reset link to bring EP out of reset */
 
 	PCIE_INFO(dev, "PCIe: Release the reset of endpoint of RC%d.\n",
