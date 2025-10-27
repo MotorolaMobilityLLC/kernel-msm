@@ -50,6 +50,12 @@ config CAM_SENSOR_PROBE_DEBUG
 	help
 	  This is enabling camera sensor probe debug feature.
 
+config MOT_READ_SENSOR_REGISTER
+	default n
+	bool "enable to read sensor register"
+	help
+	  This is enabling to read sensor register.
+
 config CAM_SENSOR_CTLE_FOR_ORION
 	default n
 	bool "enable camera sensor ctle for orion"
