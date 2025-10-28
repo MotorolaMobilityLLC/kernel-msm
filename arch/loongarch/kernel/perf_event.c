@@ -884,4 +884,4 @@ static int __init init_hw_perf_events(void)
 
 	return 0;
 }
-pure_initcall(init_hw_perf_events);
+early_initcall(init_hw_perf_events);

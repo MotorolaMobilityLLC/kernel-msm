@@ -130,8 +130,7 @@ xfs_alloc_vextent(
 int				/* error */
 __xfs_free_extent(
 	struct xfs_trans	*tp,	/* transaction pointer */
-	struct xfs_perag	*pag,
-	xfs_agblock_t		agbno,
+	xfs_fsblock_t		bno,	/* starting block number of extent */
 	xfs_extlen_t		len,	/* length of extent */
 	const struct xfs_owner_info	*oinfo,	/* extent owner */
 	enum xfs_ag_resv_type	type,	/* block reservation type */
@@ -140,13 +139,12 @@ __xfs_free_extent(
 static inline int
 xfs_free_extent(
 	struct xfs_trans	*tp,
-	struct xfs_perag	*pag,
-	xfs_agblock_t		agbno,
+	xfs_fsblock_t		bno,
 	xfs_extlen_t		len,
 	const struct xfs_owner_info	*oinfo,
 	enum xfs_ag_resv_type	type)
 {
-	return __xfs_free_extent(tp, pag, agbno, len, oinfo, type, false);
+	return __xfs_free_extent(tp, bno, len, oinfo, type, false);
 }
 
 int				/* error */
@@ -213,9 +211,9 @@ xfs_buf_to_agfl_bno(
 	return bp->b_addr;
 }
 
-int __xfs_free_extent_later(struct xfs_trans *tp, xfs_fsblock_t bno,
+void __xfs_free_extent_later(struct xfs_trans *tp, xfs_fsblock_t bno,
 		xfs_filblks_t len, const struct xfs_owner_info *oinfo,
-		enum xfs_ag_resv_type type, bool skip_discard);
+		bool skip_discard);
 
 /*
  * List of extents to be free "later".
@@ -226,27 +224,21 @@ struct xfs_extent_free_item {
 	uint64_t		xefi_owner;
 	xfs_fsblock_t		xefi_startblock;/* starting fs block number */
 	xfs_extlen_t		xefi_blockcount;/* number of blocks in extent */
-	struct xfs_perag	*xefi_pag;
 	unsigned int		xefi_flags;
-	enum xfs_ag_resv_type	xefi_agresv;
 };
-
-void xfs_extent_free_get_group(struct xfs_mount *mp,
-		struct xfs_extent_free_item *xefi);
 
 #define XFS_EFI_SKIP_DISCARD	(1U << 0) /* don't issue discard */
 #define XFS_EFI_ATTR_FORK	(1U << 1) /* freeing attr fork block */
 #define XFS_EFI_BMBT_BLOCK	(1U << 2) /* freeing bmap btree block */
 
-static inline int
+static inline void
 xfs_free_extent_later(
 	struct xfs_trans		*tp,
 	xfs_fsblock_t			bno,
 	xfs_filblks_t			len,
-	const struct xfs_owner_info	*oinfo,
-	enum xfs_ag_resv_type		type)
+	const struct xfs_owner_info	*oinfo)
 {
-	return __xfs_free_extent_later(tp, bno, len, oinfo, type, false);
+	__xfs_free_extent_later(tp, bno, len, oinfo, false);
 }
 
 

@@ -207,7 +207,8 @@ EXPORT_SYMBOL_GPL(sb800_prefetch);
 static void usb_amd_find_chipset_info(void)
 {
 	unsigned long flags;
-	struct amd_chipset_info info = { };
+	struct amd_chipset_info info;
+	info.need_pll_quirk = false;
 
 	spin_lock_irqsave(&amd_lock, flags);
 
@@ -217,6 +218,7 @@ static void usb_amd_find_chipset_info(void)
 		spin_unlock_irqrestore(&amd_lock, flags);
 		return;
 	}
+	memset(&info, 0, sizeof(info));
 	spin_unlock_irqrestore(&amd_lock, flags);
 
 	if (!amd_chipset_sb_type_init(&info)) {
@@ -946,15 +948,6 @@ static void quirk_usb_disable_ehci(struct pci_dev *pdev)
 	 * booting from USB disk or using a usb keyboard
 	 */
 	hcc_params = readl(base + EHCI_HCC_PARAMS);
-
-	/* LS7A EHCI controller doesn't have extended capabilities, the
-	 * EECP (EHCI Extended Capabilities Pointer) field of HCCPARAMS
-	 * register should be 0x0 but it reads as 0xa0.  So clear it to
-	 * avoid error messages on boot.
-	 */
-	if (pdev->vendor == PCI_VENDOR_ID_LOONGSON && pdev->device == 0x7a14)
-		hcc_params &= ~(0xffL << 8);
-
 	offset = (hcc_params >> 8) & 0xff;
 	while (offset && --count) {
 		pci_read_config_dword(pdev, offset, &cap);

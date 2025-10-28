@@ -139,13 +139,21 @@ static bool omapdss_device_is_connected(struct omap_dss_device *dssdev)
 }
 
 int omapdss_device_connect(struct dss_device *dss,
+			   struct omap_dss_device *src,
 			   struct omap_dss_device *dst)
 {
-	dev_dbg(&dss->pdev->dev, "connect(%s)\n",
+	dev_dbg(&dss->pdev->dev, "connect(%s, %s)\n",
+		src ? dev_name(src->dev) : "NULL",
 		dst ? dev_name(dst->dev) : "NULL");
 
-	if (!dst)
-		return -EINVAL;
+	if (!dst) {
+		/*
+		 * The destination is NULL when the source is connected to a
+		 * bridge instead of a DSS device. Stop here, we will attach
+		 * the bridge later when we will have a DRM encoder.
+		 */
+		return src && src->bridge ? 0 : -EINVAL;
+	}
 
 	if (omapdss_device_is_connected(dst))
 		return -EBUSY;
@@ -155,14 +163,19 @@ int omapdss_device_connect(struct dss_device *dss,
 	return 0;
 }
 
-void omapdss_device_disconnect(struct dss_device *dss,
+void omapdss_device_disconnect(struct omap_dss_device *src,
 			       struct omap_dss_device *dst)
 {
-	dev_dbg(&dss->pdev->dev, "disconnect(%s)\n",
+	struct dss_device *dss = src ? src->dss : dst->dss;
+
+	dev_dbg(&dss->pdev->dev, "disconnect(%s, %s)\n",
+		src ? dev_name(src->dev) : "NULL",
 		dst ? dev_name(dst->dev) : "NULL");
 
-	if (WARN_ON(!dst))
+	if (!dst) {
+		WARN_ON(!src->bridge);
 		return;
+	}
 
 	if (!dst->id && !omapdss_device_is_connected(dst)) {
 		WARN_ON(1);

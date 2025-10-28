@@ -12,7 +12,6 @@
 #include <asm/mpspec.h>
 #include <asm/msr.h>
 #include <asm/hardirq.h>
-#include <asm/io.h>
 
 #define ARCH_APICTIMER_STOPS_ON_C3	1
 
@@ -110,7 +109,7 @@ static inline void native_apic_mem_write(u32 reg, u32 v)
 
 static inline u32 native_apic_mem_read(u32 reg)
 {
-	return readl((void __iomem *)(APIC_BASE + reg));
+	return *((volatile u32 *)(APIC_BASE + reg));
 }
 
 extern void native_apic_wait_icr_idle(void);

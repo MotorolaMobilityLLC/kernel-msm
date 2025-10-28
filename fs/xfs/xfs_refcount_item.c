@@ -252,12 +252,17 @@ static int
 xfs_trans_log_finish_refcount_update(
 	struct xfs_trans		*tp,
 	struct xfs_cud_log_item		*cudp,
-	struct xfs_refcount_intent	*ri,
+	enum xfs_refcount_intent_type	type,
+	xfs_fsblock_t			startblock,
+	xfs_extlen_t			blockcount,
+	xfs_fsblock_t			*new_fsb,
+	xfs_extlen_t			*new_len,
 	struct xfs_btree_cur		**pcur)
 {
 	int				error;
 
-	error = xfs_refcount_finish_one(tp, ri, pcur);
+	error = xfs_refcount_finish_one(tp, type, startblock,
+			blockcount, new_fsb, new_len, pcur);
 
 	/*
 	 * Mark the transaction dirty, even on error. This ensures the
@@ -373,20 +378,25 @@ xfs_refcount_update_finish_item(
 	struct list_head		*item,
 	struct xfs_btree_cur		**state)
 {
-	struct xfs_refcount_intent	*ri;
+	struct xfs_refcount_intent	*refc;
+	xfs_fsblock_t			new_fsb;
+	xfs_extlen_t			new_aglen;
 	int				error;
 
-	ri = container_of(item, struct xfs_refcount_intent, ri_list);
-	error = xfs_trans_log_finish_refcount_update(tp, CUD_ITEM(done), ri,
-			state);
+	refc = container_of(item, struct xfs_refcount_intent, ri_list);
+	error = xfs_trans_log_finish_refcount_update(tp, CUD_ITEM(done),
+			refc->ri_type, refc->ri_startblock, refc->ri_blockcount,
+			&new_fsb, &new_aglen, state);
 
 	/* Did we run out of reservation?  Requeue what we didn't finish. */
-	if (!error && ri->ri_blockcount > 0) {
-		ASSERT(ri->ri_type == XFS_REFCOUNT_INCREASE ||
-		       ri->ri_type == XFS_REFCOUNT_DECREASE);
+	if (!error && new_aglen > 0) {
+		ASSERT(refc->ri_type == XFS_REFCOUNT_INCREASE ||
+		       refc->ri_type == XFS_REFCOUNT_DECREASE);
+		refc->ri_startblock = new_fsb;
+		refc->ri_blockcount = new_aglen;
 		return -EAGAIN;
 	}
-	kmem_cache_free(xfs_refcount_intent_cache, ri);
+	kmem_cache_free(xfs_refcount_intent_cache, refc);
 	return error;
 }
 
@@ -453,14 +463,18 @@ xfs_cui_item_recover(
 	struct xfs_log_item		*lip,
 	struct list_head		*capture_list)
 {
-	struct xfs_trans_res		resv;
+	struct xfs_bmbt_irec		irec;
 	struct xfs_cui_log_item		*cuip = CUI_ITEM(lip);
+	struct xfs_phys_extent		*refc;
 	struct xfs_cud_log_item		*cudp;
 	struct xfs_trans		*tp;
 	struct xfs_btree_cur		*rcur = NULL;
 	struct xfs_mount		*mp = lip->li_log->l_mp;
+	xfs_fsblock_t			new_fsb;
+	xfs_extlen_t			new_len;
 	unsigned int			refc_type;
 	bool				requeue_only = false;
+	enum xfs_refcount_intent_type	type;
 	int				i;
 	int				error = 0;
 
@@ -491,18 +505,14 @@ xfs_cui_item_recover(
 	 * doesn't fit.  We need to reserve enough blocks to handle a
 	 * full btree split on either end of the refcount range.
 	 */
-	resv = xlog_recover_resv(&M_RES(mp)->tr_itruncate);
-	error = xfs_trans_alloc(mp, &resv, mp->m_refc_maxlevels * 2, 0,
-			XFS_TRANS_RESERVE, &tp);
+	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_itruncate,
+			mp->m_refc_maxlevels * 2, 0, XFS_TRANS_RESERVE, &tp);
 	if (error)
 		return error;
 
 	cudp = xfs_trans_get_cud(tp, cuip);
 
 	for (i = 0; i < cuip->cui_format.cui_nextents; i++) {
-		struct xfs_refcount_intent	fake = { };
-		struct xfs_phys_extent		*refc;
-
 		refc = &cuip->cui_format.cui_extents[i];
 		refc_type = refc->pe_flags & XFS_REFCOUNT_EXTENT_TYPE_MASK;
 		switch (refc_type) {
@@ -510,7 +520,7 @@ xfs_cui_item_recover(
 		case XFS_REFCOUNT_DECREASE:
 		case XFS_REFCOUNT_ALLOC_COW:
 		case XFS_REFCOUNT_FREE_COW:
-			fake.ri_type = refc_type;
+			type = refc_type;
 			break;
 		default:
 			XFS_CORRUPTION_ERROR(__func__, XFS_ERRLEVEL_LOW, mp,
@@ -519,12 +529,13 @@ xfs_cui_item_recover(
 			error = -EFSCORRUPTED;
 			goto abort_error;
 		}
-
-		fake.ri_startblock = refc->pe_startblock;
-		fake.ri_blockcount = refc->pe_len;
-		if (!requeue_only)
+		if (requeue_only) {
+			new_fsb = refc->pe_startblock;
+			new_len = refc->pe_len;
+		} else
 			error = xfs_trans_log_finish_refcount_update(tp, cudp,
-					&fake, &rcur);
+				type, refc->pe_startblock, refc->pe_len,
+				&new_fsb, &new_len, &rcur);
 		if (error == -EFSCORRUPTED)
 			XFS_CORRUPTION_ERROR(__func__, XFS_ERRLEVEL_LOW, mp,
 					&cuip->cui_format,
@@ -533,13 +544,10 @@ xfs_cui_item_recover(
 			goto abort_error;
 
 		/* Requeue what we didn't finish. */
-		if (fake.ri_blockcount > 0) {
-			struct xfs_bmbt_irec	irec = {
-				.br_startblock	= fake.ri_startblock,
-				.br_blockcount	= fake.ri_blockcount,
-			};
-
-			switch (fake.ri_type) {
+		if (new_len > 0) {
+			irec.br_startblock = new_fsb;
+			irec.br_blockcount = new_len;
+			switch (type) {
 			case XFS_REFCOUNT_INCREASE:
 				xfs_refcount_increase_extent(tp, &irec);
 				break;

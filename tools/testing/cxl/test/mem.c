@@ -3,7 +3,6 @@
 
 #include <linux/platform_device.h>
 #include <linux/mod_devicetable.h>
-#include <linux/vmalloc.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/sizes.h>

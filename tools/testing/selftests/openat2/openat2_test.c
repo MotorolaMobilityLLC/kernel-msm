@@ -5,7 +5,6 @@
  */
 
 #define _GNU_SOURCE
-#define __SANE_USERSPACE_TYPES__ // Use ll64
 #include <fcntl.h>
 #include <sched.h>
 #include <sys/stat.h>

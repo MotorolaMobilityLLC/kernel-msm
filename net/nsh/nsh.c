@@ -76,15 +76,13 @@ EXPORT_SYMBOL_GPL(nsh_pop);
 static struct sk_buff *nsh_gso_segment(struct sk_buff *skb,
 				       netdev_features_t features)
 {
-	unsigned int outer_hlen, mac_len, nsh_len;
 	struct sk_buff *segs = ERR_PTR(-EINVAL);
 	u16 mac_offset = skb->mac_header;
-	__be16 outer_proto, proto;
+	unsigned int nsh_len, mac_len;
+	__be16 proto;
 
 	skb_reset_network_header(skb);
 
-	outer_proto = skb->protocol;
-	outer_hlen = skb_mac_header_len(skb);
 	mac_len = skb->mac_len;
 
 	if (unlikely(!pskb_may_pull(skb, NSH_BASE_HDR_LEN)))
@@ -114,10 +112,10 @@ static struct sk_buff *nsh_gso_segment(struct sk_buff *skb,
 	}
 
 	for (skb = segs; skb; skb = skb->next) {
-		skb->protocol = outer_proto;
-		__skb_push(skb, nsh_len + outer_hlen);
-		skb_reset_mac_header(skb);
-		skb_set_network_header(skb, outer_hlen);
+		skb->protocol = htons(ETH_P_NSH);
+		__skb_push(skb, nsh_len);
+		skb->mac_header = mac_offset;
+		skb->network_header = skb->mac_header + mac_len;
 		skb->mac_len = mac_len;
 	}
 

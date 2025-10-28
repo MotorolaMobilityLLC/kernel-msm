@@ -393,9 +393,9 @@ static ssize_t orangefs_debug_write(struct file *file,
 	 * Thwart users who try to jamb a ridiculous number
 	 * of bytes into the debug file...
 	 */
-	if (count > ORANGEFS_MAX_DEBUG_STRING_LEN) {
+	if (count > ORANGEFS_MAX_DEBUG_STRING_LEN + 1) {
 		silly = count;
-		count = ORANGEFS_MAX_DEBUG_STRING_LEN;
+		count = ORANGEFS_MAX_DEBUG_STRING_LEN + 1;
 	}
 
 	buf = kzalloc(ORANGEFS_MAX_DEBUG_STRING_LEN, GFP_KERNEL);

@@ -339,11 +339,6 @@ struct intel_engine_guc_stats {
 	 * @start_gt_clk: GT clock time of last idle to active transition.
 	 */
 	u64 start_gt_clk;
-
-	/**
-	 * @total: The last value of total returned
-	 */
-	u64 total;
 };
 
 struct intel_engine_cs {

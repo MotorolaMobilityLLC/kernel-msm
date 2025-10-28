@@ -893,13 +893,7 @@ static int __soc_pcm_prepare(struct snd_soc_pcm_runtime *rtd,
 		snd_soc_dai_digital_mute(dai, 0, substream->stream);
 
 out:
-	/*
-	 * Don't use soc_pcm_ret() on .prepare callback to lower error log severity
-	 *
-	 * We don't want to log an error since we do not want to give userspace a way to do a
-	 * denial-of-service attack on the syslog / diskspace.
-	 */
-	return ret;
+	return soc_pcm_ret(rtd, ret);
 }
 
 /* PCM prepare ops for non-DPCM streams */
@@ -911,13 +905,6 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	snd_soc_dpcm_mutex_lock(rtd);
 	ret = __soc_pcm_prepare(rtd, substream);
 	snd_soc_dpcm_mutex_unlock(rtd);
-
-	/*
-	 * Don't use soc_pcm_ret() on .prepare callback to lower error log severity
-	 *
-	 * We don't want to log an error since we do not want to give userspace a way to do a
-	 * denial-of-service attack on the syslog / diskspace.
-	 */
 	return ret;
 }
 
@@ -2422,13 +2409,7 @@ int dpcm_be_dai_prepare(struct snd_soc_pcm_runtime *fe, int stream)
 		be->dpcm[stream].state = SND_SOC_DPCM_STATE_PREPARE;
 	}
 
-	/*
-	 * Don't use soc_pcm_ret() on .prepare callback to lower error log severity
-	 *
-	 * We don't want to log an error since we do not want to give userspace a way to do a
-	 * denial-of-service attack on the syslog / diskspace.
-	 */
-	return ret;
+	return soc_pcm_ret(fe, ret);
 }
 
 static int dpcm_fe_dai_prepare(struct snd_pcm_substream *substream)
@@ -2465,13 +2446,7 @@ out:
 	dpcm_set_fe_update_state(fe, stream, SND_SOC_DPCM_UPDATE_NO);
 	snd_soc_dpcm_mutex_unlock(fe);
 
-	/*
-	 * Don't use soc_pcm_ret() on .prepare callback to lower error log severity
-	 *
-	 * We don't want to log an error since we do not want to give userspace a way to do a
-	 * denial-of-service attack on the syslog / diskspace.
-	 */
-	return ret;
+	return soc_pcm_ret(fe, ret);
 }
 
 static int dpcm_run_update_shutdown(struct snd_soc_pcm_runtime *fe, int stream)

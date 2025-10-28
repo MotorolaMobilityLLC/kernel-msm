@@ -290,17 +290,18 @@ static int gt_clk_rate_change_cb(struct notifier_block *nb,
 	switch (event) {
 	case PRE_RATE_CHANGE:
 	{
-		unsigned long psv;
+		int psv;
 
-		psv = DIV_ROUND_CLOSEST(ndata->new_rate, gt_target_rate);
-		if (!psv ||
-		    abs(gt_target_rate - (ndata->new_rate / psv)) > MAX_F_ERR)
+		psv = DIV_ROUND_CLOSEST(ndata->new_rate,
+					gt_target_rate);
+
+		if (abs(gt_target_rate - (ndata->new_rate / psv)) > MAX_F_ERR)
 			return NOTIFY_BAD;
 
 		psv--;
 
 		/* prescaler within legal range? */
-		if (psv > GT_CONTROL_PRESCALER_MAX)
+		if (psv < 0 || psv > GT_CONTROL_PRESCALER_MAX)
 			return NOTIFY_BAD;
 
 		/*

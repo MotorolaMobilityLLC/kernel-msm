@@ -251,7 +251,7 @@ static bool validate_dsc_caps_on_connector(struct amdgpu_dm_connector *aconnecto
 		aconnector->dsc_aux = &aconnector->mst_port->dm_dp_aux.aux;
 
 	/* synaptics cascaded MST hub case */
-	if (is_synaptics_cascaded_panamera(aconnector->dc_link, port))
+	if (!aconnector->dsc_aux && is_synaptics_cascaded_panamera(aconnector->dc_link, port))
 		aconnector->dsc_aux = port->mgr->aux;
 
 	if (!aconnector->dsc_aux)
@@ -1255,12 +1255,6 @@ static bool is_dsc_need_re_compute(
 		}
 	}
 
-	if (new_stream_on_link_num == 0)
-		return false;
-
-	if (new_stream_on_link_num == 0)
-		return false;
-
 	/* check current_state if there stream on link but it is not in
 	 * new request state
 	 */
@@ -1555,16 +1549,16 @@ clean_exit:
 	return ret;
 }
 
-static uint32_t kbps_from_pbn(unsigned int pbn)
+static unsigned int kbps_from_pbn(unsigned int pbn)
 {
-	uint64_t kbps = (uint64_t)pbn;
+	unsigned int kbps = pbn;
 
 	kbps *= (1000000 / PEAK_FACTOR_X1000);
 	kbps *= 8;
 	kbps *= 54;
 	kbps /= 64;
 
-	return (uint32_t)kbps;
+	return kbps;
 }
 
 static bool is_dsc_common_config_possible(struct dc_stream_state *stream,

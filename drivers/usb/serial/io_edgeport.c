@@ -770,12 +770,11 @@ static void edge_bulk_out_data_callback(struct urb *urb)
 static void edge_bulk_out_cmd_callback(struct urb *urb)
 {
 	struct edgeport_port *edge_port = urb->context;
-	struct device *dev = &urb->dev->dev;
 	int status = urb->status;
 
 	atomic_dec(&CmdUrbs);
-	dev_dbg(dev, "%s - FREE URB %p (outstanding %d)\n", __func__, urb,
-		atomic_read(&CmdUrbs));
+	dev_dbg(&urb->dev->dev, "%s - FREE URB %p (outstanding %d)\n",
+		__func__, urb, atomic_read(&CmdUrbs));
 
 
 	/* clean up the transfer buffer */
@@ -785,7 +784,8 @@ static void edge_bulk_out_cmd_callback(struct urb *urb)
 	usb_free_urb(urb);
 
 	if (status) {
-		dev_dbg(dev, "%s - nonzero write bulk status received: %d\n",
+		dev_dbg(&urb->dev->dev,
+			"%s - nonzero write bulk status received: %d\n",
 			__func__, status);
 		return;
 	}

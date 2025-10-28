@@ -869,9 +869,8 @@ static void __init mtk_topckgen_init(struct device_node *node)
 
 	mtk_clk_register_fixed_clks(fixed_clks, ARRAY_SIZE(fixed_clks), clk_data);
 	mtk_clk_register_factors(top_divs, ARRAY_SIZE(top_divs), clk_data);
-	mtk_clk_register_composites(NULL, top_muxes,
-				    ARRAY_SIZE(top_muxes), base,
-				    &mt8173_clk_lock, clk_data);
+	mtk_clk_register_composites(top_muxes, ARRAY_SIZE(top_muxes), base,
+			&mt8173_clk_lock, clk_data);
 
 	r = of_clk_add_hw_provider(node, of_clk_hw_onecell_get, clk_data);
 	if (r)
@@ -889,8 +888,8 @@ static void __init mtk_infrasys_init(struct device_node *node)
 
 	clk_data = mtk_alloc_clk_data(CLK_INFRA_NR_CLK);
 
-	mtk_clk_register_gates(NULL, node, infra_clks,
-			       ARRAY_SIZE(infra_clks), clk_data);
+	mtk_clk_register_gates(node, infra_clks, ARRAY_SIZE(infra_clks),
+						clk_data);
 	mtk_clk_register_factors(infra_divs, ARRAY_SIZE(infra_divs), clk_data);
 
 	mtk_clk_register_cpumuxes(node, cpu_muxes, ARRAY_SIZE(cpu_muxes),
@@ -919,11 +918,10 @@ static void __init mtk_pericfg_init(struct device_node *node)
 
 	clk_data = mtk_alloc_clk_data(CLK_PERI_NR_CLK);
 
-	mtk_clk_register_gates(NULL, node, peri_gates,
-			       ARRAY_SIZE(peri_gates), clk_data);
-	mtk_clk_register_composites(NULL, peri_clks,
-				    ARRAY_SIZE(peri_clks), base,
-				    &mt8173_clk_lock, clk_data);
+	mtk_clk_register_gates(node, peri_gates, ARRAY_SIZE(peri_gates),
+						clk_data);
+	mtk_clk_register_composites(peri_clks, ARRAY_SIZE(peri_clks), base,
+			&mt8173_clk_lock, clk_data);
 
 	r = of_clk_add_hw_provider(node, of_clk_hw_onecell_get, clk_data);
 	if (r)
@@ -1064,8 +1062,8 @@ static void __init mtk_imgsys_init(struct device_node *node)
 
 	clk_data = mtk_alloc_clk_data(CLK_IMG_NR_CLK);
 
-	mtk_clk_register_gates(NULL, node, img_clks,
-			       ARRAY_SIZE(img_clks), clk_data);
+	mtk_clk_register_gates(node, img_clks, ARRAY_SIZE(img_clks),
+						clk_data);
 
 	r = of_clk_add_hw_provider(node, of_clk_hw_onecell_get, clk_data);
 
@@ -1082,8 +1080,8 @@ static void __init mtk_vdecsys_init(struct device_node *node)
 
 	clk_data = mtk_alloc_clk_data(CLK_VDEC_NR_CLK);
 
-	mtk_clk_register_gates(NULL, node, vdec_clks,
-			       ARRAY_SIZE(vdec_clks), clk_data);
+	mtk_clk_register_gates(node, vdec_clks, ARRAY_SIZE(vdec_clks),
+						clk_data);
 
 	r = of_clk_add_hw_provider(node, of_clk_hw_onecell_get, clk_data);
 	if (r)
@@ -1099,8 +1097,8 @@ static void __init mtk_vencsys_init(struct device_node *node)
 
 	clk_data = mtk_alloc_clk_data(CLK_VENC_NR_CLK);
 
-	mtk_clk_register_gates(NULL, node, venc_clks,
-			       ARRAY_SIZE(venc_clks), clk_data);
+	mtk_clk_register_gates(node, venc_clks, ARRAY_SIZE(venc_clks),
+						clk_data);
 
 	r = of_clk_add_hw_provider(node, of_clk_hw_onecell_get, clk_data);
 	if (r)
@@ -1116,8 +1114,8 @@ static void __init mtk_vencltsys_init(struct device_node *node)
 
 	clk_data = mtk_alloc_clk_data(CLK_VENCLT_NR_CLK);
 
-	mtk_clk_register_gates(NULL, node, venclt_clks,
-			       ARRAY_SIZE(venclt_clks), clk_data);
+	mtk_clk_register_gates(node, venclt_clks, ARRAY_SIZE(venclt_clks),
+						clk_data);
 
 	r = of_clk_add_hw_provider(node, of_clk_hw_onecell_get, clk_data);
 	if (r)

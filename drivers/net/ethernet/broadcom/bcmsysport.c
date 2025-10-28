@@ -1348,7 +1348,6 @@ static netdev_tx_t bcm_sysport_xmit(struct sk_buff *skb,
 		netif_err(priv, tx_err, dev, "DMA map failed at %p (len=%d)\n",
 			  skb->data, skb_len);
 		ret = NETDEV_TX_OK;
-		dev_kfree_skb_any(skb);
 		goto out;
 	}
 
@@ -1956,11 +1955,7 @@ static int bcm_sysport_open(struct net_device *dev)
 	unsigned int i;
 	int ret;
 
-	ret = clk_prepare_enable(priv->clk);
-	if (ret) {
-		netdev_err(dev, "could not enable priv clock\n");
-		return ret;
-	}
+	clk_prepare_enable(priv->clk);
 
 	/* Reset UniMAC */
 	umac_reset(priv);
@@ -2618,11 +2613,7 @@ static int bcm_sysport_probe(struct platform_device *pdev)
 		goto err_deregister_notifier;
 	}
 
-	ret = clk_prepare_enable(priv->clk);
-	if (ret) {
-		dev_err(&pdev->dev, "could not enable priv clock\n");
-		goto err_deregister_netdev;
-	}
+	clk_prepare_enable(priv->clk);
 
 	priv->rev = topctrl_readl(priv, REV_CNTL) & REV_MASK;
 	dev_info(&pdev->dev,
@@ -2636,8 +2627,6 @@ static int bcm_sysport_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_deregister_netdev:
-	unregister_netdev(dev);
 err_deregister_notifier:
 	unregister_netdevice_notifier(&priv->netdev_notifier);
 err_deregister_fixed_link:
@@ -2809,12 +2798,7 @@ static int __maybe_unused bcm_sysport_resume(struct device *d)
 	if (!netif_running(dev))
 		return 0;
 
-	ret = clk_prepare_enable(priv->clk);
-	if (ret) {
-		netdev_err(dev, "could not enable priv clock\n");
-		return ret;
-	}
-
+	clk_prepare_enable(priv->clk);
 	if (priv->wolopts)
 		clk_disable_unprepare(priv->wol_clk);
 

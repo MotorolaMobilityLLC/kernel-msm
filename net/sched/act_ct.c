@@ -39,28 +39,21 @@ static struct workqueue_struct *act_ct_wq;
 static struct rhashtable zones_ht;
 static DEFINE_MUTEX(zones_mutex);
 
-struct zones_ht_key {
-	struct net *net;
-	u16 zone;
-	/* Note : pad[] must be the last field. */
-	u8  pad[];
-};
-
 struct tcf_ct_flow_table {
 	struct rhash_head node; /* In zones tables */
 
 	struct rcu_work rwork;
 	struct nf_flowtable nf_ft;
 	refcount_t ref;
-	struct zones_ht_key key;
+	u16 zone;
 
 	bool dying;
 };
 
 static const struct rhashtable_params zones_params = {
 	.head_offset = offsetof(struct tcf_ct_flow_table, node),
-	.key_offset = offsetof(struct tcf_ct_flow_table, key),
-	.key_len = offsetof(struct zones_ht_key, pad),
+	.key_offset = offsetof(struct tcf_ct_flow_table, zone),
+	.key_len = sizeof_field(struct tcf_ct_flow_table, zone),
 	.automatic_shrinking = true,
 };
 
@@ -319,12 +312,11 @@ static struct nf_flowtable_type flowtable_ct = {
 
 static int tcf_ct_flow_table_get(struct net *net, struct tcf_ct_params *params)
 {
-	struct zones_ht_key key = { .net = net, .zone = params->zone };
 	struct tcf_ct_flow_table *ct_ft;
 	int err = -ENOMEM;
 
 	mutex_lock(&zones_mutex);
-	ct_ft = rhashtable_lookup_fast(&zones_ht, &key, zones_params);
+	ct_ft = rhashtable_lookup_fast(&zones_ht, &params->zone, zones_params);
 	if (ct_ft && refcount_inc_not_zero(&ct_ft->ref))
 		goto out_unlock;
 
@@ -333,7 +325,7 @@ static int tcf_ct_flow_table_get(struct net *net, struct tcf_ct_params *params)
 		goto err_alloc;
 	refcount_set(&ct_ft->ref, 1);
 
-	ct_ft->key = key;
+	ct_ft->zone = params->zone;
 	err = rhashtable_insert_fast(&zones_ht, &ct_ft->node, zones_params);
 	if (err)
 		goto err_insert;
@@ -1214,14 +1206,6 @@ do_nat:
 		 */
 		if (nf_conntrack_confirm(skb) != NF_ACCEPT)
 			goto drop;
-
-		/* The ct may be dropped if a clash has been resolved,
-		 * so it's necessary to retrieve it from skb again to
-		 * prevent UAF.
-		 */
-		ct = nf_ct_get(skb, &ctinfo);
-		if (!ct)
-			skip_add = true;
 	}
 
 	if (!skip_add)

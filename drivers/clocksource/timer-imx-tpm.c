@@ -83,20 +83,12 @@ static u64 notrace tpm_read_sched_clock(void)
 static int tpm_set_next_event(unsigned long delta,
 				struct clock_event_device *evt)
 {
-	unsigned long next, prev, now;
+	unsigned long next, now;
 
-	prev = tpm_read_counter();
-	next = prev + delta;
+	next = tpm_read_counter();
+	next += delta;
 	writel(next, timer_base + TPM_C0V);
 	now = tpm_read_counter();
-
-	/*
-	 * Need to wait CNT increase at least 1 cycle to make sure
-	 * the C0V has been updated into HW.
-	 */
-	if ((next & 0xffffffff) != readl(timer_base + TPM_C0V))
-		while (now == tpm_read_counter())
-			;
 
 	/*
 	 * NOTE: We observed in a very small probability, the bus fabric
@@ -104,7 +96,7 @@ static int tpm_set_next_event(unsigned long delta,
 	 * of writing CNT registers which may cause the min_delta event got
 	 * missed, so we need add a ETIME check here in case it happened.
 	 */
-	return (now - prev) >= delta ? -ETIME : 0;
+	return (int)(next - now) <= 0 ? -ETIME : 0;
 }
 
 static int tpm_set_state_oneshot(struct clock_event_device *evt)

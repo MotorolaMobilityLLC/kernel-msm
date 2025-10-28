@@ -47,22 +47,6 @@ struct padata_mt_job_state {
 static void padata_free_pd(struct parallel_data *pd);
 static void __init padata_mt_helper(struct work_struct *work);
 
-static inline void padata_get_pd(struct parallel_data *pd)
-{
-	refcount_inc(&pd->refcnt);
-}
-
-static inline void padata_put_pd_cnt(struct parallel_data *pd, int cnt)
-{
-	if (refcount_sub_and_test(cnt, &pd->refcnt))
-		padata_free_pd(pd);
-}
-
-static inline void padata_put_pd(struct parallel_data *pd)
-{
-	padata_put_pd_cnt(pd, 1);
-}
-
 static int padata_index_to_cpu(struct parallel_data *pd, int cpu_index)
 {
 	int cpu, target_cpu;
@@ -114,7 +98,7 @@ static int __init padata_work_alloc_mt(int nworks, void *data,
 {
 	int i;
 
-	spin_lock_bh(&padata_works_lock);
+	spin_lock(&padata_works_lock);
 	/* Start at 1 because the current task participates in the job. */
 	for (i = 1; i < nworks; ++i) {
 		struct padata_work *pw = padata_work_alloc();
@@ -124,7 +108,7 @@ static int __init padata_work_alloc_mt(int nworks, void *data,
 		padata_work_init(pw, padata_mt_helper, data, 0);
 		list_add(&pw->pw_list, head);
 	}
-	spin_unlock_bh(&padata_works_lock);
+	spin_unlock(&padata_works_lock);
 
 	return i;
 }
@@ -142,12 +126,12 @@ static void __init padata_works_free(struct list_head *works)
 	if (list_empty(works))
 		return;
 
-	spin_lock_bh(&padata_works_lock);
+	spin_lock(&padata_works_lock);
 	list_for_each_entry_safe(cur, next, works, pw_list) {
 		list_del(&cur->pw_list);
 		padata_work_free(cur);
 	}
-	spin_unlock_bh(&padata_works_lock);
+	spin_unlock(&padata_works_lock);
 }
 
 static void padata_parallel_worker(struct work_struct *parallel_work)
@@ -214,7 +198,7 @@ int padata_do_parallel(struct padata_shell *ps,
 	if ((pinst->flags & PADATA_RESET))
 		goto out;
 
-	padata_get_pd(pd);
+	refcount_inc(&pd->refcnt);
 	padata->pd = pd;
 	padata->cb_cpu = *cb_cpu;
 
@@ -344,14 +328,8 @@ static void padata_reorder(struct parallel_data *pd)
 	smp_mb();
 
 	reorder = per_cpu_ptr(pd->reorder_list, pd->cpu);
-	if (!list_empty(&reorder->list) && padata_find_next(pd, false)) {
-		/*
-		 * Other context(eg. the padata_serial_worker) can finish the request.
-		 * To avoid UAF issue, add pd ref here, and put pd ref after reorder_work finish.
-		 */
-		padata_get_pd(pd);
+	if (!list_empty(&reorder->list) && padata_find_next(pd, false))
 		queue_work(pinst->serial_wq, &pd->reorder_work);
-	}
 }
 
 static void invoke_padata_reorder(struct work_struct *work)
@@ -362,8 +340,6 @@ static void invoke_padata_reorder(struct work_struct *work)
 	pd = container_of(work, struct parallel_data, reorder_work);
 	padata_reorder(pd);
 	local_bh_enable();
-	/* Pairs with putting the reorder_work in the serial_wq */
-	padata_put_pd(pd);
 }
 
 static void padata_serial_worker(struct work_struct *serial_work)
@@ -396,7 +372,8 @@ static void padata_serial_worker(struct work_struct *serial_work)
 	}
 	local_bh_enable();
 
-	padata_put_pd_cnt(pd, cnt);
+	if (refcount_sub_and_test(cnt, &pd->refcnt))
+		padata_free_pd(pd);
 }
 
 /**
@@ -419,8 +396,7 @@ void padata_do_serial(struct padata_priv *padata)
 	/* Sort in ascending order of sequence number. */
 	list_for_each_prev(pos, &reorder->list) {
 		cur = list_entry(pos, struct padata_priv, list);
-		/* Compare by difference to consider integer wrap around */
-		if ((signed int)(cur->seq_nr - padata->seq_nr) < 0)
+		if (cur->seq_nr < padata->seq_nr)
 			break;
 	}
 	list_add(&padata->list, pos);
@@ -527,20 +503,10 @@ void __init padata_do_multithreaded(struct padata_mt_job *job)
 	 * thread function.  Load balance large jobs between threads by
 	 * increasing the number of chunks, guarantee at least the minimum
 	 * chunk size from the caller, and honor the caller's alignment.
-	 * Ensure chunk_size is at least 1 to prevent divide-by-0
-	 * panic in padata_mt_helper().
 	 */
 	ps.chunk_size = job->size / (ps.nworks * load_balance_factor);
 	ps.chunk_size = max(ps.chunk_size, job->min_chunk);
-	ps.chunk_size = max(ps.chunk_size, 1ul);
 	ps.chunk_size = roundup(ps.chunk_size, job->align);
-
-	/*
-	 * chunk_size can be 0 if the caller sets min_chunk to 0. So force it
-	 * to at least 1 to prevent divide-by-0 panic in padata_mt_helper().`
-	 */
-	if (!ps.chunk_size)
-		ps.chunk_size = 1U;
 
 	list_for_each_entry(pw, &works, pw_list)
 		queue_work(system_unbound_wq, &pw->pw_work);
@@ -693,7 +659,8 @@ static int padata_replace(struct padata_instance *pinst)
 	synchronize_rcu();
 
 	list_for_each_entry_continue_reverse(ps, &pinst->pslist, list)
-		padata_put_pd(ps->opd);
+		if (refcount_dec_and_test(&ps->opd->refcnt))
+			padata_free_pd(ps->opd);
 
 	pinst->flags &= ~PADATA_RESET;
 
@@ -981,7 +948,7 @@ static ssize_t padata_sysfs_store(struct kobject *kobj, struct attribute *attr,
 
 	pinst = kobj2pinst(kobj);
 	pentry = attr2pentry(attr);
-	if (pentry->store)
+	if (pentry->show)
 		ret = pentry->store(pinst, attr, buf, count);
 
 	return ret;
@@ -1132,16 +1099,11 @@ void padata_free_shell(struct padata_shell *ps)
 	if (!ps)
 		return;
 
-	/*
-	 * Wait for all _do_serial calls to finish to avoid touching
-	 * freed pd's and ps's.
-	 */
-	synchronize_rcu();
-
 	mutex_lock(&ps->pinst->lock);
 	list_del(&ps->list);
 	pd = rcu_dereference_protected(ps->pd, 1);
-	padata_put_pd(pd);
+	if (refcount_dec_and_test(&pd->refcnt))
+		padata_free_pd(pd);
 	mutex_unlock(&ps->pinst->lock);
 
 	kfree(ps);

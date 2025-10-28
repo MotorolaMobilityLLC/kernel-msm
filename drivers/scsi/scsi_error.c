@@ -1816,10 +1816,7 @@ check_type:
 	 * assume caller has checked sense and determined
 	 * the check condition was retryable.
 	 */
-	if (req->cmd_flags & REQ_FAILFAST_DEV)
-		return true;
-	if (blk_rq_is_passthrough(req) &&
-	    !(scmd->flags & SCMD_RETRY_PASSTHROUGH))
+	if (req->cmd_flags & REQ_FAILFAST_DEV || blk_rq_is_passthrough(req))
 		return true;
 
 	return false;

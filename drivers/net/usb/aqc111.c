@@ -1141,15 +1141,17 @@ static int aqc111_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 			continue;
 		}
 
-		new_skb = netdev_alloc_skb_ip_align(dev->net, pkt_len);
+		/* Clone SKB */
+		new_skb = skb_clone(skb, GFP_ATOMIC);
 
 		if (!new_skb)
 			goto err;
 
-		skb_put(new_skb, pkt_len);
-		memcpy(new_skb->data, skb->data, pkt_len);
+		new_skb->len = pkt_len;
 		skb_pull(new_skb, AQ_RX_HW_PAD);
+		skb_set_tail_pointer(new_skb, new_skb->len);
 
+		new_skb->truesize = SKB_TRUESIZE(new_skb->len);
 		if (aqc111_data->rx_checksum)
 			aqc111_rx_checksum(new_skb, pkt_desc);
 

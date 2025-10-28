@@ -17,7 +17,6 @@
 #include <linux/acpi.h>
 #include <linux/clk.h>
 #include <linux/device.h>
-#include <linux/device/bus.h>
 #include <linux/dmi.h>
 #include <linux/gpio/consumer.h>
 #include <linux/gpio/machine.h>
@@ -32,8 +31,6 @@
 #include "../../codecs/rt5640.h"
 #include "../atom/sst-atom-controls.h"
 #include "../common/soc-intel-quirks.h"
-
-#define BYT_RT5640_FALLBACK_CODEC_DEV_NAME	"i2c-rt5640"
 
 enum {
 	BYT_RT5640_DMIC1_MAP,
@@ -616,17 +613,6 @@ static const struct dmi_system_id byt_rt5640_quirk_table[] = {
 	{
 		.matches = {
 			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "ARCHOS"),
-			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "ARCHOS 101 CESIUM"),
-		},
-		.driver_data = (void *)(BYTCR_INPUT_DEFAULTS |
-					BYT_RT5640_JD_NOT_INV |
-					BYT_RT5640_DIFF_MIC |
-					BYT_RT5640_SSP0_AIF1 |
-					BYT_RT5640_MCLK_EN),
-	},
-	{
-		.matches = {
-			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "ARCHOS"),
 			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "ARCHOS 140 CESIUM"),
 		},
 		.driver_data = (void *)(BYT_RT5640_IN1_MAP |
@@ -650,7 +636,17 @@ static const struct dmi_system_id byt_rt5640_quirk_table[] = {
 					BYT_RT5640_USE_AMCR0F28),
 	},
 	{
-		/* Asus T100TAF, unlike other T100TA* models this one has a mono speaker */
+		.matches = {
+			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
+			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "T100TA"),
+		},
+		.driver_data = (void *)(BYT_RT5640_IN1_MAP |
+					BYT_RT5640_JD_SRC_JD2_IN4N |
+					BYT_RT5640_OVCD_TH_2000UA |
+					BYT_RT5640_OVCD_SF_0P75 |
+					BYT_RT5640_MCLK_EN),
+	},
+	{
 		.matches = {
 			DMI_EXACT_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
 			DMI_EXACT_MATCH(DMI_PRODUCT_NAME, "T100TAF"),
@@ -662,18 +658,6 @@ static const struct dmi_system_id byt_rt5640_quirk_table[] = {
 					BYT_RT5640_MONO_SPEAKER |
 					BYT_RT5640_DIFF_MIC |
 					BYT_RT5640_SSP0_AIF2 |
-					BYT_RT5640_MCLK_EN),
-	},
-	{
-		/* Asus T100TA and T100TAM, must come after T100TAF (mono spk) match */
-		.matches = {
-			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
-			DMI_MATCH(DMI_PRODUCT_NAME, "T100TA"),
-		},
-		.driver_data = (void *)(BYT_RT5640_IN1_MAP |
-					BYT_RT5640_JD_SRC_JD2_IN4N |
-					BYT_RT5640_OVCD_TH_2000UA |
-					BYT_RT5640_OVCD_SF_0P75 |
 					BYT_RT5640_MCLK_EN),
 	},
 	{
@@ -1119,36 +1103,6 @@ static const struct dmi_system_id byt_rt5640_quirk_table[] = {
 					BYT_RT5640_JD_SRC_JD1_IN4P |
 					BYT_RT5640_OVCD_TH_2000UA |
 					BYT_RT5640_OVCD_SF_0P75 |
-					BYT_RT5640_SSP0_AIF2 |
-					BYT_RT5640_MCLK_EN),
-	},
-	{
-		/* Vexia Edu Atla 10 tablet 5V version */
-		.matches = {
-			/* Having all 3 of these not set is somewhat unique */
-			DMI_MATCH(DMI_SYS_VENDOR, "To be filled by O.E.M."),
-			DMI_MATCH(DMI_PRODUCT_NAME, "To be filled by O.E.M."),
-			DMI_MATCH(DMI_BOARD_NAME, "To be filled by O.E.M."),
-			/* Above strings are too generic, also match on BIOS date */
-			DMI_MATCH(DMI_BIOS_DATE, "05/14/2015"),
-		},
-		.driver_data = (void *)(BYTCR_INPUT_DEFAULTS |
-					BYT_RT5640_JD_NOT_INV |
-					BYT_RT5640_SSP0_AIF1 |
-					BYT_RT5640_MCLK_EN),
-	},
-	{	/* Vexia Edu Atla 10 tablet 9V version */
-		.matches = {
-			DMI_MATCH(DMI_BOARD_VENDOR, "AMI Corporation"),
-			DMI_MATCH(DMI_BOARD_NAME, "Aptio CRB"),
-			/* Above strings are too generic, also match on BIOS date */
-			DMI_MATCH(DMI_BIOS_DATE, "08/25/2014"),
-		},
-		.driver_data = (void *)(BYT_RT5640_IN1_MAP |
-					BYT_RT5640_JD_SRC_JD2_IN4N |
-					BYT_RT5640_OVCD_TH_2000UA |
-					BYT_RT5640_OVCD_SF_0P75 |
-					BYT_RT5640_DIFF_MIC |
 					BYT_RT5640_SSP0_AIF2 |
 					BYT_RT5640_MCLK_EN),
 	},
@@ -1720,33 +1674,9 @@ static int snd_byt_rt5640_mc_probe(struct platform_device *pdev)
 
 	codec_dev = acpi_get_first_physical_node(adev);
 	acpi_dev_put(adev);
-
-	if (codec_dev) {
-		priv->codec_dev = get_device(codec_dev);
-	} else {
-		/*
-		 * Special case for Android tablets where the codec i2c_client
-		 * has been manually instantiated by x86_android_tablets.ko due
-		 * to a broken DSDT.
-		 */
-		codec_dev = bus_find_device_by_name(&i2c_bus_type, NULL,
-					BYT_RT5640_FALLBACK_CODEC_DEV_NAME);
-		if (!codec_dev)
-			return -EPROBE_DEFER;
-
-		if (!i2c_verify_client(codec_dev)) {
-			dev_err(dev, "Error '%s' is not an i2c_client\n",
-				BYT_RT5640_FALLBACK_CODEC_DEV_NAME);
-			put_device(codec_dev);
-		}
-
-		/* fixup codec name */
-		strscpy(byt_rt5640_codec_name, BYT_RT5640_FALLBACK_CODEC_DEV_NAME,
-			sizeof(byt_rt5640_codec_name));
-
-		/* bus_find_device() returns a reference no need to get() */
-		priv->codec_dev = codec_dev;
-	}
+	if (!codec_dev)
+		return -EPROBE_DEFER;
+	priv->codec_dev = get_device(codec_dev);
 
 	/*
 	 * swap SSP0 if bytcr is detected

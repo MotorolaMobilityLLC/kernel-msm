@@ -58,9 +58,7 @@ static int ila_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 		return orig_dst->lwtstate->orig_output(net, sk, skb);
 	}
 
-	local_bh_disable();
 	dst = dst_cache_get(&ilwt->dst_cache);
-	local_bh_enable();
 	if (unlikely(!dst)) {
 		struct ipv6hdr *ip6h = ipv6_hdr(skb);
 		struct flowi6 fl6;
@@ -88,15 +86,10 @@ static int ila_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 			goto drop;
 		}
 
-		/* cache only if we don't create a dst reference loop */
-		if (ilwt->connected && orig_dst->lwtstate != dst->lwtstate) {
-			local_bh_disable();
+		if (ilwt->connected)
 			dst_cache_set_ip6(&ilwt->dst_cache, dst, &fl6.saddr);
-			local_bh_enable();
-		}
 	}
 
-	skb_dst_drop(skb);
 	skb_dst_set(skb, dst);
 	return dst_output(net, sk, skb);
 

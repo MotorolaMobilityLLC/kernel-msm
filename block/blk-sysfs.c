@@ -860,8 +860,10 @@ unlock:
 	 * faster to shut down and is made fully functional here as
 	 * request_queues for non-existent devices never get registered.
 	 */
-	blk_queue_flag_set(QUEUE_FLAG_INIT_DONE, q);
-	percpu_ref_switch_to_percpu(&q->q_usage_counter);
+	if (!blk_queue_init_done(q)) {
+		blk_queue_flag_set(QUEUE_FLAG_INIT_DONE, q);
+		percpu_ref_switch_to_percpu(&q->q_usage_counter);
+	}
 
 	return ret;
 

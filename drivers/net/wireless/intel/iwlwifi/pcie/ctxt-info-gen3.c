@@ -68,8 +68,7 @@ iwl_pcie_ctxt_info_dbg_enable(struct iwl_trans *trans,
 		}
 		break;
 	default:
-		IWL_DEBUG_FW(trans, "WRT: Invalid buffer destination (%d)\n",
-			     le32_to_cpu(fw_mon_cfg->buf_location));
+		IWL_ERR(trans, "WRT: Invalid buffer destination\n");
 	}
 out:
 	if (dbg_flags)

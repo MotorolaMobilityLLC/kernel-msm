@@ -25,7 +25,7 @@
  * difficult to estimate the time it takes for the system to process the command
  * before it is actually passed to the PPM.
  */
-#define UCSI_TIMEOUT_MS		10000
+#define UCSI_TIMEOUT_MS		5000
 
 /*
  * UCSI_SWAP_TIMEOUT_MS - Timeout for role swap requests
@@ -36,16 +36,22 @@
  */
 #define UCSI_SWAP_TIMEOUT_MS	5000
 
-static int ucsi_acknowledge(struct ucsi *ucsi, bool conn_ack)
+static int ucsi_acknowledge_command(struct ucsi *ucsi)
 {
 	u64 ctrl;
 
 	ctrl = UCSI_ACK_CC_CI;
 	ctrl |= UCSI_ACK_COMMAND_COMPLETE;
-	if (conn_ack) {
-		clear_bit(EVENT_PENDING, &ucsi->flags);
-		ctrl |= UCSI_ACK_CONNECTOR_CHANGE;
-	}
+
+	return ucsi->ops->sync_write(ucsi, UCSI_CONTROL, &ctrl, sizeof(ctrl));
+}
+
+static int ucsi_acknowledge_connector_change(struct ucsi *ucsi)
+{
+	u64 ctrl;
+
+	ctrl = UCSI_ACK_CC_CI;
+	ctrl |= UCSI_ACK_CONNECTOR_CHANGE;
 
 	return ucsi->ops->sync_write(ucsi, UCSI_CONTROL, &ctrl, sizeof(ctrl));
 }
@@ -58,7 +64,7 @@ static int ucsi_read_error(struct ucsi *ucsi)
 	int ret;
 
 	/* Acknowledge the command that failed */
-	ret = ucsi_acknowledge(ucsi, false);
+	ret = ucsi_acknowledge_command(ucsi);
 	if (ret)
 		return ret;
 
@@ -70,7 +76,7 @@ static int ucsi_read_error(struct ucsi *ucsi)
 	if (ret)
 		return ret;
 
-	ret = ucsi_acknowledge(ucsi, false);
+	ret = ucsi_acknowledge_command(ucsi);
 	if (ret)
 		return ret;
 
@@ -133,33 +139,28 @@ static int ucsi_exec_command(struct ucsi *ucsi, u64 cmd)
 		return -EIO;
 
 	if (cci & UCSI_CCI_NOT_SUPPORTED) {
-		if (ucsi_acknowledge(ucsi, false) < 0)
+		if (ucsi_acknowledge_command(ucsi) < 0)
 			dev_err(ucsi->dev,
 				"ACK of unsupported command failed\n");
 		return -EOPNOTSUPP;
 	}
 
 	if (cci & UCSI_CCI_ERROR) {
-		if (cmd == UCSI_GET_ERROR_STATUS) {
-			ret = ucsi_acknowledge(ucsi, false);
-			if (ret)
-				return ret;
-
+		if (cmd == UCSI_GET_ERROR_STATUS)
 			return -EIO;
-		}
 		return ucsi_read_error(ucsi);
 	}
 
 	if (cmd == UCSI_CANCEL && cci & UCSI_CCI_CANCEL_COMPLETE) {
-		ret = ucsi_acknowledge(ucsi, false);
+		ret = ucsi_acknowledge_command(ucsi);
 		return ret ? ret : -EBUSY;
 	}
 
 	return UCSI_CCI_LENGTH(cci);
 }
 
-static int ucsi_send_command_common(struct ucsi *ucsi, u64 command,
-				    void *data, size_t size, bool conn_ack)
+int ucsi_send_command(struct ucsi *ucsi, u64 command,
+		      void *data, size_t size)
 {
 	u8 length;
 	int ret;
@@ -178,7 +179,7 @@ static int ucsi_send_command_common(struct ucsi *ucsi, u64 command,
 			goto out;
 	}
 
-	ret = ucsi_acknowledge(ucsi, conn_ack);
+	ret = ucsi_acknowledge_command(ucsi);
 	if (ret)
 		goto out;
 
@@ -186,12 +187,6 @@ static int ucsi_send_command_common(struct ucsi *ucsi, u64 command,
 out:
 	mutex_unlock(&ucsi->ppm_lock);
 	return ret;
-}
-
-int ucsi_send_command(struct ucsi *ucsi, u64 command,
-		      void *data, size_t size)
-{
-	return ucsi_send_command_common(ucsi, command, data, size, false);
 }
 EXPORT_SYMBOL_GPL(ucsi_send_command);
 
@@ -790,9 +785,7 @@ static void ucsi_handle_connector_change(struct work_struct *work)
 	mutex_lock(&con->lock);
 
 	command = UCSI_GET_CONNECTOR_STATUS | UCSI_CONNECTOR_NUMBER(con->num);
-
-	ret = ucsi_send_command_common(ucsi, command, &con->status,
-				       sizeof(con->status), true);
+	ret = ucsi_send_command(ucsi, command, &con->status, sizeof(con->status));
 	if (ret < 0) {
 		dev_err(ucsi->dev, "%s: GET_CONNECTOR_STATUS failed (%d)\n",
 			__func__, ret);
@@ -840,6 +833,14 @@ static void ucsi_handle_connector_change(struct work_struct *work)
 	if (con->status.change & UCSI_CONSTAT_CAM_CHANGE)
 		ucsi_partner_task(con, ucsi_check_altmodes, 1, 0);
 
+	mutex_lock(&ucsi->ppm_lock);
+	clear_bit(EVENT_PENDING, &con->ucsi->flags);
+	ret = ucsi_acknowledge_connector_change(ucsi);
+	mutex_unlock(&ucsi->ppm_lock);
+
+	if (ret)
+		dev_err(ucsi->dev, "%s: ACK failed (%d)", __func__, ret);
+
 out_unlock:
 	mutex_unlock(&con->lock);
 }
@@ -854,7 +855,7 @@ void ucsi_connector_change(struct ucsi *ucsi, u8 num)
 	struct ucsi_connector *con = &ucsi->connector[num - 1];
 
 	if (!(ucsi->ntfy & UCSI_ENABLE_NTFY_CONNECTOR_CHANGE)) {
-		dev_dbg(ucsi->dev, "Early connector change event\n");
+		dev_dbg(ucsi->dev, "Bogus connector change event\n");
 		return;
 	}
 
@@ -1247,7 +1248,6 @@ static int ucsi_init(struct ucsi *ucsi)
 {
 	struct ucsi_connector *con, *connector;
 	u64 command, ntfy;
-	u32 cci;
 	int ret;
 	int i;
 
@@ -1300,24 +1300,15 @@ static int ucsi_init(struct ucsi *ucsi)
 
 	ucsi->connector = connector;
 	ucsi->ntfy = ntfy;
-
-	mutex_lock(&ucsi->ppm_lock);
-	ret = ucsi->ops->read(ucsi, UCSI_CCI, &cci, sizeof(cci));
-	mutex_unlock(&ucsi->ppm_lock);
-	if (ret)
-		return ret;
-	if (UCSI_CCI_CONNECTOR(cci))
-		ucsi_connector_change(ucsi, UCSI_CCI_CONNECTOR(cci));
-
 	return 0;
 
 err_unregister:
 	for (con = connector; con->port; con++) {
-		if (con->wq)
-			destroy_workqueue(con->wq);
 		ucsi_unregister_partner(con);
 		ucsi_unregister_altmodes(con, UCSI_RECIPIENT_CON);
 		ucsi_unregister_port_psy(con);
+		if (con->wq)
+			destroy_workqueue(con->wq);
 		typec_unregister_port(con->port);
 		con->port = NULL;
 	}
@@ -1479,6 +1470,10 @@ void ucsi_unregister(struct ucsi *ucsi)
 
 	for (i = 0; i < ucsi->cap.num_connectors; i++) {
 		cancel_work_sync(&ucsi->connector[i].work);
+		ucsi_unregister_partner(&ucsi->connector[i]);
+		ucsi_unregister_altmodes(&ucsi->connector[i],
+					 UCSI_RECIPIENT_CON);
+		ucsi_unregister_port_psy(&ucsi->connector[i]);
 
 		if (ucsi->connector[i].wq) {
 			struct ucsi_work *uwork;
@@ -1493,11 +1488,6 @@ void ucsi_unregister(struct ucsi *ucsi)
 			mutex_unlock(&ucsi->connector[i].lock);
 			destroy_workqueue(ucsi->connector[i].wq);
 		}
-
-		ucsi_unregister_partner(&ucsi->connector[i]);
-		ucsi_unregister_altmodes(&ucsi->connector[i],
-					 UCSI_RECIPIENT_CON);
-		ucsi_unregister_port_psy(&ucsi->connector[i]);
 		typec_unregister_port(ucsi->connector[i].port);
 	}
 

@@ -373,7 +373,4 @@ module_exit(ecdsa_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Stefan Berger <stefanb@linux.ibm.com>");
 MODULE_DESCRIPTION("ECDSA generic algorithm");
-MODULE_ALIAS_CRYPTO("ecdsa-nist-p192");
-MODULE_ALIAS_CRYPTO("ecdsa-nist-p256");
-MODULE_ALIAS_CRYPTO("ecdsa-nist-p384");
 MODULE_ALIAS_CRYPTO("ecdsa-generic");

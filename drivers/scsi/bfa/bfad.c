@@ -1699,8 +1699,9 @@ bfad_init(void)
 
 	error = bfad_im_module_init();
 	if (error) {
+		error = -ENOMEM;
 		printk(KERN_WARNING "bfad_im_module_init failure\n");
-		return -ENOMEM;
+		goto ext;
 	}
 
 	if (strcmp(FCPI_NAME, " fcpim") == 0)

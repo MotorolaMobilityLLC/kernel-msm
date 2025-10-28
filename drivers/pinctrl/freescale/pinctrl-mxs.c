@@ -405,8 +405,8 @@ static int mxs_pinctrl_probe_dt(struct platform_device *pdev,
 	int ret;
 	u32 val;
 
-	val = of_get_child_count(np);
-	if (val == 0) {
+	child = of_get_next_child(np, NULL);
+	if (!child) {
 		dev_err(&pdev->dev, "no group is defined\n");
 		return -ENOENT;
 	}

@@ -282,18 +282,14 @@ void __inet_twsk_schedule(struct inet_timewait_sock *tw, int timeo, bool rearm)
 EXPORT_SYMBOL_GPL(__inet_twsk_schedule);
 
 /* Remove all non full sockets (TIME_WAIT and NEW_SYN_RECV) for dead netns */
-void inet_twsk_purge(struct inet_hashinfo *hashinfo)
+void inet_twsk_purge(struct inet_hashinfo *hashinfo, int family)
 {
-	struct inet_ehash_bucket *head = &hashinfo->ehash[0];
-	unsigned int ehash_mask = hashinfo->ehash_mask;
 	struct hlist_nulls_node *node;
 	unsigned int slot;
 	struct sock *sk;
 
-	for (slot = 0; slot <= ehash_mask; slot++, head++) {
-		if (hlist_nulls_empty(&head->chain))
-			continue;
-
+	for (slot = 0; slot <= hashinfo->ehash_mask; slot++) {
+		struct inet_ehash_bucket *head = &hashinfo->ehash[slot];
 restart_rcu:
 		cond_resched();
 		rcu_read_lock();
@@ -305,13 +301,15 @@ restart:
 					     TCPF_NEW_SYN_RECV))
 				continue;
 
-			if (refcount_read(&sock_net(sk)->ns.count))
+			if (sk->sk_family != family ||
+			    refcount_read(&sock_net(sk)->ns.count))
 				continue;
 
 			if (unlikely(!refcount_inc_not_zero(&sk->sk_refcnt)))
 				continue;
 
-			if (refcount_read(&sock_net(sk)->ns.count)) {
+			if (unlikely(sk->sk_family != family ||
+				     refcount_read(&sock_net(sk)->ns.count))) {
 				sock_gen_put(sk);
 				goto restart;
 			}

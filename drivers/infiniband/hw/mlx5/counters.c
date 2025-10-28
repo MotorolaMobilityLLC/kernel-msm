@@ -444,7 +444,6 @@ static int mlx5_ib_counter_bind_qp(struct rdma_counter *counter,
 				   struct ib_qp *qp)
 {
 	struct mlx5_ib_dev *dev = to_mdev(qp->device);
-	bool new = false;
 	int err;
 
 	if (!counter->id) {
@@ -459,7 +458,6 @@ static int mlx5_ib_counter_bind_qp(struct rdma_counter *counter,
 			return err;
 		counter->id =
 			MLX5_GET(alloc_q_counter_out, out, counter_set_id);
-		new = true;
 	}
 
 	err = mlx5_ib_qp_set_counter(qp, counter);
@@ -469,10 +467,8 @@ static int mlx5_ib_counter_bind_qp(struct rdma_counter *counter,
 	return 0;
 
 fail_set_counter:
-	if (new) {
-		mlx5_ib_counter_dealloc(counter);
-		counter->id = 0;
-	}
+	mlx5_ib_counter_dealloc(counter);
+	counter->id = 0;
 
 	return err;
 }

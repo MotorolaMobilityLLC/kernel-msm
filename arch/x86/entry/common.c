@@ -48,7 +48,7 @@ static __always_inline bool do_syscall_x64(struct pt_regs *regs, int nr)
 
 	if (likely(unr < NR_syscalls)) {
 		unr = array_index_nospec(unr, NR_syscalls);
-		regs->ax = x64_sys_call(regs, unr);
+		regs->ax = sys_call_table[unr](regs);
 		return true;
 	}
 	return false;
@@ -65,7 +65,7 @@ static __always_inline bool do_syscall_x32(struct pt_regs *regs, int nr)
 
 	if (IS_ENABLED(CONFIG_X86_X32_ABI) && likely(xnr < X32_NR_syscalls)) {
 		xnr = array_index_nospec(xnr, X32_NR_syscalls);
-		regs->ax = x32_sys_call(regs, xnr);
+		regs->ax = x32_sys_call_table[xnr](regs);
 		return true;
 	}
 	return false;
@@ -114,7 +114,7 @@ static __always_inline void do_syscall_32_irqs_on(struct pt_regs *regs, int nr)
 
 	if (likely(unr < IA32_NR_syscalls)) {
 		unr = array_index_nospec(unr, IA32_NR_syscalls);
-		regs->ax = ia32_sys_call(regs, unr);
+		regs->ax = ia32_sys_call_table[unr](regs);
 	} else if (nr != -1) {
 		regs->ax = __ia32_sys_ni_syscall(regs);
 	}
@@ -141,7 +141,7 @@ static __always_inline bool int80_is_external(void)
 }
 
 /**
- * do_int80_emulation - 32-bit legacy syscall C entry from asm
+ * int80_emulation - 32-bit legacy syscall entry
  *
  * This entry point can be used by 32-bit and 64-bit programs to perform
  * 32-bit system calls.  Instances of INT $0x80 can be found inline in
@@ -159,7 +159,7 @@ static __always_inline bool int80_is_external(void)
  *   eax:				system call number
  *   ebx, ecx, edx, esi, edi, ebp:	arg1 - arg 6
  */
-__visible noinstr void do_int80_emulation(struct pt_regs *regs)
+DEFINE_IDTENTRY_RAW(int80_emulation)
 {
 	int nr;
 

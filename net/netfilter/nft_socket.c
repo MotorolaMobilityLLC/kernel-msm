@@ -9,8 +9,7 @@
 
 struct nft_socket {
 	enum nft_socket_keys		key:8;
-	u8				level;		/* cgroupv2 level to extract */
-	u8				level_user;	/* cgroupv2 level provided by userspace */
+	u8				level;
 	u8				len;
 	union {
 		u8			dreg;
@@ -53,28 +52,6 @@ nft_sock_get_eval_cgroupv2(u32 *dest, struct sock *sk, const struct nft_pktinfo 
 	cgid = cgroup_id(cgrp);
 	memcpy(dest, &cgid, sizeof(u64));
 	return true;
-}
-
-/* process context only, uses current->nsproxy. */
-static noinline int nft_socket_cgroup_subtree_level(void)
-{
-	struct cgroup *cgrp = cgroup_get_from_path("/");
-	int level;
-
-	if (IS_ERR(cgrp))
-		return PTR_ERR(cgrp);
-
-	level = cgrp->level;
-
-	cgroup_put(cgrp);
-
-	if (level > 255)
-		return -ERANGE;
-
-	if (WARN_ON_ONCE(level < 0))
-		return -EINVAL;
-
-	return level;
 }
 #endif
 
@@ -133,13 +110,13 @@ static void nft_socket_eval(const struct nft_expr *expr,
 			*dest = READ_ONCE(sk->sk_mark);
 		} else {
 			regs->verdict.code = NFT_BREAK;
-			goto out_put_sk;
+			return;
 		}
 		break;
 	case NFT_SOCKET_WILDCARD:
 		if (!sk_fullsock(sk)) {
 			regs->verdict.code = NFT_BREAK;
-			goto out_put_sk;
+			return;
 		}
 		nft_socket_wildcard(pkt, regs, sk, dest);
 		break;
@@ -147,7 +124,7 @@ static void nft_socket_eval(const struct nft_expr *expr,
 	case NFT_SOCKET_CGROUPV2:
 		if (!nft_sock_get_eval_cgroupv2(dest, sk, pkt, priv->level)) {
 			regs->verdict.code = NFT_BREAK;
-			goto out_put_sk;
+			return;
 		}
 		break;
 #endif
@@ -156,7 +133,6 @@ static void nft_socket_eval(const struct nft_expr *expr,
 		regs->verdict.code = NFT_BREAK;
 	}
 
-out_put_sk:
 	if (sk != skb->sk)
 		sock_gen_put(sk);
 }
@@ -197,27 +173,15 @@ static int nft_socket_init(const struct nft_ctx *ctx,
 	case NFT_SOCKET_MARK:
 		len = sizeof(u32);
 		break;
-#ifdef CONFIG_SOCK_CGROUP_DATA
+#ifdef CONFIG_CGROUPS
 	case NFT_SOCKET_CGROUPV2: {
 		unsigned int level;
-		int err;
 
 		if (!tb[NFTA_SOCKET_LEVEL])
 			return -EINVAL;
 
 		level = ntohl(nla_get_be32(tb[NFTA_SOCKET_LEVEL]));
 		if (level > 255)
-			return -EOPNOTSUPP;
-
-		err = nft_socket_cgroup_subtree_level();
-		if (err < 0)
-			return err;
-
-		priv->level_user = level;
-
-		level += err;
-		/* Implies a giant cgroup tree */
-		if (WARN_ON_ONCE(level > 255))
 			return -EOPNOTSUPP;
 
 		priv->level = level;
@@ -244,7 +208,7 @@ static int nft_socket_dump(struct sk_buff *skb,
 	if (nft_dump_register(skb, NFTA_SOCKET_DREG, priv->dreg))
 		return -1;
 	if (priv->key == NFT_SOCKET_CGROUPV2 &&
-	    nla_put_be32(skb, NFTA_SOCKET_LEVEL, htonl(priv->level_user)))
+	    nla_put_be32(skb, NFTA_SOCKET_LEVEL, htonl(priv->level)))
 		return -1;
 	return 0;
 }

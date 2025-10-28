@@ -347,7 +347,7 @@ void tcp_twsk_destructor(struct sock *sk)
 }
 EXPORT_SYMBOL_GPL(tcp_twsk_destructor);
 
-void tcp_twsk_purge(struct list_head *net_exit_list)
+void tcp_twsk_purge(struct list_head *net_exit_list, int family)
 {
 	bool purged_once = false;
 	struct net *net;
@@ -355,13 +355,14 @@ void tcp_twsk_purge(struct list_head *net_exit_list)
 	list_for_each_entry(net, net_exit_list, exit_list) {
 		if (net->ipv4.tcp_death_row.hashinfo->pernet) {
 			/* Even if tw_refcount == 1, we must clean up kernel reqsk */
-			inet_twsk_purge(net->ipv4.tcp_death_row.hashinfo);
+			inet_twsk_purge(net->ipv4.tcp_death_row.hashinfo, family);
 		} else if (!purged_once) {
-			inet_twsk_purge(&tcp_hashinfo);
+			inet_twsk_purge(&tcp_hashinfo, family);
 			purged_once = true;
 		}
 	}
 }
+EXPORT_SYMBOL_GPL(tcp_twsk_purge);
 
 /* Warning : This function is called without sk_listener being locked.
  * Be sure to read socket fields once, as their value could change under us.
@@ -735,6 +736,12 @@ struct sock *tcp_check_req(struct sock *sk, struct sk_buff *skb,
 
 	/* In sequence, PAWS is OK. */
 
+	/* TODO: We probably should defer ts_recent change once
+	 * we take ownership of @req.
+	 */
+	if (tmp_opt.saw_tstamp && !after(TCP_SKB_CB(skb)->seq, tcp_rsk(req)->rcv_nxt))
+		WRITE_ONCE(req->ts_recent, tmp_opt.rcv_tsval);
+
 	if (TCP_SKB_CB(skb)->seq == tcp_rsk(req)->rcv_isn) {
 		/* Truncate SYN, it is out of window starting
 		   at tcp_rsk(req)->rcv_isn + 1. */
@@ -782,10 +789,6 @@ struct sock *tcp_check_req(struct sock *sk, struct sk_buff *skb,
 							 req, &own_req);
 	if (!child)
 		goto listen_overflow;
-
-	if (own_req && tmp_opt.saw_tstamp &&
-	    !after(TCP_SKB_CB(skb)->seq, tcp_rsk(req)->rcv_nxt))
-		tcp_sk(child)->rx_opt.ts_recent = tmp_opt.rcv_tsval;
 
 	if (own_req && rsk_drop_req(req)) {
 		reqsk_queue_removed(&inet_csk(req->rsk_listener)->icsk_accept_queue, req);

@@ -101,17 +101,13 @@ static int smb2_get_data_area_len(unsigned int *off, unsigned int *len,
 		*len = le16_to_cpu(((struct smb2_sess_setup_req *)hdr)->SecurityBufferLength);
 		break;
 	case SMB2_TREE_CONNECT:
-		*off = max_t(unsigned short int,
-			     le16_to_cpu(((struct smb2_tree_connect_req *)hdr)->PathOffset),
-			     offsetof(struct smb2_tree_connect_req, Buffer));
+		*off = le16_to_cpu(((struct smb2_tree_connect_req *)hdr)->PathOffset);
 		*len = le16_to_cpu(((struct smb2_tree_connect_req *)hdr)->PathLength);
 		break;
 	case SMB2_CREATE:
 	{
 		unsigned short int name_off =
-			max_t(unsigned short int,
-			      le16_to_cpu(((struct smb2_create_req *)hdr)->NameOffset),
-			      offsetof(struct smb2_create_req, Buffer));
+			le16_to_cpu(((struct smb2_create_req *)hdr)->NameOffset);
 		unsigned short int name_len =
 			le16_to_cpu(((struct smb2_create_req *)hdr)->NameLength);
 
@@ -132,15 +128,11 @@ static int smb2_get_data_area_len(unsigned int *off, unsigned int *len,
 		break;
 	}
 	case SMB2_QUERY_INFO:
-		*off = max_t(unsigned int,
-			     le16_to_cpu(((struct smb2_query_info_req *)hdr)->InputBufferOffset),
-			     offsetof(struct smb2_query_info_req, Buffer));
+		*off = le16_to_cpu(((struct smb2_query_info_req *)hdr)->InputBufferOffset);
 		*len = le32_to_cpu(((struct smb2_query_info_req *)hdr)->InputBufferLength);
 		break;
 	case SMB2_SET_INFO:
-		*off = max_t(unsigned int,
-			     le16_to_cpu(((struct smb2_set_info_req *)hdr)->BufferOffset),
-			     offsetof(struct smb2_set_info_req, Buffer));
+		*off = le16_to_cpu(((struct smb2_set_info_req *)hdr)->BufferOffset);
 		*len = le32_to_cpu(((struct smb2_set_info_req *)hdr)->BufferLength);
 		break;
 	case SMB2_READ:
@@ -150,7 +142,7 @@ static int smb2_get_data_area_len(unsigned int *off, unsigned int *len,
 	case SMB2_WRITE:
 		if (((struct smb2_write_req *)hdr)->DataOffset ||
 		    ((struct smb2_write_req *)hdr)->Length) {
-			*off = max_t(unsigned short int,
+			*off = max_t(unsigned int,
 				     le16_to_cpu(((struct smb2_write_req *)hdr)->DataOffset),
 				     offsetof(struct smb2_write_req, Buffer));
 			*len = le32_to_cpu(((struct smb2_write_req *)hdr)->Length);
@@ -161,9 +153,7 @@ static int smb2_get_data_area_len(unsigned int *off, unsigned int *len,
 		*len = le16_to_cpu(((struct smb2_write_req *)hdr)->WriteChannelInfoLength);
 		break;
 	case SMB2_QUERY_DIRECTORY:
-		*off = max_t(unsigned short int,
-			     le16_to_cpu(((struct smb2_query_directory_req *)hdr)->FileNameOffset),
-			     offsetof(struct smb2_query_directory_req, Buffer));
+		*off = le16_to_cpu(((struct smb2_query_directory_req *)hdr)->FileNameOffset);
 		*len = le16_to_cpu(((struct smb2_query_directory_req *)hdr)->FileNameLength);
 		break;
 	case SMB2_LOCK:
@@ -178,9 +168,7 @@ static int smb2_get_data_area_len(unsigned int *off, unsigned int *len,
 		break;
 	}
 	case SMB2_IOCTL:
-		*off = max_t(unsigned int,
-			     le32_to_cpu(((struct smb2_ioctl_req *)hdr)->InputOffset),
-			     offsetof(struct smb2_ioctl_req, Buffer));
+		*off = le32_to_cpu(((struct smb2_ioctl_req *)hdr)->InputOffset);
 		*len = le32_to_cpu(((struct smb2_ioctl_req *)hdr)->InputCount);
 		break;
 	default:

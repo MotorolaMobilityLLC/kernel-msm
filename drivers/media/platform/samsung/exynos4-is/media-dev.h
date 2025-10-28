@@ -179,9 +179,8 @@ int fimc_md_set_camclk(struct v4l2_subdev *sd, bool on);
 #ifdef CONFIG_OF
 static inline bool fimc_md_is_isp_available(struct device_node *node)
 {
-	struct device_node *child __free(device_node) =
-		of_get_child_by_name(node, FIMC_IS_OF_NODE_NAME);
-	return child ? of_device_is_available(child) : false;
+	node = of_get_child_by_name(node, FIMC_IS_OF_NODE_NAME);
+	return node ? of_device_is_available(node) : false;
 }
 #else
 #define fimc_md_is_isp_available(node) (false)

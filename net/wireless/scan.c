@@ -778,7 +778,6 @@ static int cfg80211_scan_6ghz(struct cfg80211_registered_device *rdev)
 	LIST_HEAD(coloc_ap_list);
 	bool need_scan_psc = true;
 	const struct ieee80211_sband_iftype_data *iftd;
-	size_t size, offs_ssids, offs_6ghz_params, offs_ies;
 
 	rdev_req->scan_6ghz = true;
 
@@ -799,58 +798,18 @@ static int cfg80211_scan_6ghz(struct cfg80211_registered_device *rdev)
 		list_for_each_entry(intbss, &rdev->bss_list, list) {
 			struct cfg80211_bss *res = &intbss->pub;
 			const struct cfg80211_bss_ies *ies;
-			const struct element *ssid_elem;
-			struct cfg80211_colocated_ap *entry;
-			u32 s_ssid_tmp;
-			int ret;
 
 			ies = rcu_access_pointer(res->ies);
 			count += cfg80211_parse_colocated_ap(ies,
 							     &coloc_ap_list);
-
-			/* In case the scan request specified a specific BSSID
-			 * and the BSS is found and operating on 6GHz band then
-			 * add this AP to the collocated APs list.
-			 * This is relevant for ML probe requests when the lower
-			 * band APs have not been discovered.
-			 */
-			if (is_broadcast_ether_addr(rdev_req->bssid) ||
-			    !ether_addr_equal(rdev_req->bssid, res->bssid) ||
-			    res->channel->band != NL80211_BAND_6GHZ)
-				continue;
-
-			ret = cfg80211_calc_short_ssid(ies, &ssid_elem,
-						       &s_ssid_tmp);
-			if (ret)
-				continue;
-
-			entry = kzalloc(sizeof(*entry), GFP_ATOMIC);
-			if (!entry)
-				continue;
-
-			memcpy(entry->bssid, res->bssid, ETH_ALEN);
-			entry->short_ssid = s_ssid_tmp;
-			memcpy(entry->ssid, ssid_elem->data,
-			       ssid_elem->datalen);
-			entry->ssid_len = ssid_elem->datalen;
-			entry->short_ssid_valid = true;
-			entry->center_freq = res->channel->center_freq;
-
-			list_add_tail(&entry->list, &coloc_ap_list);
-			count++;
 		}
 		spin_unlock_bh(&rdev->bss_lock);
 	}
 
-	size = struct_size(request, channels, n_channels);
-	offs_ssids = size;
-	size += sizeof(*request->ssids) * rdev_req->n_ssids;
-	offs_6ghz_params = size;
-	size += sizeof(*request->scan_6ghz_params) * count;
-	offs_ies = size;
-	size += rdev_req->ie_len;
-
-	request = kzalloc(size, GFP_KERNEL);
+	request = kzalloc(struct_size(request, channels, n_channels) +
+			  sizeof(*request->scan_6ghz_params) * count +
+			  sizeof(*request->ssids) * rdev_req->n_ssids,
+			  GFP_KERNEL);
 	if (!request) {
 		cfg80211_free_coloc_ap_list(&coloc_ap_list);
 		return -ENOMEM;
@@ -858,26 +817,8 @@ static int cfg80211_scan_6ghz(struct cfg80211_registered_device *rdev)
 
 	*request = *rdev_req;
 	request->n_channels = 0;
-	request->n_6ghz_params = 0;
-	if (rdev_req->n_ssids) {
-		/*
-		 * Add the ssids from the parent scan request to the new
-		 * scan request, so the driver would be able to use them
-		 * in its probe requests to discover hidden APs on PSC
-		 * channels.
-		 */
-		request->ssids = (void *)request + offs_ssids;
-		memcpy(request->ssids, rdev_req->ssids,
-		       sizeof(*request->ssids) * request->n_ssids);
-	}
-	request->scan_6ghz_params = (void *)request + offs_6ghz_params;
-
-	if (rdev_req->ie_len) {
-		void *ie = (void *)request + offs_ies;
-
-		memcpy(ie, rdev_req->ie, rdev_req->ie_len);
-		request->ie = ie;
-	}
+	request->scan_6ghz_params =
+		(void *)&request->channels[n_channels];
 
 	/*
 	 * PSC channels should not be scanned in case of direct scan with 1 SSID
@@ -965,8 +906,17 @@ skip:
 
 	if (request->n_channels) {
 		struct cfg80211_scan_request *old = rdev->int_scan_req;
-
 		rdev->int_scan_req = request;
+
+		/*
+		 * Add the ssids from the parent scan request to the new scan
+		 * request, so the driver would be able to use them in its
+		 * probe requests to discover hidden APs on PSC channels.
+		 */
+		request->ssids = (void *)&request->channels[request->n_channels];
+		request->n_ssids = rdev_req->n_ssids;
+		memcpy(request->ssids, rdev_req->ssids, sizeof(*request->ssids) *
+		       request->n_ssids);
 
 		/*
 		 * If this scan follows a previous scan, save the scan start
@@ -1569,7 +1519,7 @@ struct cfg80211_bss *cfg80211_get_bss(struct wiphy *wiphy,
 }
 EXPORT_SYMBOL(cfg80211_get_bss);
 
-static bool rb_insert_bss(struct cfg80211_registered_device *rdev,
+static void rb_insert_bss(struct cfg80211_registered_device *rdev,
 			  struct cfg80211_internal_bss *bss)
 {
 	struct rb_node **p = &rdev->bss_tree.rb_node;
@@ -1585,7 +1535,7 @@ static bool rb_insert_bss(struct cfg80211_registered_device *rdev,
 
 		if (WARN_ON(!cmp)) {
 			/* will sort of leak this BSS */
-			return false;
+			return;
 		}
 
 		if (cmp < 0)
@@ -1596,7 +1546,6 @@ static bool rb_insert_bss(struct cfg80211_registered_device *rdev,
 
 	rb_link_node(&bss->rbn, parent, p);
 	rb_insert_color(&bss->rbn, &rdev->bss_tree);
-	return true;
 }
 
 static struct cfg80211_internal_bss *
@@ -1621,34 +1570,6 @@ rb_find_bss(struct cfg80211_registered_device *rdev,
 	}
 
 	return NULL;
-}
-
-static void cfg80211_insert_bss(struct cfg80211_registered_device *rdev,
-				struct cfg80211_internal_bss *bss)
-{
-	lockdep_assert_held(&rdev->bss_lock);
-
-	if (!rb_insert_bss(rdev, bss))
-		return;
-	list_add_tail(&bss->list, &rdev->bss_list);
-	rdev->bss_entries++;
-}
-
-static void cfg80211_rehash_bss(struct cfg80211_registered_device *rdev,
-                                struct cfg80211_internal_bss *bss)
-{
-	lockdep_assert_held(&rdev->bss_lock);
-
-	rb_erase(&bss->rbn, &rdev->bss_tree);
-	if (!rb_insert_bss(rdev, bss)) {
-		list_del(&bss->list);
-		if (!list_empty(&bss->hidden_list))
-			list_del_init(&bss->hidden_list);
-		if (!list_empty(&bss->pub.nontrans_list))
-			list_del_init(&bss->pub.nontrans_list);
-		rdev->bss_entries--;
-	}
-	rdev->bss_generation++;
 }
 
 static bool cfg80211_combine_bsses(struct cfg80211_registered_device *rdev,
@@ -1926,7 +1847,9 @@ cfg80211_bss_update(struct cfg80211_registered_device *rdev,
 			bss_ref_get(rdev, pbss);
 		}
 
-		cfg80211_insert_bss(rdev, new);
+		list_add_tail(&new->list, &rdev->bss_list);
+		rdev->bss_entries++;
+		rb_insert_bss(rdev, new);
 		found = new;
 	}
 
@@ -2713,7 +2636,10 @@ void cfg80211_update_assoc_bss_entry(struct wireless_dev *wdev,
 		if (!WARN_ON(!__cfg80211_unlink_bss(rdev, new)))
 			rdev->bss_generation++;
 	}
-	cfg80211_rehash_bss(rdev, cbss);
+
+	rb_erase(&cbss->rbn, &rdev->bss_tree);
+	rb_insert_bss(rdev, cbss);
+	rdev->bss_generation++;
 
 	list_for_each_entry_safe(nontrans_bss, tmp,
 				 &cbss->pub.nontrans_list,
@@ -2721,7 +2647,9 @@ void cfg80211_update_assoc_bss_entry(struct wireless_dev *wdev,
 		bss = container_of(nontrans_bss,
 				   struct cfg80211_internal_bss, pub);
 		bss->pub.channel = chan;
-		cfg80211_rehash_bss(rdev, bss);
+		rb_erase(&bss->rbn, &rdev->bss_tree);
+		rb_insert_bss(rdev, bss);
+		rdev->bss_generation++;
 	}
 
 done:
@@ -2776,17 +2704,13 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 	wiphy = &rdev->wiphy;
 
 	/* Determine number of channels, needed to allocate creq */
-	if (wreq && wreq->num_channels) {
-		/* Passed from userspace so should be checked */
-		if (unlikely(wreq->num_channels > IW_MAX_FREQUENCIES))
-			return -EINVAL;
+	if (wreq && wreq->num_channels)
 		n_channels = wreq->num_channels;
-	} else {
+	else
 		n_channels = ieee80211_get_num_supported_channels(wiphy);
-	}
 
-	creq = kzalloc(struct_size(creq, channels, n_channels) +
-		       sizeof(struct cfg80211_ssid),
+	creq = kzalloc(sizeof(*creq) + sizeof(struct cfg80211_ssid) +
+		       n_channels * sizeof(void *),
 		       GFP_ATOMIC);
 	if (!creq)
 		return -ENOMEM;
@@ -2794,7 +2718,7 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 	creq->wiphy = wiphy;
 	creq->wdev = dev->ieee80211_ptr;
 	/* SSIDs come after channels */
-	creq->ssids = (void *)creq + struct_size(creq, channels, n_channels);
+	creq->ssids = (void *)&creq->channels[n_channels];
 	creq->n_channels = n_channels;
 	creq->n_ssids = 1;
 	creq->scan_start = jiffies;
@@ -2857,10 +2781,8 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 			memcpy(creq->ssids[0].ssid, wreq->essid, wreq->essid_len);
 			creq->ssids[0].ssid_len = wreq->essid_len;
 		}
-		if (wreq->scan_type == IW_SCAN_TYPE_PASSIVE) {
-			creq->ssids = NULL;
+		if (wreq->scan_type == IW_SCAN_TYPE_PASSIVE)
 			creq->n_ssids = 0;
-		}
 	}
 
 	for (i = 0; i < NUM_NL80211_BANDS; i++)

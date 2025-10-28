@@ -50,23 +50,9 @@ bool kvm_condition_valid32(const struct kvm_vcpu *vcpu)
 	u32 cpsr_cond;
 	int cond;
 
-	/*
-	 * These are the exception classes that could fire with a
-	 * conditional instruction.
-	 */
-	switch (kvm_vcpu_trap_get_class(vcpu)) {
-	case ESR_ELx_EC_CP15_32:
-	case ESR_ELx_EC_CP15_64:
-	case ESR_ELx_EC_CP14_MR:
-	case ESR_ELx_EC_CP14_LS:
-	case ESR_ELx_EC_FP_ASIMD:
-	case ESR_ELx_EC_CP10_ID:
-	case ESR_ELx_EC_CP14_64:
-	case ESR_ELx_EC_SVC32:
-		break;
-	default:
+	/* Top two bits non-zero?  Unconditional. */
+	if (kvm_vcpu_get_esr(vcpu) >> 30)
 		return true;
-	}
 
 	/* Is condition field valid? */
 	cond = kvm_vcpu_get_condition(vcpu);

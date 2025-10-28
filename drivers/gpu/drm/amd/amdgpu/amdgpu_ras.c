@@ -974,9 +974,6 @@ int amdgpu_ras_query_error_status(struct amdgpu_device *adev,
 	if (!obj)
 		return -EINVAL;
 
-	if (!info || info->head.block == AMDGPU_RAS_BLOCK_COUNT)
-		return -EINVAL;
-
 	if (info->head.block == AMDGPU_RAS_BLOCK__UMC) {
 		amdgpu_ras_get_ecc_info(adev, &err_data);
 	} else {
@@ -1679,14 +1676,11 @@ static void amdgpu_ras_interrupt_process_handler(struct work_struct *work)
 int amdgpu_ras_interrupt_dispatch(struct amdgpu_device *adev,
 		struct ras_dispatch_if *info)
 {
-	struct ras_manager *obj;
-	struct ras_ih_data *data;
+	struct ras_manager *obj = amdgpu_ras_find_obj(adev, &info->head);
+	struct ras_ih_data *data = &obj->ih_data;
 
-	obj = amdgpu_ras_find_obj(adev, &info->head);
 	if (!obj)
 		return -EINVAL;
-
-	data = &obj->ih_data;
 
 	if (data->inuse == 0)
 		return 0;

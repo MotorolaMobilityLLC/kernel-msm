@@ -493,7 +493,7 @@ int ksmbd_vfs_write(struct ksmbd_work *work, struct ksmbd_file *fp,
 	int err = 0;
 
 	if (work->conn->connection_type) {
-		if (!(fp->daccess & (FILE_WRITE_DATA_LE | FILE_APPEND_DATA_LE))) {
+		if (!(fp->daccess & FILE_WRITE_DATA_LE)) {
 			pr_err("no right to write(%pD)\n", fp->filp);
 			err = -EACCES;
 			goto out;
@@ -746,15 +746,10 @@ retry:
 		goto out4;
 	}
 
-	/*
-	 * explicitly handle file overwrite case, for compatibility with
-	 * filesystems that may not support rename flags (e.g: fuse)
-	 */
 	if ((flags & RENAME_NOREPLACE) && d_is_positive(new_dentry)) {
 		err = -EEXIST;
 		goto out4;
 	}
-	flags &= ~(RENAME_NOREPLACE);
 
 	if (old_child == trap) {
 		err = -EINVAL;
@@ -1102,10 +1097,9 @@ static bool __dir_empty(struct dir_context *ctx, const char *name, int namlen,
 	struct ksmbd_readdir_data *buf;
 
 	buf = container_of(ctx, struct ksmbd_readdir_data, ctx);
-	if (!is_dot_dotdot(name, namlen))
-		buf->dirent_count++;
+	buf->dirent_count++;
 
-	return !buf->dirent_count;
+	return buf->dirent_count <= 2;
 }
 
 /**
@@ -1125,7 +1119,7 @@ int ksmbd_vfs_empty_dir(struct ksmbd_file *fp)
 	readdir_data.dirent_count = 0;
 
 	err = iterate_dir(fp->filp, &readdir_data.ctx);
-	if (readdir_data.dirent_count)
+	if (readdir_data.dirent_count > 2)
 		err = -ENOTEMPTY;
 	else
 		err = 0;
@@ -1154,7 +1148,7 @@ static bool __caseless_lookup(struct dir_context *ctx, const char *name,
 	if (cmp < 0)
 		cmp = strncasecmp((char *)buf->private, name, namlen);
 	if (!cmp) {
-		memcpy((char *)buf->private, name, buf->used);
+		memcpy((char *)buf->private, name, namlen);
 		buf->dirent_count = 1;
 		return false;
 	}
@@ -1220,7 +1214,10 @@ int ksmbd_vfs_kern_path_locked(struct ksmbd_work *work, char *name,
 		char *filepath;
 		size_t path_len, remain_len;
 
-		filepath = name;
+		filepath = kstrdup(name, GFP_KERNEL);
+		if (!filepath)
+			return -ENOMEM;
+
 		path_len = strlen(filepath);
 		remain_len = path_len;
 
@@ -1249,8 +1246,6 @@ int ksmbd_vfs_kern_path_locked(struct ksmbd_work *work, char *name,
 					      filepath,
 					      flags,
 					      path);
-			if (!is_last)
-				next[0] = '/';
 			if (err)
 				goto out2;
 			else if (is_last)
@@ -1258,15 +1253,17 @@ int ksmbd_vfs_kern_path_locked(struct ksmbd_work *work, char *name,
 			path_put(parent_path);
 			*parent_path = *path;
 
+			next[0] = '/';
 			remain_len -= filename_len + 1;
 		}
 
 		err = -EINVAL;
 out2:
 		path_put(parent_path);
+out1:
+		kfree(filepath);
 	}
 
-out1:
 	if (!err) {
 		err = mnt_want_write(parent_path->mnt);
 		if (err) {

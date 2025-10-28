@@ -6,9 +6,6 @@
 #include "helper.h"
 #include "ofld.h"
 
-static int
-acl_ingress_ofld_setup(struct mlx5_eswitch *esw, struct mlx5_vport *vport);
-
 static bool
 esw_acl_ingress_prio_tag_enabled(struct mlx5_eswitch *esw,
 				 const struct mlx5_vport *vport)
@@ -126,31 +123,18 @@ static int esw_acl_ingress_src_port_drop_create(struct mlx5_eswitch *esw,
 {
 	struct mlx5_flow_act flow_act = {};
 	struct mlx5_flow_handle *flow_rule;
-	bool created = false;
 	int err = 0;
-
-	if (!vport->ingress.acl) {
-		err = acl_ingress_ofld_setup(esw, vport);
-		if (err)
-			return err;
-		created = true;
-	}
 
 	flow_act.action = MLX5_FLOW_CONTEXT_ACTION_DROP;
 	flow_act.fg = vport->ingress.offloads.drop_grp;
 	flow_rule = mlx5_add_flow_rules(vport->ingress.acl, NULL, &flow_act, NULL, 0);
 	if (IS_ERR(flow_rule)) {
 		err = PTR_ERR(flow_rule);
-		goto err_out;
+		goto out;
 	}
 
 	vport->ingress.offloads.drop_rule = flow_rule;
-
-	return 0;
-err_out:
-	/* Only destroy ingress acl created in this function. */
-	if (created)
-		esw_acl_ingress_ofld_cleanup(esw, vport);
+out:
 	return err;
 }
 
@@ -315,11 +299,15 @@ static void esw_acl_ingress_ofld_groups_destroy(struct mlx5_vport *vport)
 	}
 }
 
-static int
-acl_ingress_ofld_setup(struct mlx5_eswitch *esw, struct mlx5_vport *vport)
+int esw_acl_ingress_ofld_setup(struct mlx5_eswitch *esw,
+			       struct mlx5_vport *vport)
 {
 	int num_ftes = 0;
 	int err;
+
+	if (!mlx5_eswitch_vport_match_metadata_enabled(esw) &&
+	    !esw_acl_ingress_prio_tag_enabled(esw, vport))
+		return 0;
 
 	esw_acl_ingress_allow_rule_destroy(vport);
 
@@ -357,15 +345,6 @@ rules_err:
 group_err:
 	esw_acl_ingress_table_destroy(vport);
 	return err;
-}
-
-int esw_acl_ingress_ofld_setup(struct mlx5_eswitch *esw, struct mlx5_vport *vport)
-{
-	if (!mlx5_eswitch_vport_match_metadata_enabled(esw) &&
-	    !esw_acl_ingress_prio_tag_enabled(esw, vport))
-		return 0;
-
-	return acl_ingress_ofld_setup(esw, vport);
 }
 
 void esw_acl_ingress_ofld_cleanup(struct mlx5_eswitch *esw,

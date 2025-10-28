@@ -301,11 +301,7 @@ static int ddebug_tokenize(char *buf, char *words[], int maxwords)
 		} else {
 			for (end = buf; *end && !isspace(*end); end++)
 				;
-			if (end == buf) {
-				pr_err("parse err after word:%d=%s\n", nwords,
-				       nwords ? words[nwords - 1] : "<none>");
-				return -EINVAL;
-			}
+			BUG_ON(end == buf);
 		}
 
 		/* `buf' is start of word, `end' is one past its end */

@@ -39,9 +39,7 @@ static int cs35l41_spi_probe(struct spi_device *spi)
 		return -ENOMEM;
 
 	spi->max_speed_hz = CS35L41_SPI_MAX_FREQ;
-	ret = spi_setup(spi);
-	if (ret < 0)
-		return ret;
+	spi_setup(spi);
 
 	spi_set_drvdata(spi, cs35l41);
 	cs35l41->regmap = devm_regmap_init_spi(spi, regmap_config);

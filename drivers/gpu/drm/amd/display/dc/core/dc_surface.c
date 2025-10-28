@@ -154,8 +154,7 @@ const struct dc_plane_status *dc_plane_get_status(
 		if (pipe_ctx->plane_state != plane_state)
 			continue;
 
-		if (pipe_ctx->plane_state)
-			pipe_ctx->plane_state->status.is_flip_pending = false;
+		pipe_ctx->plane_state->status.is_flip_pending = false;
 
 		break;
 	}

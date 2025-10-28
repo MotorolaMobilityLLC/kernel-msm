@@ -867,12 +867,10 @@ static void ctucan_err_interrupt(struct net_device *ndev, u32 isr)
 			}
 			break;
 		case CAN_STATE_ERROR_ACTIVE:
-			if (skb) {
-				cf->can_id |= CAN_ERR_CNT;
-				cf->data[1] = CAN_ERR_CRTL_ACTIVE;
-				cf->data[6] = bec.txerr;
-				cf->data[7] = bec.rxerr;
-			}
+			cf->can_id |= CAN_ERR_CNT;
+			cf->data[1] = CAN_ERR_CRTL_ACTIVE;
+			cf->data[6] = bec.txerr;
+			cf->data[7] = bec.rxerr;
 			break;
 		default:
 			netdev_warn(ndev, "unhandled error state (%d:%s)!\n",

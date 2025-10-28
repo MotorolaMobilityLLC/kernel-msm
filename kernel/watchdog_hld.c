@@ -91,15 +91,11 @@ static bool watchdog_check_timestamp(void)
 	__this_cpu_write(last_timestamp, now);
 	return true;
 }
-
-static void watchdog_init_timestamp(void)
-{
-	__this_cpu_write(nmi_rearmed, 0);
-	__this_cpu_write(last_timestamp, ktime_get_mono_fast_ns());
-}
 #else
-static inline bool watchdog_check_timestamp(void) { return true; }
-static inline void watchdog_init_timestamp(void) { }
+static inline bool watchdog_check_timestamp(void)
+{
+	return true;
+}
 #endif
 
 static struct perf_event_attr wd_hw_attr = {
@@ -200,7 +196,6 @@ void hardlockup_detector_perf_enable(void)
 	if (!atomic_fetch_inc(&watchdog_cpus))
 		pr_info("Enabled. Permanently consumes one hw-PMU counter.\n");
 
-	watchdog_init_timestamp();
 	perf_event_enable(this_cpu_read(watchdog_ev));
 }
 

@@ -381,7 +381,7 @@ bool switchdev_port_obj_act_is_deferred(struct net_device *dev,
 EXPORT_SYMBOL_GPL(switchdev_port_obj_act_is_deferred);
 
 static ATOMIC_NOTIFIER_HEAD(switchdev_notif_chain);
-static RAW_NOTIFIER_HEAD(switchdev_blocking_notif_chain);
+static BLOCKING_NOTIFIER_HEAD(switchdev_blocking_notif_chain);
 
 /**
  *	register_switchdev_notifier - Register notifier
@@ -427,27 +427,17 @@ EXPORT_SYMBOL_GPL(call_switchdev_notifiers);
 
 int register_switchdev_blocking_notifier(struct notifier_block *nb)
 {
-	struct raw_notifier_head *chain = &switchdev_blocking_notif_chain;
-	int err;
+	struct blocking_notifier_head *chain = &switchdev_blocking_notif_chain;
 
-	rtnl_lock();
-	err = raw_notifier_chain_register(chain, nb);
-	rtnl_unlock();
-
-	return err;
+	return blocking_notifier_chain_register(chain, nb);
 }
 EXPORT_SYMBOL_GPL(register_switchdev_blocking_notifier);
 
 int unregister_switchdev_blocking_notifier(struct notifier_block *nb)
 {
-	struct raw_notifier_head *chain = &switchdev_blocking_notif_chain;
-	int err;
+	struct blocking_notifier_head *chain = &switchdev_blocking_notif_chain;
 
-	rtnl_lock();
-	err = raw_notifier_chain_unregister(chain, nb);
-	rtnl_unlock();
-
-	return err;
+	return blocking_notifier_chain_unregister(chain, nb);
 }
 EXPORT_SYMBOL_GPL(unregister_switchdev_blocking_notifier);
 
@@ -455,11 +445,10 @@ int call_switchdev_blocking_notifiers(unsigned long val, struct net_device *dev,
 				      struct switchdev_notifier_info *info,
 				      struct netlink_ext_ack *extack)
 {
-	ASSERT_RTNL();
 	info->dev = dev;
 	info->extack = extack;
-	return raw_notifier_call_chain(&switchdev_blocking_notif_chain,
-				       val, info);
+	return blocking_notifier_call_chain(&switchdev_blocking_notif_chain,
+					    val, info);
 }
 EXPORT_SYMBOL_GPL(call_switchdev_blocking_notifiers);
 

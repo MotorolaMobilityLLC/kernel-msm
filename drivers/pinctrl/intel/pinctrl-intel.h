@@ -36,13 +36,11 @@ struct intel_pingroup {
 
 /**
  * struct intel_function - Description about a function
- * @func: Generic data of the pin function (name and groups of pins)
  * @name: Name of the function
  * @groups: An array of groups for this function
  * @ngroups: Number of groups in @groups
  */
 struct intel_function {
-	struct pinfunction func;
 	const char *name;
 	const char * const *groups;
 	size_t ngroups;
@@ -160,16 +158,11 @@ struct intel_community {
 		.modes = __builtin_choose_expr(__builtin_constant_p((m)), NULL, (m)),	\
 	}
 
-#define PIN_GROUP_GPIO(n, p, m)						\
-	 PIN_GROUP(n, p, m),						\
-	 PIN_GROUP(n "_gpio", p, 0)
-
-#define FUNCTION(n, g)							\
-	{								\
-		.func = PINCTRL_PINFUNCTION((n), (g), ARRAY_SIZE(g)),	\
-		.name = (n),						\
-		.groups = (g),						\
-		.ngroups = ARRAY_SIZE((g)),				\
+#define FUNCTION(n, g)				\
+	{					\
+		.name = (n),			\
+		.groups = (g),			\
+		.ngroups = ARRAY_SIZE((g)),	\
 	}
 
 /**

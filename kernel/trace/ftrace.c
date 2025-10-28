@@ -507,7 +507,6 @@ static int function_stat_show(struct seq_file *m, void *v)
 	static struct trace_seq s;
 	unsigned long long avg;
 	unsigned long long stddev;
-	unsigned long long stddev_denom;
 #endif
 	mutex_lock(&ftrace_profile_lock);
 
@@ -529,19 +528,23 @@ static int function_stat_show(struct seq_file *m, void *v)
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
 	seq_puts(m, "    ");
 
-	/*
-	 * Variance formula:
-	 * s^2 = 1 / (n * (n-1)) * (n * \Sum (x_i)^2 - (\Sum x_i)^2)
-	 * Maybe Welford's method is better here?
-	 * Divide only by 1000 for ns^2 -> us^2 conversion.
-	 * trace_print_graph_duration will divide by 1000 again.
-	 */
-	stddev = 0;
-	stddev_denom = rec->counter * (rec->counter - 1) * 1000;
-	if (stddev_denom) {
+	/* Sample standard deviation (s^2) */
+	if (rec->counter <= 1)
+		stddev = 0;
+	else {
+		/*
+		 * Apply Welford's method:
+		 * s^2 = 1 / (n * (n-1)) * (n * \Sum (x_i)^2 - (\Sum x_i)^2)
+		 */
 		stddev = rec->counter * rec->time_squared -
 			 rec->time * rec->time;
-		stddev = div64_ul(stddev, stddev_denom);
+
+		/*
+		 * Divide only 1000 for ns^2 -> us^2 conversion.
+		 * trace_print_graph_duration will divide 1000 again.
+		 */
+		stddev = div64_ul(stddev,
+				  rec->counter * (rec->counter - 1) * 1000);
 	}
 
 	trace_seq_init(&s);
@@ -1562,15 +1565,12 @@ static struct dyn_ftrace *lookup_rec(unsigned long start, unsigned long end)
 unsigned long ftrace_location_range(unsigned long start, unsigned long end)
 {
 	struct dyn_ftrace *rec;
-	unsigned long ip = 0;
 
-	rcu_read_lock();
 	rec = lookup_rec(start, end);
 	if (rec)
-		ip = rec->ip;
-	rcu_read_unlock();
+		return rec->ip;
 
-	return ip;
+	return 0;
 }
 
 /**
@@ -1583,22 +1583,25 @@ unsigned long ftrace_location_range(unsigned long start, unsigned long end)
  */
 unsigned long ftrace_location(unsigned long ip)
 {
-	unsigned long loc;
+	struct dyn_ftrace *rec;
 	unsigned long offset;
 	unsigned long size;
 
-	loc = ftrace_location_range(ip, ip);
-	if (!loc) {
+	rec = lookup_rec(ip, ip);
+	if (!rec) {
 		if (!kallsyms_lookup_size_offset(ip, &size, &offset))
 			goto out;
 
 		/* map sym+0 to __fentry__ */
 		if (!offset)
-			loc = ftrace_location_range(ip, ip + size - 1);
+			rec = lookup_rec(ip, ip + size - 1);
 	}
 
+	if (rec)
+		return rec->ip;
+
 out:
-	return loc;
+	return 0;
 }
 
 /**
@@ -4434,9 +4437,6 @@ ftrace_mod_callback(struct trace_array *tr, struct ftrace_hash *hash,
 	char *func;
 	int ret;
 
-	if (!tr)
-		return -ENODEV;
-
 	/* match_records() modifies func, and we need the original */
 	func = kstrdup(func_orig, GFP_KERNEL);
 	if (!func)
@@ -5104,9 +5104,6 @@ __ftrace_match_addr(struct ftrace_hash *hash, unsigned long ip, int remove)
 		if (!entry)
 			return -ENOENT;
 		free_hash_entry(hash, entry);
-		return 0;
-	} else if (__ftrace_lookup_ip(hash, ip) != NULL) {
-		/* Already exists */
 		return 0;
 	}
 
@@ -6787,8 +6784,6 @@ static int ftrace_process_locs(struct module *mod,
 	/* We should have used all pages unless we skipped some */
 	if (pg_unuse) {
 		WARN_ON(!skipped);
-		/* Need to synchronize with ftrace_location_range() */
-		synchronize_rcu();
 		ftrace_free_pages(pg_unuse);
 	}
 	return ret;
@@ -7003,9 +6998,6 @@ void ftrace_release_mod(struct module *mod)
  out_unlock:
 	mutex_unlock(&ftrace_lock);
 
-	/* Need to synchronize with ftrace_location_range() */
-	if (tmp_page)
-		synchronize_rcu();
 	for (pg = tmp_page; pg; pg = tmp_page) {
 
 		/* Needs to be called outside of ftrace_lock */
@@ -7340,7 +7332,6 @@ void ftrace_free_mem(struct module *mod, void *start_ptr, void *end_ptr)
 	unsigned long start = (unsigned long)(start_ptr);
 	unsigned long end = (unsigned long)(end_ptr);
 	struct ftrace_page **last_pg = &ftrace_pages_start;
-	struct ftrace_page *tmp_page = NULL;
 	struct ftrace_page *pg;
 	struct dyn_ftrace *rec;
 	struct dyn_ftrace key;
@@ -7384,8 +7375,12 @@ void ftrace_free_mem(struct module *mod, void *start_ptr, void *end_ptr)
 		ftrace_update_tot_cnt--;
 		if (!pg->index) {
 			*last_pg = pg->next;
-			pg->next = tmp_page;
-			tmp_page = pg;
+			if (pg->records) {
+				free_pages((unsigned long)pg->records, pg->order);
+				ftrace_number_of_pages -= 1 << pg->order;
+			}
+			ftrace_number_of_groups--;
+			kfree(pg);
 			pg = container_of(last_pg, struct ftrace_page, next);
 			if (!(*last_pg))
 				ftrace_pages = pg;
@@ -7401,11 +7396,6 @@ void ftrace_free_mem(struct module *mod, void *start_ptr, void *end_ptr)
 	list_for_each_entry_safe(func, func_next, &clear_hash, list) {
 		clear_func_from_hashes(func);
 		kfree(func);
-	}
-	/* Need to synchronize with ftrace_location_range() */
-	if (tmp_page) {
-		synchronize_rcu();
-		ftrace_free_pages(tmp_page);
 	}
 }
 

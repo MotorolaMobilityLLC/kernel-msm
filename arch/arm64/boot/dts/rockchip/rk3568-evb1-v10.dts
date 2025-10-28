@@ -478,7 +478,7 @@
 		};
 
 		codec {
-			rockchip,mic-in-differential;
+			mic-in-differential;
 		};
 	};
 };

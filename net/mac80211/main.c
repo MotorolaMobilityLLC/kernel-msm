@@ -144,8 +144,6 @@ static u32 ieee80211_hw_conf_chan(struct ieee80211_local *local)
 	}
 
 	power = ieee80211_chandef_max_power(&chandef);
-	if (local->user_power_level != IEEE80211_UNSET_POWER_LEVEL)
-		power = min(local->user_power_level, power);
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(sdata, &local->interfaces, list) {
@@ -302,9 +300,9 @@ u32 ieee80211_reset_erp_info(struct ieee80211_sub_if_data *sdata)
 	       BSS_CHANGED_ERP_SLOT;
 }
 
-/* context: requires softirqs disabled */
-void ieee80211_handle_queued_frames(struct ieee80211_local *local)
+static void ieee80211_tasklet_handler(struct tasklet_struct *t)
 {
+	struct ieee80211_local *local = from_tasklet(local, t, tasklet);
 	struct sk_buff *skb;
 
 	while ((skb = skb_dequeue(&local->skb_queue)) ||
@@ -327,13 +325,6 @@ void ieee80211_handle_queued_frames(struct ieee80211_local *local)
 			break;
 		}
 	}
-}
-
-static void ieee80211_tasklet_handler(struct tasklet_struct *t)
-{
-	struct ieee80211_local *local = from_tasklet(local, t, tasklet);
-
-	ieee80211_handle_queued_frames(local);
 }
 
 static void ieee80211_restart_work(struct work_struct *work)

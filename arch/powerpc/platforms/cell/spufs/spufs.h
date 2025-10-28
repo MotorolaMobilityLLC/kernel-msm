@@ -151,8 +151,6 @@ struct spu_gang {
 	int aff_flags;
 	struct spu *aff_ref_spu;
 	atomic_t aff_sched_count;
-
-	int alive;
 };
 
 /* Flag bits for spu_gang aff_flags */

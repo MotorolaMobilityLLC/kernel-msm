@@ -548,7 +548,7 @@ g4fan_exit( void )
 	platform_driver_unregister( &therm_of_driver );
 
 	if( x.of_dev )
-		of_platform_device_destroy(&x.of_dev->dev, NULL);
+		of_device_unregister( x.of_dev );
 }
 
 module_init(g4fan_init);

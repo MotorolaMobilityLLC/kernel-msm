@@ -679,10 +679,8 @@ static int mlx5_deactivate_lag(struct mlx5_lag *ldev)
 		return err;
 	}
 
-	if (test_bit(MLX5_LAG_MODE_FLAG_HASH_BASED, &flags)) {
+	if (test_bit(MLX5_LAG_MODE_FLAG_HASH_BASED, &flags))
 		mlx5_lag_port_sel_destroy(ldev);
-		ldev->buckets = 1;
-	}
 	if (mlx5_lag_has_drop_rule(ldev))
 		mlx5_lag_drop_rule_cleanup(ldev);
 
@@ -696,7 +694,6 @@ static bool mlx5_lag_check_prereq(struct mlx5_lag *ldev)
 	struct mlx5_core_dev *dev;
 	u8 mode;
 #endif
-	bool roce_support;
 	int i;
 
 	for (i = 0; i < ldev->ports; i++)
@@ -723,11 +720,6 @@ static bool mlx5_lag_check_prereq(struct mlx5_lag *ldev)
 		if (mlx5_sriov_is_enabled(ldev->pf[i].dev))
 			return false;
 #endif
-	roce_support = mlx5_get_roce_state(ldev->pf[MLX5_LAG_P1].dev);
-	for (i = 1; i < ldev->ports; i++)
-		if (mlx5_get_roce_state(ldev->pf[i].dev) != roce_support)
-			return false;
-
 	return true;
 }
 
@@ -890,10 +882,8 @@ static void mlx5_do_bond(struct mlx5_lag *ldev)
 		} else if (roce_lag) {
 			dev0->priv.flags &= ~MLX5_PRIV_FLAGS_DISABLE_IB_ADEV;
 			mlx5_rescan_drivers_locked(dev0);
-			for (i = 1; i < ldev->ports; i++) {
-				if (mlx5_get_roce_state(ldev->pf[i].dev))
-					mlx5_nic_vport_enable_roce(ldev->pf[i].dev);
-			}
+			for (i = 1; i < ldev->ports; i++)
+				mlx5_nic_vport_enable_roce(ldev->pf[i].dev);
 		} else if (shared_fdb) {
 			dev0->priv.flags &= ~MLX5_PRIV_FLAGS_DISABLE_IB_ADEV;
 			mlx5_rescan_drivers_locked(dev0);
@@ -1483,7 +1473,7 @@ u8 mlx5_lag_get_slave_port(struct mlx5_core_dev *dev,
 		goto unlock;
 
 	for (i = 0; i < ldev->ports; i++) {
-		if (ldev->pf[i].netdev == slave) {
+		if (ldev->pf[MLX5_LAG_P1].netdev == slave) {
 			port = i;
 			break;
 		}

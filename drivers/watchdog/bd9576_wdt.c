@@ -29,6 +29,7 @@ struct bd9576_wdt_priv {
 	struct gpio_desc	*gpiod_en;
 	struct device		*dev;
 	struct regmap		*regmap;
+	bool			always_running;
 	struct watchdog_device	wdd;
 };
 
@@ -61,7 +62,10 @@ static int bd9576_wdt_stop(struct watchdog_device *wdd)
 {
 	struct bd9576_wdt_priv *priv = watchdog_get_drvdata(wdd);
 
-	bd9576_wdt_disable(priv);
+	if (!priv->always_running)
+		bd9576_wdt_disable(priv);
+	else
+		set_bit(WDOG_HW_RUNNING, &wdd->status);
 
 	return 0;
 }
@@ -260,6 +264,9 @@ static int bd9576_wdt_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	priv->always_running = device_property_read_bool(dev->parent,
+							 "always-running");
+
 	watchdog_set_drvdata(&priv->wdd, priv);
 
 	priv->wdd.info			= &bd957x_wdt_ident;
@@ -273,6 +280,9 @@ static int bd9576_wdt_probe(struct platform_device *pdev)
 	watchdog_set_nowayout(&priv->wdd, nowayout);
 
 	watchdog_stop_on_reboot(&priv->wdd);
+
+	if (priv->always_running)
+		bd9576_wdt_start(&priv->wdd);
 
 	return devm_watchdog_register_device(dev, &priv->wdd);
 }

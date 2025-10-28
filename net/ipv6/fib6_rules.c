@@ -233,12 +233,8 @@ static int __fib6_rule_action(struct fib_rule *rule, struct flowi *flp,
 	rt = pol_lookup_func(lookup,
 			     net, table, flp6, arg->lookup_data, flags);
 	if (rt != net->ipv6.ip6_null_entry) {
-		struct inet6_dev *idev = ip6_dst_idev(&rt->dst);
-
-		if (!idev)
-			goto again;
 		err = fib6_rule_saddr(net, rule, flags, flp6,
-				      idev->dev);
+				      ip6_dst_idev(&rt->dst)->dev);
 
 		if (err == -EAGAIN)
 			goto again;

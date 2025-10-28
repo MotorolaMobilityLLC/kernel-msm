@@ -412,8 +412,6 @@
 
 			vccio_sd: LDO_REG5 {
 				regulator-name = "vccio_sd";
-				regulator-always-on;
-				regulator-boot-on;
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 
@@ -523,9 +521,9 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	switch@1f {
+	switch@0 {
 		compatible = "mediatek,mt7531";
-		reg = <0x1f>;
+		reg = <0>;
 
 		ports {
 			#address-cells = <1>;

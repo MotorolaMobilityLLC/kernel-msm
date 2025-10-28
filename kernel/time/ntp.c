@@ -727,16 +727,17 @@ static inline void process_adjtimex_modes(const struct __kernel_timex *txc,
 	}
 
 	if (txc->modes & ADJ_MAXERROR)
-		time_maxerror = clamp(txc->maxerror, 0, NTP_PHASE_LIMIT);
+		time_maxerror = txc->maxerror;
 
 	if (txc->modes & ADJ_ESTERROR)
-		time_esterror = clamp(txc->esterror, 0, NTP_PHASE_LIMIT);
+		time_esterror = txc->esterror;
 
 	if (txc->modes & ADJ_TIMECONST) {
-		time_constant = clamp(txc->constant, 0, MAXTC);
+		time_constant = txc->constant;
 		if (!(time_status & STA_NANO))
 			time_constant += 4;
-		time_constant = clamp(time_constant, 0, MAXTC);
+		time_constant = min(time_constant, (long)MAXTC);
+		time_constant = max(time_constant, 0l);
 	}
 
 	if (txc->modes & ADJ_TAI &&
@@ -796,7 +797,7 @@ int __do_adjtimex(struct __kernel_timex *txc, const struct timespec64 *ts,
 		txc->offset = shift_right(time_offset * NTP_INTERVAL_FREQ,
 				  NTP_SCALE_SHIFT);
 		if (!(time_status & STA_NANO))
-			txc->offset = div_s64(txc->offset, NSEC_PER_USEC);
+			txc->offset = (u32)txc->offset / NSEC_PER_USEC;
 	}
 
 	result = time_state;	/* mostly `TIME_OK' */

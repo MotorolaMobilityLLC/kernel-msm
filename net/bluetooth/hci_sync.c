@@ -196,12 +196,6 @@ struct sk_buff *__hci_cmd_sync_sk(struct hci_dev *hdev, u16 opcode, u32 plen,
 		return ERR_PTR(err);
 	}
 
-	/* If command return a status event skb will be set to NULL as there are
-	 * no parameters.
-	 */
-	if (!skb)
-		return ERR_PTR(-ENODATA);
-
 	return skb;
 }
 EXPORT_SYMBOL(__hci_cmd_sync_sk);
@@ -251,17 +245,19 @@ int __hci_cmd_sync_status_sk(struct hci_dev *hdev, u16 opcode, u32 plen,
 	u8 status;
 
 	skb = __hci_cmd_sync_sk(hdev, opcode, plen, param, event, timeout, sk);
-
-	/* If command return a status event, skb will be set to -ENODATA */
-	if (skb == ERR_PTR(-ENODATA))
-		return 0;
-
 	if (IS_ERR(skb)) {
 		if (!event)
 			bt_dev_err(hdev, "Opcode 0x%4.4x failed: %ld", opcode,
 				   PTR_ERR(skb));
 		return PTR_ERR(skb);
 	}
+
+	/* If command return a status event skb will be set to NULL as there are
+	 * no parameters, in case of failure IS_ERR(skb) would have be set to
+	 * the actual error would be found with PTR_ERR(skb).
+	 */
+	if (!skb)
+		return 0;
 
 	status = skb->data[0];
 
@@ -278,19 +274,6 @@ int __hci_cmd_sync_status(struct hci_dev *hdev, u16 opcode, u32 plen,
 					NULL);
 }
 EXPORT_SYMBOL(__hci_cmd_sync_status);
-
-int hci_cmd_sync_status(struct hci_dev *hdev, u16 opcode, u32 plen,
-			const void *param, u32 timeout)
-{
-	int err;
-
-	hci_req_sync_lock(hdev);
-	err = __hci_cmd_sync_status(hdev, opcode, plen, param, timeout);
-	hci_req_sync_unlock(hdev);
-
-	return err;
-}
-EXPORT_SYMBOL(hci_cmd_sync_status);
 
 static void hci_cmd_sync_work(struct work_struct *work)
 {
@@ -650,17 +633,6 @@ void hci_cmd_sync_init(struct hci_dev *hdev)
 	INIT_DELAYED_WORK(&hdev->adv_instance_expire, adv_timeout_expire);
 }
 
-static void _hci_cmd_sync_cancel_entry(struct hci_dev *hdev,
-				       struct hci_cmd_sync_work_entry *entry,
-				       int err)
-{
-	if (entry->destroy)
-		entry->destroy(hdev, entry->data, err);
-
-	list_del(&entry->list);
-	kfree(entry);
-}
-
 void hci_cmd_sync_clear(struct hci_dev *hdev)
 {
 	struct hci_cmd_sync_work_entry *entry, *tmp;
@@ -669,8 +641,13 @@ void hci_cmd_sync_clear(struct hci_dev *hdev)
 	cancel_work_sync(&hdev->reenable_adv_work);
 
 	mutex_lock(&hdev->cmd_sync_work_lock);
-	list_for_each_entry_safe(entry, tmp, &hdev->cmd_sync_work_list, list)
-		_hci_cmd_sync_cancel_entry(hdev, entry, -ECANCELED);
+	list_for_each_entry_safe(entry, tmp, &hdev->cmd_sync_work_list, list) {
+		if (entry->destroy)
+			entry->destroy(hdev, entry->data, -ECANCELED);
+
+		list_del(&entry->list);
+		kfree(entry);
+	}
 	mutex_unlock(&hdev->cmd_sync_work_lock);
 }
 
@@ -759,115 +736,6 @@ int hci_cmd_sync_queue(struct hci_dev *hdev, hci_cmd_sync_work_func_t func,
 	return hci_cmd_sync_submit(hdev, func, data, destroy);
 }
 EXPORT_SYMBOL(hci_cmd_sync_queue);
-
-static struct hci_cmd_sync_work_entry *
-_hci_cmd_sync_lookup_entry(struct hci_dev *hdev, hci_cmd_sync_work_func_t func,
-			   void *data, hci_cmd_sync_work_destroy_t destroy)
-{
-	struct hci_cmd_sync_work_entry *entry, *tmp;
-
-	list_for_each_entry_safe(entry, tmp, &hdev->cmd_sync_work_list, list) {
-		if (func && entry->func != func)
-			continue;
-
-		if (data && entry->data != data)
-			continue;
-
-		if (destroy && entry->destroy != destroy)
-			continue;
-
-		return entry;
-	}
-
-	return NULL;
-}
-
-/* Queue HCI command entry once:
- *
- * - Lookup if an entry already exist and only if it doesn't creates a new entry
- *   and queue it.
- */
-int hci_cmd_sync_queue_once(struct hci_dev *hdev, hci_cmd_sync_work_func_t func,
-			    void *data, hci_cmd_sync_work_destroy_t destroy)
-{
-	if (hci_cmd_sync_lookup_entry(hdev, func, data, destroy))
-		return 0;
-
-	return hci_cmd_sync_queue(hdev, func, data, destroy);
-}
-EXPORT_SYMBOL(hci_cmd_sync_queue_once);
-
-/* Lookup HCI command entry:
- *
- * - Return first entry that matches by function callback or data or
- *   destroy callback.
- */
-struct hci_cmd_sync_work_entry *
-hci_cmd_sync_lookup_entry(struct hci_dev *hdev, hci_cmd_sync_work_func_t func,
-			  void *data, hci_cmd_sync_work_destroy_t destroy)
-{
-	struct hci_cmd_sync_work_entry *entry;
-
-	mutex_lock(&hdev->cmd_sync_work_lock);
-	entry = _hci_cmd_sync_lookup_entry(hdev, func, data, destroy);
-	mutex_unlock(&hdev->cmd_sync_work_lock);
-
-	return entry;
-}
-EXPORT_SYMBOL(hci_cmd_sync_lookup_entry);
-
-/* Cancel HCI command entry */
-void hci_cmd_sync_cancel_entry(struct hci_dev *hdev,
-			       struct hci_cmd_sync_work_entry *entry)
-{
-	mutex_lock(&hdev->cmd_sync_work_lock);
-	_hci_cmd_sync_cancel_entry(hdev, entry, -ECANCELED);
-	mutex_unlock(&hdev->cmd_sync_work_lock);
-}
-EXPORT_SYMBOL(hci_cmd_sync_cancel_entry);
-
-/* Dequeue one HCI command entry:
- *
- * - Lookup and cancel first entry that matches.
- */
-bool hci_cmd_sync_dequeue_once(struct hci_dev *hdev,
-			       hci_cmd_sync_work_func_t func,
-			       void *data, hci_cmd_sync_work_destroy_t destroy)
-{
-	struct hci_cmd_sync_work_entry *entry;
-
-	entry = hci_cmd_sync_lookup_entry(hdev, func, data, destroy);
-	if (!entry)
-		return false;
-
-	hci_cmd_sync_cancel_entry(hdev, entry);
-
-	return true;
-}
-EXPORT_SYMBOL(hci_cmd_sync_dequeue_once);
-
-/* Dequeue HCI command entry:
- *
- * - Lookup and cancel any entry that matches by function callback or data or
- *   destroy callback.
- */
-bool hci_cmd_sync_dequeue(struct hci_dev *hdev, hci_cmd_sync_work_func_t func,
-			  void *data, hci_cmd_sync_work_destroy_t destroy)
-{
-	struct hci_cmd_sync_work_entry *entry;
-	bool ret = false;
-
-	mutex_lock(&hdev->cmd_sync_work_lock);
-	while ((entry = _hci_cmd_sync_lookup_entry(hdev, func, data,
-						   destroy))) {
-		_hci_cmd_sync_cancel_entry(hdev, entry, -ECANCELED);
-		ret = true;
-	}
-	mutex_unlock(&hdev->cmd_sync_work_lock);
-
-	return ret;
-}
-EXPORT_SYMBOL(hci_cmd_sync_dequeue);
 
 int hci_update_eir_sync(struct hci_dev *hdev)
 {
@@ -1004,9 +872,9 @@ static bool adv_use_rpa(struct hci_dev *hdev, uint32_t flags)
 
 static int hci_set_random_addr_sync(struct hci_dev *hdev, bdaddr_t *rpa)
 {
-	/* If a random_addr has been set we're advertising or initiating an LE
-	 * connection we can't go ahead and change the random address at this
-	 * time. This is because the eventual initiator address used for the
+	/* If we're advertising or initiating an LE connection we can't
+	 * go ahead and change the random address at this time. This is
+	 * because the eventual initiator address used for the
 	 * subsequently created connection will be undefined (some
 	 * controllers use the new address and others the one we had
 	 * when the operation started).
@@ -1014,9 +882,8 @@ static int hci_set_random_addr_sync(struct hci_dev *hdev, bdaddr_t *rpa)
 	 * In this kind of scenario skip the update and let the random
 	 * address be updated at the next cycle.
 	 */
-	if (bacmp(&hdev->random_addr, BDADDR_ANY) &&
-	    (hci_dev_test_flag(hdev, HCI_LE_ADV) ||
-	    hci_lookup_le_connect(hdev))) {
+	if (hci_dev_test_flag(hdev, HCI_LE_ADV) ||
+	    hci_lookup_le_connect(hdev)) {
 		bt_dev_dbg(hdev, "Deferring random address update");
 		hci_dev_set_flag(hdev, HCI_RPA_EXPIRED);
 		return 0;
@@ -2951,27 +2818,6 @@ static int hci_passive_scan_sync(struct hci_dev *hdev)
 	 */
 	filter_policy = hci_update_accept_list_sync(hdev);
 
-	/* If suspended and filter_policy set to 0x00 (no acceptlist) then
-	 * passive scanning cannot be started since that would require the host
-	 * to be woken up to process the reports.
-	 */
-	if (hdev->suspended && !filter_policy) {
-		/* Check if accept list is empty then there is no need to scan
-		 * while suspended.
-		 */
-		if (list_empty(&hdev->le_accept_list))
-			return 0;
-
-		/* If there are devices is the accept_list that means some
-		 * devices could not be programmed which in non-suspended case
-		 * means filter_policy needs to be set to 0x00 so the host needs
-		 * to filter, but since this is treating suspended case we
-		 * can ignore device needing host to filter to allow devices in
-		 * the acceptlist to be able to wakeup the system.
-		 */
-		filter_policy = 0x01;
-	}
-
 	/* When the controller is using random resolvable addresses and
 	 * with that having LE privacy enabled, then controllers with
 	 * Extended Scanner Filter Policies support can now enable support
@@ -2994,20 +2840,6 @@ static int hci_passive_scan_sync(struct hci_dev *hdev)
 	} else if (hci_is_adv_monitoring(hdev)) {
 		window = hdev->le_scan_window_adv_monitor;
 		interval = hdev->le_scan_int_adv_monitor;
-
-		/* Disable duplicates filter when scanning for advertisement
-		 * monitor for the following reasons.
-		 *
-		 * For HW pattern filtering (ex. MSFT), Realtek and Qualcomm
-		 * controllers ignore RSSI_Sampling_Period when the duplicates
-		 * filter is enabled.
-		 *
-		 * For SW pattern filtering, when we're not doing interleaved
-		 * scanning, it is necessary to disable duplicates filter,
-		 * otherwise hosts can only receive one advertisement and it's
-		 * impossible to know if a peer is still in range.
-		 */
-		filter_dups = LE_SCAN_FILTER_DUP_DISABLE;
 	} else {
 		window = hdev->le_scan_window;
 		interval = hdev->le_scan_interval;
@@ -3137,8 +2969,7 @@ int hci_update_passive_scan(struct hci_dev *hdev)
 	    hci_dev_test_flag(hdev, HCI_UNREGISTER))
 		return 0;
 
-	return hci_cmd_sync_queue_once(hdev, update_passive_scan_sync, NULL,
-				       NULL);
+	return hci_cmd_sync_queue(hdev, update_passive_scan_sync, NULL, NULL);
 }
 
 int hci_write_sc_support_sync(struct hci_dev *hdev, u8 val)
@@ -3456,10 +3287,7 @@ static void hci_dev_get_bd_addr_from_property(struct hci_dev *hdev)
 	if (ret < 0 || !bacmp(&ba, BDADDR_ANY))
 		return;
 
-	if (test_bit(HCI_QUIRK_BDADDR_PROPERTY_BROKEN, &hdev->quirks))
-		baswap(&hdev->public_addr, &ba);
-	else
-		bacpy(&hdev->public_addr, &ba);
+	bacpy(&hdev->public_addr, &ba);
 }
 
 struct hci_init_stage {
@@ -5360,10 +5188,7 @@ int hci_stop_discovery_sync(struct hci_dev *hdev)
 		if (!e)
 			return 0;
 
-		/* Ignore cancel errors since it should interfere with stopping
-		 * of the discovery.
-		 */
-		hci_remote_name_cancel_sync(hdev, &e->data.bdaddr);
+		return hci_remote_name_cancel_sync(hdev, &e->data.bdaddr);
 	}
 
 	return 0;

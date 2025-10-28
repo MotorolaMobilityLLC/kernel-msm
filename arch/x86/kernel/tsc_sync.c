@@ -192,9 +192,11 @@ bool tsc_store_and_check_tsc_adjust(bool bootcpu)
 	cur->warned = false;
 
 	/*
-	 * The default adjust value cannot be assumed to be zero on any socket.
+	 * If a non-zero TSC value for socket 0 may be valid then the default
+	 * adjusted value cannot assumed to be zero either.
 	 */
-	cur->adjusted = bootval;
+	if (tsc_async_resets)
+		cur->adjusted = bootval;
 
 	/*
 	 * Check whether this CPU is the first in a package to come up. In

@@ -45,7 +45,7 @@ static struct target target;
 #define LOCKHASH_BITS		12
 #define LOCKHASH_SIZE		(1UL << LOCKHASH_BITS)
 
-static struct hlist_head *lockhash_table;
+static struct hlist_head lockhash_table[LOCKHASH_SIZE];
 
 #define __lockhashfn(key)	hash_long((unsigned long)key, LOCKHASH_BITS)
 #define lockhashentry(key)	(lockhash_table + __lockhashfn((key)))
@@ -1645,23 +1645,16 @@ static int __cmd_contention(int argc, const char **argv)
 	};
 	struct lock_contention con = {
 		.target = &target,
+		.result = &lockhash_table[0],
 		.map_nr_entries = bpf_map_entries,
 		.max_stack = max_stack_depth,
 		.stack_skip = stack_skip,
 	};
 
-	lockhash_table = calloc(LOCKHASH_SIZE, sizeof(*lockhash_table));
-	if (!lockhash_table)
-		return -ENOMEM;
-
-	con.result = &lockhash_table[0];
-
 	session = perf_session__new(use_bpf ? NULL : &data, &eops);
 	if (IS_ERR(session)) {
 		pr_err("Initializing perf session failed\n");
-		err = PTR_ERR(session);
-		session = NULL;
-		goto out_delete;
+		return PTR_ERR(session);
 	}
 
 	con.machine = &session->machines.host;
@@ -1762,7 +1755,6 @@ out_delete:
 	evlist__delete(con.evlist);
 	lock_contention_finish();
 	perf_session__delete(session);
-	zfree(&lockhash_table);
 	return err;
 }
 
@@ -1954,10 +1946,6 @@ int cmd_lock(int argc, const char **argv)
 	unsigned int i;
 	int rc = 0;
 
-	lockhash_table = calloc(LOCKHASH_SIZE, sizeof(*lockhash_table));
-	if (!lockhash_table)
-		return -ENOMEM;
-
 	for (i = 0; i < LOCKHASH_SIZE; i++)
 		INIT_HLIST_HEAD(lockhash_table + i);
 
@@ -1979,7 +1967,7 @@ int cmd_lock(int argc, const char **argv)
 		rc = __cmd_report(false);
 	} else if (!strcmp(argv[0], "script")) {
 		/* Aliased to 'perf script' */
-		rc = cmd_script(argc, argv);
+		return cmd_script(argc, argv);
 	} else if (!strcmp(argv[0], "info")) {
 		if (argc) {
 			argc = parse_options(argc, argv,
@@ -2008,9 +1996,5 @@ int cmd_lock(int argc, const char **argv)
 		usage_with_options(lock_usage, lock_options);
 	}
 
-	/* free usage string allocated by parse_options_subcommand */
-	free((void *)lock_usage[0]);
-
-	zfree(&lockhash_table);
 	return rc;
 }

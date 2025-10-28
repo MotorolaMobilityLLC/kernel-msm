@@ -490,7 +490,7 @@ void cs_dsp_cleanup_debugfs(struct cs_dsp *dsp)
 {
 	cs_dsp_debugfs_clear(dsp);
 	debugfs_remove_recursive(dsp->debugfs_root);
-	dsp->debugfs_root = ERR_PTR(-ENODEV);
+	dsp->debugfs_root = NULL;
 }
 EXPORT_SYMBOL_GPL(cs_dsp_cleanup_debugfs);
 #else
@@ -764,9 +764,6 @@ int cs_dsp_coeff_write_ctrl(struct cs_dsp_coeff_ctl *ctl,
 
 	lockdep_assert_held(&ctl->dsp->pwr_lock);
 
-	if (ctl->flags && !(ctl->flags & WMFW_CTL_FLAG_WRITEABLE))
-		return -EPERM;
-
 	if (len + off * sizeof(u32) > ctl->len)
 		return -EINVAL;
 
@@ -1017,16 +1014,9 @@ struct cs_dsp_coeff_parsed_coeff {
 	int len;
 };
 
-static int cs_dsp_coeff_parse_string(int bytes, const u8 **pos, unsigned int avail,
-				     const u8 **str)
+static int cs_dsp_coeff_parse_string(int bytes, const u8 **pos, const u8 **str)
 {
-	int length, total_field_len;
-
-	/* String fields are at least one __le32 */
-	if (sizeof(__le32) > avail) {
-		*pos = NULL;
-		return 0;
-	}
+	int length;
 
 	switch (bytes) {
 	case 1:
@@ -1039,16 +1029,10 @@ static int cs_dsp_coeff_parse_string(int bytes, const u8 **pos, unsigned int ava
 		return 0;
 	}
 
-	total_field_len = ((length + bytes) + 3) & ~0x03;
-	if ((unsigned int)total_field_len > avail) {
-		*pos = NULL;
-		return 0;
-	}
-
 	if (str)
 		*str = *pos + bytes;
 
-	*pos += total_field_len;
+	*pos += ((length + bytes) + 3) & ~0x03;
 
 	return length;
 }
@@ -1073,134 +1057,71 @@ static int cs_dsp_coeff_parse_int(int bytes, const u8 **pos)
 	return val;
 }
 
-static int cs_dsp_coeff_parse_alg(struct cs_dsp *dsp,
-				  const struct wmfw_region *region,
-				  struct cs_dsp_coeff_parsed_alg *blk)
+static inline void cs_dsp_coeff_parse_alg(struct cs_dsp *dsp, const u8 **data,
+					  struct cs_dsp_coeff_parsed_alg *blk)
 {
 	const struct wmfw_adsp_alg_data *raw;
-	unsigned int data_len = le32_to_cpu(region->len);
-	unsigned int pos;
-	const u8 *tmp;
-
-	raw = (const struct wmfw_adsp_alg_data *)region->data;
 
 	switch (dsp->fw_ver) {
 	case 0:
 	case 1:
-		if (sizeof(*raw) > data_len)
-			return -EOVERFLOW;
+		raw = (const struct wmfw_adsp_alg_data *)*data;
+		*data = raw->data;
 
 		blk->id = le32_to_cpu(raw->id);
 		blk->name = raw->name;
-		blk->name_len = strnlen(raw->name, ARRAY_SIZE(raw->name));
+		blk->name_len = strlen(raw->name);
 		blk->ncoeff = le32_to_cpu(raw->ncoeff);
-
-		pos = sizeof(*raw);
 		break;
 	default:
-		if (sizeof(raw->id) > data_len)
-			return -EOVERFLOW;
-
-		tmp = region->data;
-		blk->id = cs_dsp_coeff_parse_int(sizeof(raw->id), &tmp);
-		pos = tmp - region->data;
-
-		tmp = &region->data[pos];
-		blk->name_len = cs_dsp_coeff_parse_string(sizeof(u8), &tmp, data_len - pos,
+		blk->id = cs_dsp_coeff_parse_int(sizeof(raw->id), data);
+		blk->name_len = cs_dsp_coeff_parse_string(sizeof(u8), data,
 							  &blk->name);
-		if (!tmp)
-			return -EOVERFLOW;
-
-		pos = tmp - region->data;
-		cs_dsp_coeff_parse_string(sizeof(u16), &tmp, data_len - pos, NULL);
-		if (!tmp)
-			return -EOVERFLOW;
-
-		pos = tmp - region->data;
-		if (sizeof(raw->ncoeff) > (data_len - pos))
-			return -EOVERFLOW;
-
-		blk->ncoeff = cs_dsp_coeff_parse_int(sizeof(raw->ncoeff), &tmp);
-		pos += sizeof(raw->ncoeff);
+		cs_dsp_coeff_parse_string(sizeof(u16), data, NULL);
+		blk->ncoeff = cs_dsp_coeff_parse_int(sizeof(raw->ncoeff), data);
 		break;
 	}
-
-	if ((int)blk->ncoeff < 0)
-		return -EOVERFLOW;
 
 	cs_dsp_dbg(dsp, "Algorithm ID: %#x\n", blk->id);
 	cs_dsp_dbg(dsp, "Algorithm name: %.*s\n", blk->name_len, blk->name);
 	cs_dsp_dbg(dsp, "# of coefficient descriptors: %#x\n", blk->ncoeff);
-
-	return pos;
 }
 
-static int cs_dsp_coeff_parse_coeff(struct cs_dsp *dsp,
-				    const struct wmfw_region *region,
-				    unsigned int pos,
-				    struct cs_dsp_coeff_parsed_coeff *blk)
+static inline void cs_dsp_coeff_parse_coeff(struct cs_dsp *dsp, const u8 **data,
+					    struct cs_dsp_coeff_parsed_coeff *blk)
 {
 	const struct wmfw_adsp_coeff_data *raw;
-	unsigned int data_len = le32_to_cpu(region->len);
-	unsigned int blk_len, blk_end_pos;
 	const u8 *tmp;
-
-	raw = (const struct wmfw_adsp_coeff_data *)&region->data[pos];
-	if (sizeof(raw->hdr) > (data_len - pos))
-		return -EOVERFLOW;
-
-	blk_len = le32_to_cpu(raw->hdr.size);
-	if (blk_len > S32_MAX)
-		return -EOVERFLOW;
-
-	if (blk_len > (data_len - pos - sizeof(raw->hdr)))
-		return -EOVERFLOW;
-
-	blk_end_pos = pos + sizeof(raw->hdr) + blk_len;
-
-	blk->offset = le16_to_cpu(raw->hdr.offset);
-	blk->mem_type = le16_to_cpu(raw->hdr.type);
+	int length;
 
 	switch (dsp->fw_ver) {
 	case 0:
 	case 1:
-		if (sizeof(*raw) > (data_len - pos))
-			return -EOVERFLOW;
+		raw = (const struct wmfw_adsp_coeff_data *)*data;
+		*data = *data + sizeof(raw->hdr) + le32_to_cpu(raw->hdr.size);
 
+		blk->offset = le16_to_cpu(raw->hdr.offset);
+		blk->mem_type = le16_to_cpu(raw->hdr.type);
 		blk->name = raw->name;
-		blk->name_len = strnlen(raw->name, ARRAY_SIZE(raw->name));
+		blk->name_len = strlen(raw->name);
 		blk->ctl_type = le16_to_cpu(raw->ctl_type);
 		blk->flags = le16_to_cpu(raw->flags);
 		blk->len = le32_to_cpu(raw->len);
 		break;
 	default:
-		pos += sizeof(raw->hdr);
-		tmp = &region->data[pos];
-		blk->name_len = cs_dsp_coeff_parse_string(sizeof(u8), &tmp, data_len - pos,
+		tmp = *data;
+		blk->offset = cs_dsp_coeff_parse_int(sizeof(raw->hdr.offset), &tmp);
+		blk->mem_type = cs_dsp_coeff_parse_int(sizeof(raw->hdr.type), &tmp);
+		length = cs_dsp_coeff_parse_int(sizeof(raw->hdr.size), &tmp);
+		blk->name_len = cs_dsp_coeff_parse_string(sizeof(u8), &tmp,
 							  &blk->name);
-		if (!tmp)
-			return -EOVERFLOW;
-
-		pos = tmp - region->data;
-		cs_dsp_coeff_parse_string(sizeof(u8), &tmp, data_len - pos, NULL);
-		if (!tmp)
-			return -EOVERFLOW;
-
-		pos = tmp - region->data;
-		cs_dsp_coeff_parse_string(sizeof(u16), &tmp, data_len - pos, NULL);
-		if (!tmp)
-			return -EOVERFLOW;
-
-		pos = tmp - region->data;
-		if (sizeof(raw->ctl_type) + sizeof(raw->flags) + sizeof(raw->len) >
-		    (data_len - pos))
-			return -EOVERFLOW;
-
+		cs_dsp_coeff_parse_string(sizeof(u8), &tmp, NULL);
+		cs_dsp_coeff_parse_string(sizeof(u16), &tmp, NULL);
 		blk->ctl_type = cs_dsp_coeff_parse_int(sizeof(raw->ctl_type), &tmp);
-		pos += sizeof(raw->ctl_type);
 		blk->flags = cs_dsp_coeff_parse_int(sizeof(raw->flags), &tmp);
-		pos += sizeof(raw->flags);
 		blk->len = cs_dsp_coeff_parse_int(sizeof(raw->len), &tmp);
+
+		*data = *data + sizeof(raw->hdr) + length;
 		break;
 	}
 
@@ -1210,8 +1131,6 @@ static int cs_dsp_coeff_parse_coeff(struct cs_dsp *dsp,
 	cs_dsp_dbg(dsp, "\tCoefficient flags: %#x\n", blk->flags);
 	cs_dsp_dbg(dsp, "\tALSA control type: %#x\n", blk->ctl_type);
 	cs_dsp_dbg(dsp, "\tALSA control len: %#x\n", blk->len);
-
-	return blk_end_pos;
 }
 
 static int cs_dsp_check_coeff_flags(struct cs_dsp *dsp,
@@ -1235,16 +1154,12 @@ static int cs_dsp_parse_coeff(struct cs_dsp *dsp,
 	struct cs_dsp_alg_region alg_region = {};
 	struct cs_dsp_coeff_parsed_alg alg_blk;
 	struct cs_dsp_coeff_parsed_coeff coeff_blk;
-	int i, pos, ret;
+	const u8 *data = region->data;
+	int i, ret;
 
-	pos = cs_dsp_coeff_parse_alg(dsp, region, &alg_blk);
-	if (pos < 0)
-		return pos;
-
+	cs_dsp_coeff_parse_alg(dsp, &data, &alg_blk);
 	for (i = 0; i < alg_blk.ncoeff; i++) {
-		pos = cs_dsp_coeff_parse_coeff(dsp, region, pos, &coeff_blk);
-		if (pos < 0)
-			return pos;
+		cs_dsp_coeff_parse_coeff(dsp, &data, &coeff_blk);
 
 		switch (coeff_blk.ctl_type) {
 		case WMFW_CTL_TYPE_BYTES:
@@ -1313,10 +1228,6 @@ static unsigned int cs_dsp_adsp1_parse_sizes(struct cs_dsp *dsp,
 	const struct wmfw_adsp1_sizes *adsp1_sizes;
 
 	adsp1_sizes = (void *)&firmware->data[pos];
-	if (sizeof(*adsp1_sizes) > firmware->size - pos) {
-		cs_dsp_err(dsp, "%s: file truncated\n", file);
-		return 0;
-	}
 
 	cs_dsp_dbg(dsp, "%s: %d DM, %d PM, %d ZM\n", file,
 		   le32_to_cpu(adsp1_sizes->dm), le32_to_cpu(adsp1_sizes->pm),
@@ -1333,10 +1244,6 @@ static unsigned int cs_dsp_adsp2_parse_sizes(struct cs_dsp *dsp,
 	const struct wmfw_adsp2_sizes *adsp2_sizes;
 
 	adsp2_sizes = (void *)&firmware->data[pos];
-	if (sizeof(*adsp2_sizes) > firmware->size - pos) {
-		cs_dsp_err(dsp, "%s: file truncated\n", file);
-		return 0;
-	}
 
 	cs_dsp_dbg(dsp, "%s: %d XM, %d YM %d PM, %d ZM\n", file,
 		   le32_to_cpu(adsp2_sizes->xm), le32_to_cpu(adsp2_sizes->ym),
@@ -1376,6 +1283,7 @@ static int cs_dsp_load(struct cs_dsp *dsp, const struct firmware *firmware,
 	struct regmap *regmap = dsp->regmap;
 	unsigned int pos = 0;
 	const struct wmfw_header *header;
+	const struct wmfw_adsp1_sizes *adsp1_sizes;
 	const struct wmfw_footer *footer;
 	const struct wmfw_region *region;
 	const struct cs_dsp_region *mem;
@@ -1388,8 +1296,10 @@ static int cs_dsp_load(struct cs_dsp *dsp, const struct firmware *firmware,
 
 	ret = -EINVAL;
 
-	if (sizeof(*header) >= firmware->size) {
-		ret = -EOVERFLOW;
+	pos = sizeof(*header) + sizeof(*adsp1_sizes) + sizeof(*footer);
+	if (pos >= firmware->size) {
+		cs_dsp_err(dsp, "%s: file too short, %zu bytes\n",
+			   file, firmware->size);
 		goto out_fw;
 	}
 
@@ -1417,36 +1327,22 @@ static int cs_dsp_load(struct cs_dsp *dsp, const struct firmware *firmware,
 
 	pos = sizeof(*header);
 	pos = dsp->ops->parse_sizes(dsp, file, pos, firmware);
-	if ((pos == 0) || (sizeof(*footer) > firmware->size - pos)) {
-		ret = -EOVERFLOW;
-		goto out_fw;
-	}
 
 	footer = (void *)&firmware->data[pos];
 	pos += sizeof(*footer);
 
 	if (le32_to_cpu(header->len) != pos) {
-		ret = -EOVERFLOW;
+		cs_dsp_err(dsp, "%s: unexpected header length %d\n",
+			   file, le32_to_cpu(header->len));
 		goto out_fw;
 	}
 
 	cs_dsp_dbg(dsp, "%s: timestamp %llu\n", file,
 		   le64_to_cpu(footer->timestamp));
 
-	while (pos < firmware->size) {
-		/* Is there enough data for a complete block header? */
-		if (sizeof(*region) > firmware->size - pos) {
-			ret = -EOVERFLOW;
-			goto out_fw;
-		}
-
+	while (pos < firmware->size &&
+	       sizeof(*region) < firmware->size - pos) {
 		region = (void *)&(firmware->data[pos]);
-
-		if (le32_to_cpu(region->len) > firmware->size - pos - sizeof(*region)) {
-			ret = -EOVERFLOW;
-			goto out_fw;
-		}
-
 		region_name = "Unknown";
 		reg = 0;
 		text = NULL;
@@ -1503,6 +1399,16 @@ static int cs_dsp_load(struct cs_dsp *dsp, const struct firmware *firmware,
 			   regions, le32_to_cpu(region->len), offset,
 			   region_name);
 
+		if (le32_to_cpu(region->len) >
+		    firmware->size - pos - sizeof(*region)) {
+			cs_dsp_err(dsp,
+				   "%s.%d: %s region len %d bytes exceeds file length %zu\n",
+				   file, regions, region_name,
+				   le32_to_cpu(region->len), firmware->size);
+			ret = -EINVAL;
+			goto out_fw;
+		}
+
 		if (text) {
 			memcpy(text, region->data, le32_to_cpu(region->len));
 			cs_dsp_info(dsp, "%s: %s\n", file, text);
@@ -1552,9 +1458,6 @@ out_fw:
 	regmap_async_complete(regmap);
 	cs_dsp_buf_free(&buf_list);
 	kfree(text);
-
-	if (ret == -EOVERFLOW)
-		cs_dsp_err(dsp, "%s: file content overflows file data\n", file);
 
 	return ret;
 }
@@ -2123,19 +2026,9 @@ static int cs_dsp_load_coeff(struct cs_dsp *dsp, const struct firmware *firmware
 	pos = le32_to_cpu(hdr->len);
 
 	blocks = 0;
-	while (pos < firmware->size) {
-		/* Is there enough data for a complete block header? */
-		if (sizeof(*blk) > firmware->size - pos) {
-			ret = -EOVERFLOW;
-			goto out_fw;
-		}
-
+	while (pos < firmware->size &&
+	       sizeof(*blk) < firmware->size - pos) {
 		blk = (void *)(&firmware->data[pos]);
-
-		if (le32_to_cpu(blk->len) > firmware->size - pos - sizeof(*blk)) {
-			ret = -EOVERFLOW;
-			goto out_fw;
-		}
 
 		type = le16_to_cpu(blk->type);
 		offset = le16_to_cpu(blk->offset);
@@ -2232,6 +2125,17 @@ static int cs_dsp_load_coeff(struct cs_dsp *dsp, const struct firmware *firmware
 		}
 
 		if (reg) {
+			if (le32_to_cpu(blk->len) >
+			    firmware->size - pos - sizeof(*blk)) {
+				cs_dsp_err(dsp,
+					   "%s.%d: %s region len %d bytes exceeds file length %zu\n",
+					   file, blocks, region_name,
+					   le32_to_cpu(blk->len),
+					   firmware->size);
+				ret = -EINVAL;
+				goto out_fw;
+			}
+
 			buf = cs_dsp_buf_alloc(blk->data,
 					       le32_to_cpu(blk->len),
 					       &buf_list);
@@ -2271,10 +2175,6 @@ out_fw:
 	regmap_async_complete(regmap);
 	cs_dsp_buf_free(&buf_list);
 	kfree(text);
-
-	if (ret == -EOVERFLOW)
-		cs_dsp_err(dsp, "%s: file content overflows file data\n", file);
-
 	return ret;
 }
 
@@ -2302,11 +2202,6 @@ static int cs_dsp_common_init(struct cs_dsp *dsp)
 	INIT_LIST_HEAD(&dsp->ctl_list);
 
 	mutex_init(&dsp->pwr_lock);
-
-#ifdef CONFIG_DEBUG_FS
-	/* Ensure this is invalid if client never provides a debugfs root */
-	dsp->debugfs_root = ERR_PTR(-ENODEV);
-#endif
 
 	return 0;
 }

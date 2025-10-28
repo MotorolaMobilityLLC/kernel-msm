@@ -1657,12 +1657,12 @@ static int lan78xx_set_wol(struct net_device *netdev,
 	struct lan78xx_priv *pdata = (struct lan78xx_priv *)(dev->data[0]);
 	int ret;
 
-	if (wol->wolopts & ~WAKE_ALL)
-		return -EINVAL;
-
 	ret = usb_autopm_get_interface(dev->intf);
 	if (ret < 0)
 		return ret;
+
+	if (wol->wolopts & ~WAKE_ALL)
+		return -EINVAL;
 
 	pdata->wol = wol->wolopts;
 
@@ -2387,7 +2387,6 @@ static int lan78xx_phy_init(struct lan78xx_net *dev)
 		if (dev->chipid == ID_REV_CHIP_ID_7801_) {
 			if (phy_is_pseudo_fixed_link(phydev)) {
 				fixed_phy_unregister(phydev);
-				phy_device_free(phydev);
 			} else {
 				phy_unregister_fixup_for_uid(PHY_KSZ9031RNX,
 							     0xfffffff0);
@@ -4247,10 +4246,8 @@ static void lan78xx_disconnect(struct usb_interface *intf)
 
 	phy_disconnect(net->phydev);
 
-	if (phy_is_pseudo_fixed_link(phydev)) {
+	if (phy_is_pseudo_fixed_link(phydev))
 		fixed_phy_unregister(phydev);
-		phy_device_free(phydev);
-	}
 
 	usb_scuttle_anchored_urbs(&dev->deferred);
 
@@ -4420,30 +4417,29 @@ static int lan78xx_probe(struct usb_interface *intf,
 
 	period = ep_intr->desc.bInterval;
 	maxp = usb_maxpacket(dev->udev, dev->pipe_intr);
-
-	dev->urb_intr = usb_alloc_urb(0, GFP_KERNEL);
-	if (!dev->urb_intr) {
+	buf = kmalloc(maxp, GFP_KERNEL);
+	if (!buf) {
 		ret = -ENOMEM;
 		goto out5;
 	}
 
-	buf = kmalloc(maxp, GFP_KERNEL);
-	if (!buf) {
+	dev->urb_intr = usb_alloc_urb(0, GFP_KERNEL);
+	if (!dev->urb_intr) {
 		ret = -ENOMEM;
-		goto free_urbs;
+		goto out6;
+	} else {
+		usb_fill_int_urb(dev->urb_intr, dev->udev,
+				 dev->pipe_intr, buf, maxp,
+				 intr_complete, dev, period);
+		dev->urb_intr->transfer_flags |= URB_FREE_BUFFER;
 	}
-
-	usb_fill_int_urb(dev->urb_intr, dev->udev,
-			 dev->pipe_intr, buf, maxp,
-			 intr_complete, dev, period);
-	dev->urb_intr->transfer_flags |= URB_FREE_BUFFER;
 
 	dev->maxpacket = usb_maxpacket(dev->udev, dev->pipe_out);
 
 	/* Reject broken descriptors. */
 	if (dev->maxpacket == 0) {
 		ret = -ENODEV;
-		goto free_urbs;
+		goto out6;
 	}
 
 	/* driver requires remote-wakeup capability during autosuspend. */
@@ -4451,7 +4447,7 @@ static int lan78xx_probe(struct usb_interface *intf,
 
 	ret = lan78xx_phy_init(dev);
 	if (ret < 0)
-		goto free_urbs;
+		goto out7;
 
 	ret = register_netdev(netdev);
 	if (ret != 0) {
@@ -4473,8 +4469,10 @@ static int lan78xx_probe(struct usb_interface *intf,
 
 out8:
 	phy_disconnect(netdev->phydev);
-free_urbs:
+out7:
 	usb_free_urb(dev->urb_intr);
+out6:
+	kfree(buf);
 out5:
 	lan78xx_unbind(dev, intf);
 out4:

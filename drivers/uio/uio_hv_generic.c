@@ -104,11 +104,10 @@ static void hv_uio_channel_cb(void *context)
 
 /*
  * Callback from vmbus_event when channel is rescinded.
- * It is meant for rescind of primary channels only.
  */
 static void hv_uio_rescind(struct vmbus_channel *channel)
 {
-	struct hv_device *hv_dev = channel->device_obj;
+	struct hv_device *hv_dev = channel->primary_channel->device_obj;
 	struct hv_uio_private_data *pdata = hv_get_drvdata(hv_dev);
 
 	/*
@@ -119,14 +118,6 @@ static void hv_uio_rescind(struct vmbus_channel *channel)
 
 	/* Wake up reader */
 	uio_event_notify(&pdata->info);
-
-	/*
-	 * With rescind callback registered, rescind path will not unregister the device
-	 * from vmbus when the primary channel is rescinded.
-	 * Without it, rescind handling is incomplete and next onoffer msg does not come.
-	 * Unregister the device from vmbus here.
-	 */
-	vmbus_device_unregister(channel->device_obj);
 }
 
 /* Sysfs API to allow mmap of the ring buffers
@@ -190,14 +181,12 @@ hv_uio_cleanup(struct hv_device *dev, struct hv_uio_private_data *pdata)
 {
 	if (pdata->send_gpadl.gpadl_handle) {
 		vmbus_teardown_gpadl(dev->channel, &pdata->send_gpadl);
-		if (!pdata->send_gpadl.decrypted)
-			vfree(pdata->send_buf);
+		vfree(pdata->send_buf);
 	}
 
 	if (pdata->recv_gpadl.gpadl_handle) {
 		vmbus_teardown_gpadl(dev->channel, &pdata->recv_gpadl);
-		if (!pdata->recv_gpadl.decrypted)
-			vfree(pdata->recv_buf);
+		vfree(pdata->recv_buf);
 	}
 }
 
@@ -306,8 +295,7 @@ hv_uio_probe(struct hv_device *dev,
 	ret = vmbus_establish_gpadl(channel, pdata->recv_buf,
 				    RECV_BUFFER_SIZE, &pdata->recv_gpadl);
 	if (ret) {
-		if (!pdata->recv_gpadl.decrypted)
-			vfree(pdata->recv_buf);
+		vfree(pdata->recv_buf);
 		goto fail_close;
 	}
 
@@ -329,8 +317,7 @@ hv_uio_probe(struct hv_device *dev,
 	ret = vmbus_establish_gpadl(channel, pdata->send_buf,
 				    SEND_BUFFER_SIZE, &pdata->send_gpadl);
 	if (ret) {
-		if (!pdata->send_gpadl.decrypted)
-			vfree(pdata->send_buf);
+		vfree(pdata->send_buf);
 		goto fail_close;
 	}
 

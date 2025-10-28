@@ -907,15 +907,7 @@ static void ata_gen_passthru_sense(struct ata_queued_cmd *qc)
 	} else {
 		/*
 		 * ATA PASS-THROUGH INFORMATION AVAILABLE
-		 *
-		 * Note: we are supposed to call ata_scsi_set_sense(), which
-		 * respects the D_SENSE bit, instead of unconditionally
-		 * generating the sense data in descriptor format. However,
-		 * because hdparm, hddtemp, and udisks incorrectly assume sense
-		 * data in descriptor format, without even looking at the
-		 * RESPONSE CODE field in the returned sense data (to see which
-		 * format the returned sense data is in), we are stuck with
-		 * being bug compatible with older kernels.
+		 * Always in descriptor format sense.
 		 */
 		scsi_build_sense(cmd, 1, RECOVERED_ERROR, 0, 0x1D);
 	}
@@ -4668,7 +4660,7 @@ void ata_scsi_dev_rescan(struct work_struct *work)
 			 * bail out.
 			 */
 			if (ap->pflags & ATA_PFLAG_SUSPENDED)
-				goto unlock_ap;
+				goto unlock;
 
 			if (!sdev)
 				continue;
@@ -4681,7 +4673,7 @@ void ata_scsi_dev_rescan(struct work_struct *work)
 			if (do_resume) {
 				ret = scsi_resume_device(sdev);
 				if (ret == -EWOULDBLOCK)
-					goto unlock_scan;
+					goto unlock;
 				dev->flags &= ~ATA_DFLAG_RESUMING;
 			}
 			ret = scsi_rescan_device(sdev);
@@ -4689,13 +4681,12 @@ void ata_scsi_dev_rescan(struct work_struct *work)
 			spin_lock_irqsave(ap->lock, flags);
 
 			if (ret)
-				goto unlock_ap;
+				goto unlock;
 		}
 	}
 
-unlock_ap:
+unlock:
 	spin_unlock_irqrestore(ap->lock, flags);
-unlock_scan:
 	mutex_unlock(&ap->scsi_scan_mutex);
 
 	/* Reschedule with a delay if scsi_rescan_device() returned an error */

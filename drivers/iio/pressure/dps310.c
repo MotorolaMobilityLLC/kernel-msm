@@ -730,7 +730,7 @@ static int dps310_read_pressure(struct dps310_data *data, int *val, int *val2,
 	}
 }
 
-static int dps310_calculate_temp(struct dps310_data *data, int *val)
+static int dps310_calculate_temp(struct dps310_data *data)
 {
 	s64 c0;
 	s64 t;
@@ -746,9 +746,7 @@ static int dps310_calculate_temp(struct dps310_data *data, int *val)
 	t = c0 + ((s64)data->temp_raw * (s64)data->c1);
 
 	/* Convert to milliCelsius and scale the temperature */
-	*val = (int)div_s64(t * 1000LL, kt);
-
-	return 0;
+	return (int)div_s64(t * 1000LL, kt);
 }
 
 static int dps310_read_temp(struct dps310_data *data, int *val, int *val2,
@@ -770,10 +768,11 @@ static int dps310_read_temp(struct dps310_data *data, int *val, int *val2,
 		if (rc)
 			return rc;
 
-		rc = dps310_calculate_temp(data, val);
-		if (rc)
+		rc = dps310_calculate_temp(data);
+		if (rc < 0)
 			return rc;
 
+		*val = rc;
 		return IIO_VAL_INT;
 
 	case IIO_CHAN_INFO_OVERSAMPLING_RATIO:

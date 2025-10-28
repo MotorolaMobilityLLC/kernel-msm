@@ -270,9 +270,6 @@ void calibrate_delay(void)
 
 void __init setup_arch(char **cmdline_p)
 {
-	/* setup memblock allocator */
-	setup_memory();
-
 	unflatten_and_copy_device_tree();
 
 	setup_cpuinfo();
@@ -295,6 +292,9 @@ void __init setup_arch(char **cmdline_p)
 		initrd_below_start_ok = 1;
 	}
 #endif
+
+	/* setup memblock allocator */
+	setup_memory();
 
 	/* paging_init() sets up the MMU and marks all pages as reserved */
 	paging_init();

@@ -690,8 +690,6 @@ int dquot_writeback_dquots(struct super_block *sb, int type)
 
 	WARN_ON_ONCE(!rwsem_is_locked(&sb->s_umount));
 
-	flush_delayed_work(&quota_release_work);
-
 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
 		if (type != -1 && cnt != type)
 			continue;
@@ -997,8 +995,9 @@ we_slept:
 	 * smp_mb__before_atomic() in dquot_acquire().
 	 */
 	smp_rmb();
-	/* Has somebody invalidated entry under us? */
-	WARN_ON_ONCE(hlist_unhashed(&dquot->dq_hash));
+#ifdef CONFIG_QUOTA_DEBUG
+	BUG_ON(!dquot->dq_sb);	/* Has somebody invalidated entry under us? */
+#endif
 out:
 	if (empty)
 		do_destroy_dquot(empty);

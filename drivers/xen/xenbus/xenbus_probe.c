@@ -65,16 +65,12 @@
 #include "xenbus.h"
 
 
-static int xs_init_irq = -1;
+static int xs_init_irq;
 int xen_store_evtchn;
 EXPORT_SYMBOL_GPL(xen_store_evtchn);
 
 struct xenstore_domain_interface *xen_store_interface;
 EXPORT_SYMBOL_GPL(xen_store_interface);
-
-#define XS_INTERFACE_READY \
-	((xen_store_interface != NULL) && \
-	 (xen_store_interface->connection == XENSTORE_CONNECTED))
 
 enum xenstore_init xen_store_domain_type;
 EXPORT_SYMBOL_GPL(xen_store_domain_type);
@@ -313,7 +309,7 @@ int xenbus_dev_probe(struct device *_dev)
 	if (err) {
 		dev_warn(&dev->dev, "watch_otherend on %s failed.\n",
 		       dev->nodename);
-		goto fail_remove;
+		return err;
 	}
 
 	dev->spurious_threshold = 1;
@@ -322,12 +318,6 @@ int xenbus_dev_probe(struct device *_dev)
 			 dev->nodename);
 
 	return 0;
-fail_remove:
-	if (drv->remove) {
-		down(&dev->reclaim_sem);
-		drv->remove(dev);
-		up(&dev->reclaim_sem);
-	}
 fail_put:
 	module_put(drv->driver.owner);
 fail:
@@ -761,19 +751,19 @@ static void xenbus_probe(void)
 {
 	xenstored_ready = 1;
 
-	if (!xen_store_interface)
+	if (!xen_store_interface) {
 		xen_store_interface = memremap(xen_store_gfn << XEN_PAGE_SHIFT,
 					       XEN_PAGE_SIZE, MEMREMAP_WB);
-	/*
-	 * Now it is safe to free the IRQ used for xenstore late
-	 * initialization. No need to unbind: it is about to be
-	 * bound again from xb_init_comms. Note that calling
-	 * unbind_from_irqhandler now would result in xen_evtchn_close()
-	 * being called and the event channel not being enabled again
-	 * afterwards, resulting in missed event notifications.
-	 */
-	if (xs_init_irq >= 0)
+		/*
+		 * Now it is safe to free the IRQ used for xenstore late
+		 * initialization. No need to unbind: it is about to be
+		 * bound again from xb_init_comms. Note that calling
+		 * unbind_from_irqhandler now would result in xen_evtchn_close()
+		 * being called and the event channel not being enabled again
+		 * afterwards, resulting in missed event notifications.
+		 */
 		free_irq(xs_init_irq, &xb_waitq);
+	}
 
 	/*
 	 * In the HVM case, xenbus_init() deferred its call to
@@ -832,7 +822,7 @@ static int __init xenbus_probe_initcall(void)
 	if (xen_store_domain_type == XS_PV ||
 	    (xen_store_domain_type == XS_HVM &&
 	     !xs_hvm_defer_init_for_callback() &&
-	     XS_INTERFACE_READY))
+	     xen_store_interface != NULL))
 		xenbus_probe();
 
 	/*
@@ -841,7 +831,7 @@ static int __init xenbus_probe_initcall(void)
 	 * started, then probe.  It will be triggered when communication
 	 * starts happening, by waiting on xb_waitq.
 	 */
-	if (xen_store_domain_type == XS_LOCAL || !XS_INTERFACE_READY) {
+	if (xen_store_domain_type == XS_LOCAL || xen_store_interface == NULL) {
 		struct task_struct *probe_task;
 
 		probe_task = kthread_run(xenbus_probe_thread, NULL,
@@ -1024,12 +1014,6 @@ static int __init xenbus_init(void)
 			xen_store_interface =
 				memremap(xen_store_gfn << XEN_PAGE_SHIFT,
 					 XEN_PAGE_SIZE, MEMREMAP_WB);
-			if (!xen_store_interface) {
-				pr_err("%s: cannot map HVM_PARAM_STORE_PFN=%llx\n",
-				       __func__, v);
-				err = -EINVAL;
-				goto out_error;
-			}
 			if (xen_store_interface->connection != XENSTORE_CONNECTED)
 				wait = true;
 		}

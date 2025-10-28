@@ -30,7 +30,6 @@
  * SOFTWARE.
  */
 
-#include <linux/io.h>
 #include <rdma/ib_umem_odp.h>
 #include "mlx5_ib.h"
 #include <linux/jiffies.h>
@@ -109,6 +108,7 @@ static int post_send_nop(struct mlx5_ib_dev *dev, struct ib_qp *ibqp, u64 wr_id,
 	__be32 mmio_wqe[16] = {};
 	unsigned long flags;
 	unsigned int idx;
+	int i;
 
 	if (unlikely(dev->mdev->state == MLX5_DEVICE_STATE_INTERNAL_ERROR))
 		return -EIO;
@@ -148,8 +148,10 @@ static int post_send_nop(struct mlx5_ib_dev *dev, struct ib_qp *ibqp, u64 wr_id,
 	 * we hit doorbell
 	 */
 	wmb();
-	__iowrite64_copy(bf->bfreg->map + bf->offset, mmio_wqe,
-			 sizeof(mmio_wqe) / 8);
+	for (i = 0; i < 8; i++)
+		mlx5_write64(&mmio_wqe[i * 2],
+			     bf->bfreg->map + bf->offset + i * 8);
+	io_stop_wc();
 
 	bf->offset ^= bf->buf_size;
 

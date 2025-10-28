@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include <linux/bitfield.h>
 #include <linux/bits.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
@@ -24,9 +23,12 @@
 #define IST3038C_I2C_RETRY_COUNT	3
 #define IST3038C_MAX_FINGER_NUM		10
 #define IST3038C_X_MASK			GENMASK(23, 12)
+#define IST3038C_X_SHIFT		12
 #define IST3038C_Y_MASK			GENMASK(11, 0)
 #define IST3038C_AREA_MASK		GENMASK(27, 24)
+#define IST3038C_AREA_SHIFT		24
 #define IST3038C_FINGER_COUNT_MASK	GENMASK(15, 12)
+#define IST3038C_FINGER_COUNT_SHIFT	12
 #define IST3038C_FINGER_STATUS_MASK	GENMASK(9, 0)
 
 struct imagis_ts {
@@ -90,7 +92,8 @@ static irqreturn_t imagis_interrupt(int irq, void *dev_id)
 		goto out;
 	}
 
-	finger_count = FIELD_GET(IST3038C_FINGER_COUNT_MASK, intr_message);
+	finger_count = (intr_message & IST3038C_FINGER_COUNT_MASK) >>
+				IST3038C_FINGER_COUNT_SHIFT;
 	if (finger_count > IST3038C_MAX_FINGER_NUM) {
 		dev_err(&ts->client->dev,
 			"finger count %d is more than maximum supported\n",
@@ -98,7 +101,7 @@ static irqreturn_t imagis_interrupt(int irq, void *dev_id)
 		goto out;
 	}
 
-	finger_pressed = FIELD_GET(IST3038C_FINGER_STATUS_MASK, intr_message);
+	finger_pressed = intr_message & IST3038C_FINGER_STATUS_MASK;
 
 	for (i = 0; i < finger_count; i++) {
 		error = imagis_i2c_read_reg(ts,
@@ -115,11 +118,12 @@ static irqreturn_t imagis_interrupt(int irq, void *dev_id)
 		input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER,
 					   finger_pressed & BIT(i));
 		touchscreen_report_pos(ts->input_dev, &ts->prop,
-				       FIELD_GET(IST3038C_X_MASK, finger_status),
-				       FIELD_GET(IST3038C_Y_MASK, finger_status),
-				       true);
+				       (finger_status & IST3038C_X_MASK) >>
+						IST3038C_X_SHIFT,
+				       finger_status & IST3038C_Y_MASK, 1);
 		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-				 FIELD_GET(IST3038C_AREA_MASK, finger_status));
+				 (finger_status & IST3038C_AREA_MASK) >>
+					IST3038C_AREA_SHIFT);
 	}
 
 	input_mt_sync_frame(ts->input_dev);
@@ -206,7 +210,7 @@ static int imagis_init_input_dev(struct imagis_ts *ts)
 
 	input_set_capability(input_dev, EV_ABS, ABS_MT_POSITION_X);
 	input_set_capability(input_dev, EV_ABS, ABS_MT_POSITION_Y);
-	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, 16, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
 
 	touchscreen_parse_properties(input_dev, true, &ts->prop);
 	if (!ts->prop.max_x || !ts->prop.max_y) {

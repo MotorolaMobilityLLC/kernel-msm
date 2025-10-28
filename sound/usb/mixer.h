@@ -88,7 +88,6 @@ struct usb_mixer_elem_info {
 	int channels;
 	int val_type;
 	int min, max, res;
-	int max_exposed; /* control API exposes the value in 0..max_exposed */
 	int dBmin, dBmax;
 	int cached;
 	int cache_val[MAX_CHANNELS];

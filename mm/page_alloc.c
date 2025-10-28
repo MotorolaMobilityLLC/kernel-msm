@@ -211,38 +211,6 @@ EXPORT_PER_CPU_SYMBOL(numa_node);
 
 DEFINE_STATIC_KEY_TRUE(vm_numa_stat_key);
 
-/*
- * By default, restrict_cma_redirect is set to true, so only MOVABLE allocations
- * marked __GFP_CMA are eligible to be redirected to CMA region. These allocations
- * are redirected if *any* free space is available in the CMA region.
- * When restrict_cma_redirect is false, all movable allocations
- * are eligible for redirection to CMA region (i.e movable allocations are
- * not restricted from CMA region), when there is sufficient space there.
- * (see __rmqueue()).
- *
- */
-DEFINE_STATIC_KEY_TRUE(restrict_cma_redirect);
-
-static int __init restrict_cma_redirect_setup(char *str)
-{
-#ifdef CONFIG_CMA
-	bool res;
-	int ret;
-	ret = kstrtobool(str, &res);
-	if (!ret && res == false)
-		static_branch_disable(&restrict_cma_redirect);
-#else
-	pr_warn("CONFIG_CMA not set. Ignoring restrict_cma_redirect option\n");
-#endif
-	return 1;
-}
-__setup("restrict_cma_redirect=", restrict_cma_redirect_setup);
-
-static inline bool cma_redirect_restricted(void)
-{
-	return static_branch_likely(&restrict_cma_redirect);
-}
-
 #ifdef CONFIG_HAVE_MEMORYLESS_NODES
 /*
  * N.B., Do NOT reference the '_numa_mem_' per cpu variable directly.
@@ -1473,26 +1441,11 @@ static __always_inline bool free_pages_prepare(struct page *page,
 	int bad = 0;
 	bool skip_kasan_poison = should_skip_kasan_poison(page, fpi_flags);
 	bool init = want_init_on_free();
-	struct folio *folio = page_folio(page);
 
 	VM_BUG_ON_PAGE(PageTail(page), page);
 
 	trace_mm_page_free(page, order);
 	kmsan_free_page(page, order);
-
-	/*
-	 * In rare cases, when truncation or holepunching raced with
-	 * munlock after VM_LOCKED was cleared, Mlocked may still be
-	 * found set here.  This does not indicate a problem, unless
-	 * "unevictable_pgs_cleared" appears worryingly large.
-	 */
-	if (unlikely(folio_test_mlocked(folio))) {
-		long nr_pages = folio_nr_pages(folio);
-
-		__folio_clear_mlocked(folio);
-		zone_stat_mod_folio(folio, NR_MLOCK, -nr_pages);
-		count_vm_events(UNEVICTABLE_PGCLEARED, nr_pages);
-	}
 
 	if (unlikely(PageHWPoison(page)) && !order) {
 		/*
@@ -3209,32 +3162,8 @@ __rmqueue(struct zone *zone, unsigned int order, int migratetype,
 	if (page)
 		return page;
 
-	if (IS_ENABLED(CONFIG_CMA)) {
-		/*
-		 * Balance movable allocations between regular and CMA areas by
-		 * allocating from CMA when over half of the zone's free memory
-		 * is in the CMA area.
-		 */
-		if (!cma_redirect_restricted() && alloc_flags & ALLOC_CMA &&
-			zone_page_state(zone, NR_FREE_CMA_PAGES) >
-			zone_page_state(zone, NR_FREE_PAGES) / 2) {
-				page = __rmqueue_cma_fallback(zone, order);
-				if (page)
-					return page;
-		}
-	}
-
 retry:
 	page = __rmqueue_smallest(zone, order, migratetype);
-
-	/*
-	 * let normal GFP_MOVABLE has chance to try MIGRATE_CMA
-	 */
-	if (unlikely(!page) && (migratetype == MIGRATE_MOVABLE))
-		trace_android_vh_rmqueue_cma_fallback(zone, order, &page);
-
-	if (!cma_redirect_restricted() && !page && alloc_flags & ALLOC_CMA)
-		page = __rmqueue_cma_fallback(zone, order);
 
 	if (unlikely(!page) && __rmqueue_fallback(zone, order, migratetype,
 						  alloc_flags))
@@ -3281,12 +3210,7 @@ static int rmqueue_bulk(struct zone *zone, unsigned int order,
 	for (i = 0; i < count; ++i) {
 		struct page *page;
 
-		/*
-		 * If CMA redirect is restricted, use CMA region only for
-		 * MIGRATE_CMA pages. cma_rediret_restricted() is false
-		 * if CONFIG_CMA is not set.
-		 */
-		if (cma_redirect_restricted() && is_migrate_cma(migratetype))
+		if (is_migrate_cma(migratetype))
 			page = __rmqueue_cma(zone, order, migratetype,
 					     alloc_flags);
 		else
@@ -3388,21 +3312,14 @@ void drain_zone_pages(struct zone *zone, struct per_cpu_pages *pcp)
  */
 static void drain_pages_zone(unsigned int cpu, struct zone *zone)
 {
-	struct per_cpu_pages *pcp = per_cpu_ptr(zone->per_cpu_pageset, cpu);
-	int count;
+	struct per_cpu_pages *pcp;
 
-	do {
+	pcp = per_cpu_ptr(zone->per_cpu_pageset, cpu);
+	if (pcp->count) {
 		spin_lock(&pcp->lock);
-		count = pcp->count;
-		if (count) {
-			int to_drain = min(count,
-				pcp->batch << CONFIG_PCP_BATCH_SCALE_MAX);
-
-			free_pcppages_bulk(zone, to_drain, pcp, 0);
-			count -= to_drain;
-		}
+		free_pcppages_bulk(zone, pcp->count, pcp, 0);
 		spin_unlock(&pcp->lock);
-	} while (count);
+	}
 }
 
 /*
@@ -3608,7 +3525,7 @@ static int nr_pcp_free(struct per_cpu_pages *pcp, int high, int batch,
 	 * freeing of pages without any allocation.
 	 */
 	batch <<= pcp->free_factor;
-	if (batch < max_nr_free && pcp->free_factor < CONFIG_PCP_BATCH_SCALE_MAX)
+	if (batch < max_nr_free)
 		pcp->free_factor++;
 	batch = clamp(batch, min_nr_free, max_nr_free);
 
@@ -3932,26 +3849,15 @@ struct page *rmqueue_buddy(struct zone *preferred_zone, struct zone *zone,
 		 * reserved for high-order atomic allocation, so order-0
 		 * request should skip it.
 		 */
-		if (alloc_flags & ALLOC_HIGHATOMIC)
+		if (order > 0 && alloc_flags & ALLOC_HARDER)
 			page = __rmqueue_smallest(zone, order, MIGRATE_HIGHATOMIC);
 		if (!page) {
-			if (cma_redirect_restricted() && alloc_flags & ALLOC_CMA &&
-					migratetype == MIGRATE_MOVABLE)
+			if (alloc_flags & ALLOC_CMA && migratetype == MIGRATE_MOVABLE)
 				page = __rmqueue_cma(zone, order, migratetype,
 						     alloc_flags);
 			else
 				page = __rmqueue(zone, order, migratetype,
 						 alloc_flags);
-
-			/*
-			 * If the allocation fails, allow OOM handling and
-			 * order-0 (atomic) allocs access to HIGHATOMIC
-			 * reserves as failing now is worse than failing a
-			 * high-order atomic allocation in the future.
-			 */
-			if (!page && (alloc_flags & (ALLOC_OOM|ALLOC_NON_BLOCK)))
-				page = __rmqueue_smallest(zone, order, MIGRATE_HIGHATOMIC);
-
 			if (!page) {
 				spin_unlock_irqrestore(&zone->lock, flags);
 				return NULL;
@@ -3980,8 +3886,7 @@ struct page *__rmqueue_pcplist(struct zone *zone, unsigned int order,
 
 	do {
 		/* First try to get CMA pages */
-		if (cma_redirect_restricted() && migratetype == MIGRATE_MOVABLE &&
-				alloc_flags & ALLOC_CMA)
+		if (migratetype == MIGRATE_MOVABLE && alloc_flags & ALLOC_CMA)
 			list = get_populated_pcp_list(zone, order, pcp, get_cma_migrate_type(),
 						      alloc_flags);
 		if (list == NULL) {
@@ -4167,14 +4072,15 @@ ALLOW_ERROR_INJECTION(should_fail_alloc_page, TRUE);
 static inline long __zone_watermark_unusable_free(struct zone *z,
 				unsigned int order, unsigned int alloc_flags)
 {
+	const bool alloc_harder = (alloc_flags & (ALLOC_HARDER|ALLOC_OOM));
 	long unusable_free = (1 << order) - 1;
 
 	/*
-	 * If the caller does not have rights to reserves below the min
-	 * watermark then subtract the high-atomic reserves. This will
-	 * over-estimate the size of the atomic reserve but it avoids a search.
+	 * If the caller does not have rights to ALLOC_HARDER then subtract
+	 * the high-atomic reserves. This will over-estimate the size of the
+	 * atomic reserve but it avoids a search.
 	 */
-	if (likely(!(alloc_flags & ALLOC_RESERVES)))
+	if (likely(!alloc_harder))
 		unusable_free += z->nr_reserved_highatomic;
 
 #ifdef CONFIG_CMA
@@ -4198,37 +4104,25 @@ bool __zone_watermark_ok(struct zone *z, unsigned int order, unsigned long mark,
 {
 	long min = mark;
 	int o;
+	const bool alloc_harder = (alloc_flags & (ALLOC_HARDER|ALLOC_OOM));
 
 	/* free_pages may go negative - that's OK */
 	free_pages -= __zone_watermark_unusable_free(z, order, alloc_flags);
 
-	if (unlikely(alloc_flags & ALLOC_RESERVES)) {
-		/*
-		 * __GFP_HIGH allows access to 50% of the min reserve as well
-		 * as OOM.
-		 */
-		if (alloc_flags & ALLOC_MIN_RESERVE) {
-			min -= min / 2;
+	if (alloc_flags & ALLOC_HIGH)
+		min -= min / 2;
 
-			/*
-			 * Non-blocking allocations (e.g. GFP_ATOMIC) can
-			 * access more reserves than just __GFP_HIGH. Other
-			 * non-blocking allocations requests such as GFP_NOWAIT
-			 * or (GFP_KERNEL & ~__GFP_DIRECT_RECLAIM) do not get
-			 * access to the min reserve.
-			 */
-			if (alloc_flags & ALLOC_NON_BLOCK)
-				min -= min / 4;
-		}
-
+	if (unlikely(alloc_harder)) {
 		/*
-		 * OOM victims can try even harder than the normal reserve
+		 * OOM victims can try even harder than normal ALLOC_HARDER
 		 * users on the grounds that it's definitely going to be in
 		 * the exit path shortly and free memory. Any allocation it
 		 * makes during the free path will be small and short-lived.
 		 */
 		if (alloc_flags & ALLOC_OOM)
 			min -= min / 2;
+		else
+			min -= min / 4;
 	}
 
 	/*
@@ -4270,10 +4164,8 @@ bool __zone_watermark_ok(struct zone *z, unsigned int order, unsigned long mark,
 			return true;
 		}
 #endif
-		if ((alloc_flags & (ALLOC_HIGHATOMIC|ALLOC_OOM)) &&
-		    !free_area_empty(area, MIGRATE_HIGHATOMIC)) {
+		if (alloc_harder && !free_area_empty(area, MIGRATE_HIGHATOMIC))
 			return true;
-		}
 	}
 	return false;
 }
@@ -4401,14 +4293,8 @@ static inline unsigned int gfp_to_alloc_flags_cma(gfp_t gfp_mask,
 						  unsigned int alloc_flags)
 {
 #ifdef CONFIG_CMA
-	/*
-	 * If cma_redirect_restricted is true, set ALLOC_CMA only for
-	 * movable allocations that have __GFP_CMA.
-	 */
-	if ((!cma_redirect_restricted() || gfp_mask & __GFP_CMA) &&
-			gfp_migratetype(gfp_mask) == MIGRATE_MOVABLE)
+	if (gfp_migratetype(gfp_mask) == MIGRATE_MOVABLE && gfp_mask & __GFP_CMA)
 		alloc_flags |= ALLOC_CMA;
-	trace_android_vh_alloc_flags_cma_adjust(gfp_mask, &alloc_flags);
 #endif
 	return alloc_flags;
 }
@@ -4542,7 +4428,7 @@ try_this_zone:
 			 * If this is a high-order atomic allocation then check
 			 * if the pageblock should be reserved for the future
 			 */
-			if (unlikely(alloc_flags & ALLOC_HIGHATOMIC))
+			if (unlikely(order && (alloc_flags & ALLOC_HARDER)))
 				reserve_highatomic_pageblock(page, zone, order);
 
 			return page;
@@ -5074,48 +4960,41 @@ static void wake_all_kswapds(unsigned int order, gfp_t gfp_mask,
 }
 
 static inline unsigned int
-gfp_to_alloc_flags(gfp_t gfp_mask, unsigned int order)
+gfp_to_alloc_flags(gfp_t gfp_mask)
 {
 	unsigned int alloc_flags = ALLOC_WMARK_MIN | ALLOC_CPUSET;
 
 	/*
-	 * __GFP_HIGH is assumed to be the same as ALLOC_MIN_RESERVE
+	 * __GFP_HIGH is assumed to be the same as ALLOC_HIGH
 	 * and __GFP_KSWAPD_RECLAIM is assumed to be the same as ALLOC_KSWAPD
 	 * to save two branches.
 	 */
-	BUILD_BUG_ON(__GFP_HIGH != (__force gfp_t) ALLOC_MIN_RESERVE);
+	BUILD_BUG_ON(__GFP_HIGH != (__force gfp_t) ALLOC_HIGH);
 	BUILD_BUG_ON(__GFP_KSWAPD_RECLAIM != (__force gfp_t) ALLOC_KSWAPD);
 
 	/*
 	 * The caller may dip into page reserves a bit more if the caller
 	 * cannot run direct reclaim, or if the caller has realtime scheduling
 	 * policy or is asking for __GFP_HIGH memory.  GFP_ATOMIC requests will
-	 * set both ALLOC_NON_BLOCK and ALLOC_MIN_RESERVE(__GFP_HIGH).
+	 * set both ALLOC_HARDER (__GFP_ATOMIC) and ALLOC_HIGH (__GFP_HIGH).
 	 */
 	alloc_flags |= (__force int)
 		(gfp_mask & (__GFP_HIGH | __GFP_KSWAPD_RECLAIM));
 
-	if (!(gfp_mask & __GFP_DIRECT_RECLAIM)) {
+	if (gfp_mask & __GFP_ATOMIC) {
 		/*
 		 * Not worth trying to allocate harder for __GFP_NOMEMALLOC even
 		 * if it can't schedule.
 		 */
-		if (!(gfp_mask & __GFP_NOMEMALLOC)) {
-			alloc_flags |= ALLOC_NON_BLOCK;
-
-			if (order > 0)
-				alloc_flags |= ALLOC_HIGHATOMIC;
-		}
-
+		if (!(gfp_mask & __GFP_NOMEMALLOC))
+			alloc_flags |= ALLOC_HARDER;
 		/*
-		 * Ignore cpuset mems for non-blocking __GFP_HIGH (probably
-		 * GFP_ATOMIC) rather than fail, see the comment for
-		 * __cpuset_node_allowed().
+		 * Ignore cpuset mems for GFP_ATOMIC rather than fail, see the
+		 * comment for __cpuset_node_allowed().
 		 */
-		if (alloc_flags & ALLOC_MIN_RESERVE)
-			alloc_flags &= ~ALLOC_CPUSET;
+		alloc_flags &= ~ALLOC_CPUSET;
 	} else if (unlikely(rt_task(current)) && in_task())
-		alloc_flags |= ALLOC_MIN_RESERVE;
+		alloc_flags |= ALLOC_HARDER;
 
 	alloc_flags = gfp_to_alloc_flags_cma(gfp_mask, alloc_flags);
 
@@ -5309,7 +5188,6 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 restart:
 	compaction_retries = 0;
 	no_progress_loops = 0;
-	compact_result = COMPACT_SKIPPED;
 	compact_priority = DEF_COMPACT_PRIORITY;
 	cpuset_mems_cookie = read_mems_allowed_begin();
 	zonelist_iter_cookie = zonelist_iter_begin();
@@ -5319,7 +5197,7 @@ restart:
 	 * kswapd needs to be woken up, and to avoid the cost of setting up
 	 * alloc_flags precisely. So we do that now.
 	 */
-	alloc_flags = gfp_to_alloc_flags(gfp_mask, order);
+	alloc_flags = gfp_to_alloc_flags(gfp_mask);
 
 	/*
 	 * We need to recalculate the starting point for the zonelist iterator
@@ -5559,13 +5437,12 @@ nopage:
 		WARN_ON_ONCE_GFP(costly_order, gfp_mask);
 
 		/*
-		 * Help non-failing allocations by giving some access to memory
-		 * reserves normally used for high priority non-blocking
-		 * allocations but do not use ALLOC_NO_WATERMARKS because this
+		 * Help non-failing allocations by giving them access to memory
+		 * reserves but do not use ALLOC_NO_WATERMARKS because this
 		 * could deplete whole memory reserves which would just make
-		 * the situation worse.
+		 * the situation worse
 		 */
-		page = __alloc_pages_cpuset_fallback(gfp_mask, order, ALLOC_MIN_RESERVE, ac);
+		page = __alloc_pages_cpuset_fallback(gfp_mask, order, ALLOC_HARDER, ac);
 		if (page)
 			goto got_pg;
 
@@ -5706,8 +5583,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
 	gfp = alloc_gfp;
 
 	/* Find an allowed local zone that meets the low watermark. */
-	z = ac.preferred_zoneref;
-	for_next_zone_zonelist_nodemask(zone, z, ac.highest_zoneidx, ac.nodemask) {
+	for_each_zone_zonelist_nodemask(zone, z, ac.zonelist, ac.highest_zoneidx, ac.nodemask) {
 		unsigned long mark;
 
 		if (cpusets_enabled() && (alloc_flags & ALLOC_CPUSET) &&
@@ -8951,7 +8827,6 @@ static void calculate_totalreserve_pages(void)
 	struct pglist_data *pgdat;
 	unsigned long reserve_pages = 0;
 	enum zone_type i, j;
-	bool skip = false;
 
 	for_each_online_pgdat(pgdat) {
 
@@ -8980,10 +8855,6 @@ static void calculate_totalreserve_pages(void)
 		}
 	}
 	totalreserve_pages = reserve_pages;
-	trace_android_vh_calculate_totalreserve_pages(&skip);
-	if (skip)
-		return;
-	trace_mm_calculate_totalreserve_pages(totalreserve_pages);
 }
 
 /*
@@ -9013,8 +8884,6 @@ static void setup_per_zone_lowmem_reserve(void)
 					zone->lowmem_reserve[j] = 0;
 				else
 					zone->lowmem_reserve[j] = managed_pages / ratio;
-				trace_mm_setup_per_zone_lowmem_reserve(zone, upper_zone,
-								       zone->lowmem_reserve[j]);
 			}
 		}
 	}
@@ -9078,7 +8947,6 @@ static void __setup_per_zone_wmarks(void)
 		zone->_watermark[WMARK_LOW]  = min_wmark_pages(zone) + tmp;
 		zone->_watermark[WMARK_HIGH] = low_wmark_pages(zone) + tmp;
 		zone->_watermark[WMARK_PROMO] = high_wmark_pages(zone) + tmp;
-		trace_mm_setup_per_zone_wmarks(zone);
 
 		spin_unlock_irqrestore(&zone->lock, flags);
 	}

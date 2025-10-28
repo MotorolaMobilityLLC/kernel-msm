@@ -1868,8 +1868,8 @@ int qede_add_tc_flower_fltr(struct qede_dev *edev, __be16 proto,
 			    struct flow_cls_offload *f)
 {
 	struct qede_arfs_fltr_node *n;
+	int min_hlen, rc = -EINVAL;
 	struct qede_arfs_tuple t;
-	int min_hlen, rc;
 
 	__qede_lock(edev);
 
@@ -1879,8 +1879,7 @@ int qede_add_tc_flower_fltr(struct qede_dev *edev, __be16 proto,
 	}
 
 	/* parse flower attribute and prepare filter */
-	rc = qede_parse_flow_attr(edev, proto, f->rule, &t);
-	if (rc)
+	if (qede_parse_flow_attr(edev, proto, f->rule, &t))
 		goto unlock;
 
 	/* Validate profile mode and number of filters */
@@ -1889,13 +1888,11 @@ int qede_add_tc_flower_fltr(struct qede_dev *edev, __be16 proto,
 		DP_NOTICE(edev,
 			  "Filter configuration invalidated, filter mode=0x%x, configured mode=0x%x, filter count=0x%x\n",
 			  t.mode, edev->arfs->mode, edev->arfs->filter_count);
-		rc = -EINVAL;
 		goto unlock;
 	}
 
 	/* parse tc actions and get the vf_id */
-	rc = qede_parse_actions(edev, &f->rule->action, f->common.extack);
-	if (rc)
+	if (qede_parse_actions(edev, &f->rule->action, f->common.extack))
 		goto unlock;
 
 	if (qede_flow_find_fltr(edev, &t)) {
@@ -2001,9 +1998,10 @@ static int qede_flow_spec_to_rule(struct qede_dev *edev,
 	if (IS_ERR(flow))
 		return PTR_ERR(flow);
 
-	err = qede_parse_flow_attr(edev, proto, flow->rule, t);
-	if (err)
+	if (qede_parse_flow_attr(edev, proto, flow->rule, t)) {
+		err = -EINVAL;
 		goto err_out;
+	}
 
 	/* Make sure location is valid and filter isn't already set */
 	err = qede_flow_spec_validate(edev, &flow->rule->action, t,

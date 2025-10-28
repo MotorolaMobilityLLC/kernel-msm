@@ -103,7 +103,6 @@ struct axi_dma_desc {
 	u32				completed_blocks;
 	u32				length;
 	u32				period_len;
-	u32				nr_hw_descs;
 };
 
 struct axi_dma_chan_config {

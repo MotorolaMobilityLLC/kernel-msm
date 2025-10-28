@@ -377,10 +377,8 @@ static int of_get_coresight_platform_data(struct device *dev,
 			continue;
 
 		ret = of_coresight_parse_endpoint(dev, ep, pdata);
-		if (ret) {
-			of_node_put(ep);
+		if (ret)
 			return ret;
-		}
 	}
 
 	return 0;

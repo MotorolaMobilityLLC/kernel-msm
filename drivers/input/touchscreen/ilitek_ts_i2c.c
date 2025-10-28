@@ -37,8 +37,6 @@
 #define ILITEK_TP_CMD_GET_MCU_VER			0x61
 #define ILITEK_TP_CMD_GET_IC_MODE			0xC0
 
-#define ILITEK_TP_I2C_REPORT_ID				0x48
-
 #define REPORT_COUNT_ADDRESS				61
 #define ILITEK_SUPPORT_MAX_POINT			40
 
@@ -162,19 +160,15 @@ static int ilitek_process_and_report_v6(struct ilitek_ts_data *ts)
 	error = ilitek_i2c_write_and_read(ts, NULL, 0, 0, buf, 64);
 	if (error) {
 		dev_err(dev, "get touch info failed, err:%d\n", error);
-		return error;
-	}
-
-	if (buf[0] != ILITEK_TP_I2C_REPORT_ID) {
-		dev_err(dev, "get touch info failed. Wrong id: 0x%02X\n", buf[0]);
-		return -EINVAL;
+		goto err_sync_frame;
 	}
 
 	report_max_point = buf[REPORT_COUNT_ADDRESS];
 	if (report_max_point > ts->max_tp) {
 		dev_err(dev, "FW report max point:%d > panel info. max:%d\n",
 			report_max_point, ts->max_tp);
-		return -EINVAL;
+		error = -EINVAL;
+		goto err_sync_frame;
 	}
 
 	count = DIV_ROUND_UP(report_max_point, packet_max_point);
@@ -184,7 +178,7 @@ static int ilitek_process_and_report_v6(struct ilitek_ts_data *ts)
 		if (error) {
 			dev_err(dev, "get touch info. failed, cnt:%d, err:%d\n",
 				count, error);
-			return error;
+			goto err_sync_frame;
 		}
 	}
 
@@ -209,10 +203,10 @@ static int ilitek_process_and_report_v6(struct ilitek_ts_data *ts)
 		ilitek_touch_down(ts, id, x, y);
 	}
 
+err_sync_frame:
 	input_mt_sync_frame(input);
 	input_sync(input);
-
-	return 0;
+	return error;
 }
 
 /* APIs of cmds for ILITEK Touch IC */

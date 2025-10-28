@@ -351,8 +351,10 @@ struct vbva_mouse_pointer_shape {
 	 * Bytes in the gap between the AND and the XOR mask are undefined.
 	 * XOR mask scanlines have no gap between them and size of XOR mask is:
 	 * xor_len = width * 4 * height.
+	 *
+	 * Preallocate 4 bytes for accessing actual data as p->data.
 	 */
-	u8 data[];
+	u8 data[4];
 } __packed;
 
 /* pointer is visible */

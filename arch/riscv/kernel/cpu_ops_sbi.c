@@ -72,7 +72,7 @@ static int sbi_cpu_start(unsigned int cpuid, struct task_struct *tidle)
 	/* Make sure tidle is updated */
 	smp_mb();
 	bdata->task_ptr = tidle;
-	bdata->stack_ptr = task_pt_regs(tidle);
+	bdata->stack_ptr = task_stack_page(tidle) + THREAD_SIZE;
 	/* Make sure boot data is updated */
 	smp_mb();
 	hsm_data = __pa(bdata);

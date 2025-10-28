@@ -1244,8 +1244,7 @@ static u64 hash_filter_ntuple(struct ch_filter_specification *fs,
 	 * in the Compressed Filter Tuple.
 	 */
 	if (tp->vlan_shift >= 0 && fs->mask.ivlan)
-		ntuple |= (u64)(FT_VLAN_VLD_F |
-				fs->val.ivlan) << tp->vlan_shift;
+		ntuple |= (FT_VLAN_VLD_F | fs->val.ivlan) << tp->vlan_shift;
 
 	if (tp->port_shift >= 0 && fs->mask.iport)
 		ntuple |= (u64)fs->val.iport << tp->port_shift;

@@ -11,10 +11,9 @@
 #include "xfs_mount.h"
 #include "xfs_log_format.h"
 #include "xfs_trans.h"
-#include "xfs_rtbitmap.h"
+#include "xfs_rtalloc.h"
 #include "xfs_inode.h"
 #include "xfs_bmap.h"
-#include "xfs_sb.h"
 #include "scrub/scrub.h"
 #include "scrub/common.h"
 

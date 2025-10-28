@@ -23,8 +23,6 @@
 #include <net/ip6_fib.h>
 #include <net/rtnh.h>
 
-#include "dev.h"
-
 DEFINE_STATIC_KEY_FALSE(nf_hooks_lwtunnel_enabled);
 EXPORT_SYMBOL_GPL(nf_hooks_lwtunnel_enabled);
 
@@ -327,23 +325,13 @@ EXPORT_SYMBOL_GPL(lwtunnel_cmp_encap);
 
 int lwtunnel_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 {
+	struct dst_entry *dst = skb_dst(skb);
 	const struct lwtunnel_encap_ops *ops;
 	struct lwtunnel_state *lwtstate;
-	struct dst_entry *dst;
-	int ret;
+	int ret = -EINVAL;
 
-	if (dev_xmit_recursion()) {
-		net_crit_ratelimited("%s(): recursion limit reached on datapath\n",
-				     __func__);
-		ret = -ENETDOWN;
+	if (!dst)
 		goto drop;
-	}
-
-	dst = skb_dst(skb);
-	if (!dst) {
-		ret = -EINVAL;
-		goto drop;
-	}
 	lwtstate = dst->lwtstate;
 
 	if (lwtstate->type == LWTUNNEL_ENCAP_NONE ||
@@ -353,11 +341,8 @@ int lwtunnel_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 	ret = -EOPNOTSUPP;
 	rcu_read_lock();
 	ops = rcu_dereference(lwtun_encaps[lwtstate->type]);
-	if (likely(ops && ops->output)) {
-		dev_xmit_recursion_inc();
+	if (likely(ops && ops->output))
 		ret = ops->output(net, sk, skb);
-		dev_xmit_recursion_dec();
-	}
 	rcu_read_unlock();
 
 	if (ret == -EOPNOTSUPP)
@@ -374,23 +359,13 @@ EXPORT_SYMBOL_GPL(lwtunnel_output);
 
 int lwtunnel_xmit(struct sk_buff *skb)
 {
+	struct dst_entry *dst = skb_dst(skb);
 	const struct lwtunnel_encap_ops *ops;
 	struct lwtunnel_state *lwtstate;
-	struct dst_entry *dst;
-	int ret;
+	int ret = -EINVAL;
 
-	if (dev_xmit_recursion()) {
-		net_crit_ratelimited("%s(): recursion limit reached on datapath\n",
-				     __func__);
-		ret = -ENETDOWN;
+	if (!dst)
 		goto drop;
-	}
-
-	dst = skb_dst(skb);
-	if (!dst) {
-		ret = -EINVAL;
-		goto drop;
-	}
 
 	lwtstate = dst->lwtstate;
 
@@ -401,11 +376,8 @@ int lwtunnel_xmit(struct sk_buff *skb)
 	ret = -EOPNOTSUPP;
 	rcu_read_lock();
 	ops = rcu_dereference(lwtun_encaps[lwtstate->type]);
-	if (likely(ops && ops->xmit)) {
-		dev_xmit_recursion_inc();
+	if (likely(ops && ops->xmit))
 		ret = ops->xmit(skb);
-		dev_xmit_recursion_dec();
-	}
 	rcu_read_unlock();
 
 	if (ret == -EOPNOTSUPP)
@@ -422,23 +394,13 @@ EXPORT_SYMBOL_GPL(lwtunnel_xmit);
 
 int lwtunnel_input(struct sk_buff *skb)
 {
+	struct dst_entry *dst = skb_dst(skb);
 	const struct lwtunnel_encap_ops *ops;
 	struct lwtunnel_state *lwtstate;
-	struct dst_entry *dst;
-	int ret;
+	int ret = -EINVAL;
 
-	if (dev_xmit_recursion()) {
-		net_crit_ratelimited("%s(): recursion limit reached on datapath\n",
-				     __func__);
-		ret = -ENETDOWN;
+	if (!dst)
 		goto drop;
-	}
-
-	dst = skb_dst(skb);
-	if (!dst) {
-		ret = -EINVAL;
-		goto drop;
-	}
 	lwtstate = dst->lwtstate;
 
 	if (lwtstate->type == LWTUNNEL_ENCAP_NONE ||
@@ -448,11 +410,8 @@ int lwtunnel_input(struct sk_buff *skb)
 	ret = -EOPNOTSUPP;
 	rcu_read_lock();
 	ops = rcu_dereference(lwtun_encaps[lwtstate->type]);
-	if (likely(ops && ops->input)) {
-		dev_xmit_recursion_inc();
+	if (likely(ops && ops->input))
 		ret = ops->input(skb);
-		dev_xmit_recursion_dec();
-	}
 	rcu_read_unlock();
 
 	if (ret == -EOPNOTSUPP)

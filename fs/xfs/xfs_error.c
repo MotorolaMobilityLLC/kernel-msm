@@ -46,7 +46,7 @@ static unsigned int xfs_errortag_random_default[] = {
 	XFS_RANDOM_REFCOUNT_FINISH_ONE,
 	XFS_RANDOM_BMAP_FINISH_ONE,
 	XFS_RANDOM_AG_RESV_CRITICAL,
-	0, /* XFS_RANDOM_DROP_WRITES has been removed */
+	XFS_RANDOM_DROP_WRITES,
 	XFS_RANDOM_LOG_BAD_CRC,
 	XFS_RANDOM_LOG_ITEM_PIN,
 	XFS_RANDOM_BUF_LRU_REF,
@@ -162,6 +162,7 @@ XFS_ERRORTAG_ATTR_RW(refcount_continue_update,	XFS_ERRTAG_REFCOUNT_CONTINUE_UPDA
 XFS_ERRORTAG_ATTR_RW(refcount_finish_one,	XFS_ERRTAG_REFCOUNT_FINISH_ONE);
 XFS_ERRORTAG_ATTR_RW(bmap_finish_one,	XFS_ERRTAG_BMAP_FINISH_ONE);
 XFS_ERRORTAG_ATTR_RW(ag_resv_critical,	XFS_ERRTAG_AG_RESV_CRITICAL);
+XFS_ERRORTAG_ATTR_RW(drop_writes,	XFS_ERRTAG_DROP_WRITES);
 XFS_ERRORTAG_ATTR_RW(log_bad_crc,	XFS_ERRTAG_LOG_BAD_CRC);
 XFS_ERRORTAG_ATTR_RW(log_item_pin,	XFS_ERRTAG_LOG_ITEM_PIN);
 XFS_ERRORTAG_ATTR_RW(buf_lru_ref,	XFS_ERRTAG_BUF_LRU_REF);
@@ -205,6 +206,7 @@ static struct attribute *xfs_errortag_attrs[] = {
 	XFS_ERRORTAG_ATTR_LIST(refcount_finish_one),
 	XFS_ERRORTAG_ATTR_LIST(bmap_finish_one),
 	XFS_ERRORTAG_ATTR_LIST(ag_resv_critical),
+	XFS_ERRORTAG_ATTR_LIST(drop_writes),
 	XFS_ERRORTAG_ATTR_LIST(log_bad_crc),
 	XFS_ERRORTAG_ATTR_LIST(log_item_pin),
 	XFS_ERRORTAG_ATTR_LIST(buf_lru_ref),
@@ -254,19 +256,6 @@ xfs_errortag_del(
 	kmem_free(mp->m_errortag);
 }
 
-static bool
-xfs_errortag_valid(
-	unsigned int		error_tag)
-{
-	if (error_tag >= XFS_ERRTAG_MAX)
-		return false;
-
-	/* Error out removed injection types */
-	if (error_tag == XFS_ERRTAG_DROP_WRITES)
-		return false;
-	return true;
-}
-
 bool
 xfs_errortag_test(
 	struct xfs_mount	*mp,
@@ -288,9 +277,7 @@ xfs_errortag_test(
 	if (!mp->m_errortag)
 		return false;
 
-	if (!xfs_errortag_valid(error_tag))
-		return false;
-
+	ASSERT(error_tag < XFS_ERRTAG_MAX);
 	randfactor = mp->m_errortag[error_tag];
 	if (!randfactor || prandom_u32_max(randfactor))
 		return false;
@@ -306,7 +293,7 @@ xfs_errortag_get(
 	struct xfs_mount	*mp,
 	unsigned int		error_tag)
 {
-	if (!xfs_errortag_valid(error_tag))
+	if (error_tag >= XFS_ERRTAG_MAX)
 		return -EINVAL;
 
 	return mp->m_errortag[error_tag];
@@ -318,7 +305,7 @@ xfs_errortag_set(
 	unsigned int		error_tag,
 	unsigned int		tag_value)
 {
-	if (!xfs_errortag_valid(error_tag))
+	if (error_tag >= XFS_ERRTAG_MAX)
 		return -EINVAL;
 
 	mp->m_errortag[error_tag] = tag_value;
@@ -332,7 +319,7 @@ xfs_errortag_add(
 {
 	BUILD_BUG_ON(ARRAY_SIZE(xfs_errortag_random_default) != XFS_ERRTAG_MAX);
 
-	if (!xfs_errortag_valid(error_tag))
+	if (error_tag >= XFS_ERRTAG_MAX)
 		return -EINVAL;
 
 	return xfs_errortag_set(mp, error_tag,

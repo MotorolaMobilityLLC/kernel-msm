@@ -232,15 +232,24 @@ static void ks8851_dbg_dumpkkt(struct ks8851_net *ks, u8 *rxpkt)
 }
 
 /**
+ * ks8851_rx_skb - receive skbuff
+ * @ks: The device state.
+ * @skb: The skbuff
+ */
+static void ks8851_rx_skb(struct ks8851_net *ks, struct sk_buff *skb)
+{
+	ks->rx_skb(ks, skb);
+}
+
+/**
  * ks8851_rx_pkts - receive packets from the host
  * @ks: The device information.
- * @rxq: Queue of packets received in this function.
  *
  * This is called from the IRQ work queue when the system detects that there
  * are packets in the receive queue. Find out how many packets there are and
  * read them from the FIFO.
  */
-static void ks8851_rx_pkts(struct ks8851_net *ks, struct sk_buff_head *rxq)
+static void ks8851_rx_pkts(struct ks8851_net *ks)
 {
 	struct sk_buff *skb;
 	unsigned rxfc;
@@ -300,7 +309,7 @@ static void ks8851_rx_pkts(struct ks8851_net *ks, struct sk_buff_head *rxq)
 					ks8851_dbg_dumpkkt(ks, rxpkt);
 
 				skb->protocol = eth_type_trans(skb, ks->netdev);
-				__skb_queue_tail(rxq, skb);
+				ks8851_rx_skb(ks, skb);
 
 				ks->netdev->stats.rx_packets++;
 				ks->netdev->stats.rx_bytes += rxlen;
@@ -327,24 +336,30 @@ static void ks8851_rx_pkts(struct ks8851_net *ks, struct sk_buff_head *rxq)
 static irqreturn_t ks8851_irq(int irq, void *_ks)
 {
 	struct ks8851_net *ks = _ks;
-	struct sk_buff_head rxq;
+	unsigned handled = 0;
 	unsigned long flags;
 	unsigned int status;
-	struct sk_buff *skb;
 
 	ks8851_lock(ks, &flags);
 
 	status = ks8851_rdreg16(ks, KS_ISR);
-	ks8851_wrreg16(ks, KS_ISR, status);
 
 	netif_dbg(ks, intr, ks->netdev,
 		  "%s: status 0x%04x\n", __func__, status);
+
+	if (status & IRQ_LCI)
+		handled |= IRQ_LCI;
 
 	if (status & IRQ_LDI) {
 		u16 pmecr = ks8851_rdreg16(ks, KS_PMECR);
 		pmecr &= ~PMECR_WKEVT_MASK;
 		ks8851_wrreg16(ks, KS_PMECR, pmecr | PMECR_WKEVT_LINK);
+
+		handled |= IRQ_LDI;
 	}
+
+	if (status & IRQ_RXPSI)
+		handled |= IRQ_RXPSI;
 
 	if (status & IRQ_TXI) {
 		unsigned short tx_space = ks8851_rdreg16(ks, KS_TXMIR);
@@ -352,16 +367,24 @@ static irqreturn_t ks8851_irq(int irq, void *_ks)
 		netif_dbg(ks, intr, ks->netdev,
 			  "%s: txspace %d\n", __func__, tx_space);
 
-		spin_lock_bh(&ks->statelock);
+		spin_lock(&ks->statelock);
 		ks->tx_space = tx_space;
 		if (netif_queue_stopped(ks->netdev))
 			netif_wake_queue(ks->netdev);
-		spin_unlock_bh(&ks->statelock);
+		spin_unlock(&ks->statelock);
+
+		handled |= IRQ_TXI;
 	}
+
+	if (status & IRQ_RXI)
+		handled |= IRQ_RXI;
 
 	if (status & IRQ_SPIBEI) {
 		netdev_err(ks->netdev, "%s: spi bus error\n", __func__);
+		handled |= IRQ_SPIBEI;
 	}
+
+	ks8851_wrreg16(ks, KS_ISR, handled);
 
 	if (status & IRQ_RXI) {
 		/* the datasheet says to disable the rx interrupt during
@@ -369,8 +392,7 @@ static irqreturn_t ks8851_irq(int irq, void *_ks)
 		 * from the device so do not bother masking just the RX
 		 * from the device. */
 
-		__skb_queue_head_init(&rxq);
-		ks8851_rx_pkts(ks, &rxq);
+		ks8851_rx_pkts(ks);
 	}
 
 	/* if something stopped the rx process, probably due to wanting
@@ -393,10 +415,6 @@ static irqreturn_t ks8851_irq(int irq, void *_ks)
 
 	if (status & IRQ_LCI)
 		mii_check_link(&ks->mii);
-
-	if (status & IRQ_RXI)
-		while ((skb = __skb_dequeue(&rxq)))
-			netif_rx(skb);
 
 	return IRQ_HANDLED;
 }
@@ -482,7 +500,6 @@ static int ks8851_net_open(struct net_device *dev)
 	ks8851_wrreg16(ks, KS_IER, ks->rc_ier);
 
 	ks->queued_len = 0;
-	ks->tx_space = ks8851_rdreg16(ks, KS_TXMIR);
 	netif_start_queue(ks->netdev);
 
 	netif_dbg(ks, ifup, ks->netdev, "network device up\n");
@@ -636,14 +653,14 @@ static void ks8851_set_rx_mode(struct net_device *dev)
 
 	/* schedule work to do the actual set of the data if needed */
 
-	spin_lock_bh(&ks->statelock);
+	spin_lock(&ks->statelock);
 
 	if (memcmp(&rxctrl, &ks->rxctrl, sizeof(rxctrl)) != 0) {
 		memcpy(&ks->rxctrl, &rxctrl, sizeof(ks->rxctrl));
 		schedule_work(&ks->rxctrl_work);
 	}
 
-	spin_unlock_bh(&ks->statelock);
+	spin_unlock(&ks->statelock);
 }
 
 static int ks8851_set_mac_address(struct net_device *dev, void *addr)
@@ -1102,6 +1119,7 @@ int ks8851_probe_common(struct net_device *netdev, struct device *dev,
 	int ret;
 
 	ks->netdev = netdev;
+	ks->tx_space = 6144;
 
 	ks->gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
 	ret = PTR_ERR_OR_ZERO(ks->gpio);

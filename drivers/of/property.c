@@ -1095,8 +1095,7 @@ static struct device_node *of_get_compat_node_parent(struct device_node *np)
 }
 
 static void of_link_to_phandle(struct device_node *con_np,
-			      struct device_node *sup_np,
-			      u8 flags)
+			      struct device_node *sup_np)
 {
 	struct device_node *tmp_np = of_node_get(sup_np);
 
@@ -1115,7 +1114,7 @@ static void of_link_to_phandle(struct device_node *con_np,
 		tmp_np = of_get_next_parent(tmp_np);
 	}
 
-	fwnode_link_add(of_fwnode_handle(con_np), of_fwnode_handle(sup_np), flags);
+	fwnode_link_add(of_fwnode_handle(con_np), of_fwnode_handle(sup_np));
 }
 
 /**
@@ -1228,8 +1227,6 @@ static struct device_node *parse_##fname(struct device_node *np,	     \
  * @node_not_dev: The consumer node containing the property is never converted
  *		  to a struct device. Instead, parse ancestor nodes for the
  *		  compatible property to find a node corresponding to a device.
- * @fwlink_flags: Optional fwnode link flags to use when creating a fwnode link
- *		  for this property.
  *
  * Returns:
  * parse_prop() return values are
@@ -1242,7 +1239,6 @@ struct supplier_bindings {
 					  const char *prop_name, int index);
 	bool optional;
 	bool node_not_dev;
-	u8 fwlink_flags;
 };
 
 DEFINE_SIMPLE_PROP(clocks, "clocks", "#clock-cells")
@@ -1272,7 +1268,6 @@ DEFINE_SIMPLE_PROP(resets, "resets", "#reset-cells")
 DEFINE_SIMPLE_PROP(leds, "leds", NULL)
 DEFINE_SIMPLE_PROP(backlight, "backlight", NULL)
 DEFINE_SIMPLE_PROP(panel, "panel", NULL)
-DEFINE_SIMPLE_PROP(post_init_providers, "post-init-providers", NULL)
 DEFINE_SUFFIX_PROP(regulators, "-supply", NULL)
 DEFINE_SUFFIX_PROP(gpio, "-gpio", "#gpio-cells")
 
@@ -1378,10 +1373,6 @@ static const struct supplier_bindings of_supplier_bindings[] = {
 	{ .parse_prop = parse_regulators, },
 	{ .parse_prop = parse_gpio, },
 	{ .parse_prop = parse_gpios, },
-	{
-		.parse_prop = parse_post_init_providers,
-		.fwlink_flags = FWLINK_FLAG_IGNORE,
-	},
 	{}
 };
 
@@ -1426,7 +1417,7 @@ static int of_link_property(struct device_node *con_np, const char *prop_name)
 					: of_node_get(con_np);
 			matched = true;
 			i++;
-			of_link_to_phandle(con_dev_np, phandle, s->fwlink_flags);
+			of_link_to_phandle(con_dev_np, phandle);
 			of_node_put(phandle);
 			of_node_put(con_dev_np);
 		}

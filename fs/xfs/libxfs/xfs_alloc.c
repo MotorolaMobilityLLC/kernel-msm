@@ -2273,37 +2273,16 @@ xfs_alloc_min_freelist(
 
 	ASSERT(mp->m_alloc_maxlevels > 0);
 
-	/*
-	 * For a btree shorter than the maximum height, the worst case is that
-	 * every level gets split and a new level is added, then while inserting
-	 * another entry to refill the AGFL, every level under the old root gets
-	 * split again. This is:
-	 *
-	 *   (full height split reservation) + (AGFL refill split height)
-	 * = (current height + 1) + (current height - 1)
-	 * = (new height) + (new height - 2)
-	 * = 2 * new height - 2
-	 *
-	 * For a btree of maximum height, the worst case is that every level
-	 * under the root gets split, then while inserting another entry to
-	 * refill the AGFL, every level under the root gets split again. This is
-	 * also:
-	 *
-	 *   2 * (current height - 1)
-	 * = 2 * (new height - 1)
-	 * = 2 * new height - 2
-	 */
-
 	/* space needed by-bno freespace btree */
 	min_free = min_t(unsigned int, levels[XFS_BTNUM_BNOi] + 1,
-				       mp->m_alloc_maxlevels) * 2 - 2;
+				       mp->m_alloc_maxlevels);
 	/* space needed by-size freespace btree */
 	min_free += min_t(unsigned int, levels[XFS_BTNUM_CNTi] + 1,
-				       mp->m_alloc_maxlevels) * 2 - 2;
+				       mp->m_alloc_maxlevels);
 	/* space needed reverse mapping used space btree */
 	if (xfs_has_rmapbt(mp))
 		min_free += min_t(unsigned int, levels[XFS_BTNUM_RMAPi] + 1,
-						mp->m_rmap_maxlevels) * 2 - 2;
+						mp->m_rmap_maxlevels);
 
 	return min_free;
 }
@@ -2485,53 +2464,45 @@ xfs_agfl_reset(
  * the real allocation can proceed. Deferring the free disconnects freeing up
  * the AGFL slot from freeing the block.
  */
-static int
+STATIC void
 xfs_defer_agfl_block(
 	struct xfs_trans		*tp,
 	xfs_agnumber_t			agno,
-	xfs_agblock_t			agbno,
+	xfs_fsblock_t			agbno,
 	struct xfs_owner_info		*oinfo)
 {
 	struct xfs_mount		*mp = tp->t_mountp;
-	struct xfs_extent_free_item	*xefi;
-	xfs_fsblock_t			fsbno = XFS_AGB_TO_FSB(mp, agno, agbno);
+	struct xfs_extent_free_item	*new;		/* new element */
 
 	ASSERT(xfs_extfree_item_cache != NULL);
 	ASSERT(oinfo != NULL);
 
-	if (XFS_IS_CORRUPT(mp, !xfs_verify_fsbno(mp, fsbno)))
-		return -EFSCORRUPTED;
-
-	xefi = kmem_cache_zalloc(xfs_extfree_item_cache,
+	new = kmem_cache_zalloc(xfs_extfree_item_cache,
 			       GFP_KERNEL | __GFP_NOFAIL);
-	xefi->xefi_startblock = fsbno;
-	xefi->xefi_blockcount = 1;
-	xefi->xefi_owner = oinfo->oi_owner;
-	xefi->xefi_agresv = XFS_AG_RESV_AGFL;
+	new->xefi_startblock = XFS_AGB_TO_FSB(mp, agno, agbno);
+	new->xefi_blockcount = 1;
+	new->xefi_owner = oinfo->oi_owner;
 
 	trace_xfs_agfl_free_defer(mp, agno, 0, agbno, 1);
 
-	xfs_extent_free_get_group(mp, xefi);
-	xfs_defer_add(tp, XFS_DEFER_OPS_TYPE_AGFL_FREE, &xefi->xefi_list);
-	return 0;
+	xfs_defer_add(tp, XFS_DEFER_OPS_TYPE_AGFL_FREE, &new->xefi_list);
 }
 
 /*
  * Add the extent to the list of extents to be free at transaction end.
  * The list is maintained sorted (by block number).
  */
-int
+void
 __xfs_free_extent_later(
 	struct xfs_trans		*tp,
 	xfs_fsblock_t			bno,
 	xfs_filblks_t			len,
 	const struct xfs_owner_info	*oinfo,
-	enum xfs_ag_resv_type		type,
 	bool				skip_discard)
 {
-	struct xfs_extent_free_item	*xefi;
-	struct xfs_mount		*mp = tp->t_mountp;
+	struct xfs_extent_free_item	*new;		/* new element */
 #ifdef DEBUG
+	struct xfs_mount		*mp = tp->t_mountp;
 	xfs_agnumber_t			agno;
 	xfs_agblock_t			agbno;
 
@@ -2547,36 +2518,28 @@ __xfs_free_extent_later(
 	ASSERT(agbno + len <= mp->m_sb.sb_agblocks);
 #endif
 	ASSERT(xfs_extfree_item_cache != NULL);
-	ASSERT(type != XFS_AG_RESV_AGFL);
 
-	if (XFS_IS_CORRUPT(mp, !xfs_verify_fsbext(mp, bno, len)))
-		return -EFSCORRUPTED;
-
-	xefi = kmem_cache_zalloc(xfs_extfree_item_cache,
+	new = kmem_cache_zalloc(xfs_extfree_item_cache,
 			       GFP_KERNEL | __GFP_NOFAIL);
-	xefi->xefi_startblock = bno;
-	xefi->xefi_blockcount = (xfs_extlen_t)len;
-	xefi->xefi_agresv = type;
+	new->xefi_startblock = bno;
+	new->xefi_blockcount = (xfs_extlen_t)len;
 	if (skip_discard)
-		xefi->xefi_flags |= XFS_EFI_SKIP_DISCARD;
+		new->xefi_flags |= XFS_EFI_SKIP_DISCARD;
 	if (oinfo) {
 		ASSERT(oinfo->oi_offset == 0);
 
 		if (oinfo->oi_flags & XFS_OWNER_INFO_ATTR_FORK)
-			xefi->xefi_flags |= XFS_EFI_ATTR_FORK;
+			new->xefi_flags |= XFS_EFI_ATTR_FORK;
 		if (oinfo->oi_flags & XFS_OWNER_INFO_BMBT_BLOCK)
-			xefi->xefi_flags |= XFS_EFI_BMBT_BLOCK;
-		xefi->xefi_owner = oinfo->oi_owner;
+			new->xefi_flags |= XFS_EFI_BMBT_BLOCK;
+		new->xefi_owner = oinfo->oi_owner;
 	} else {
-		xefi->xefi_owner = XFS_RMAP_OWN_NULL;
+		new->xefi_owner = XFS_RMAP_OWN_NULL;
 	}
-	trace_xfs_bmap_free_defer(mp,
+	trace_xfs_bmap_free_defer(tp->t_mountp,
 			XFS_FSB_TO_AGNO(tp->t_mountp, bno), 0,
 			XFS_FSB_TO_AGBNO(tp->t_mountp, bno), len);
-
-	xfs_extent_free_get_group(mp, xefi);
-	xfs_defer_add(tp, XFS_DEFER_OPS_TYPE_FREE, &xefi->xefi_list);
-	return 0;
+	xfs_defer_add(tp, XFS_DEFER_OPS_TYPE_FREE, &new->xefi_list);
 }
 
 #ifdef DEBUG
@@ -2736,9 +2699,7 @@ xfs_alloc_fix_freelist(
 			goto out_agbp_relse;
 
 		/* defer agfl frees */
-		error = xfs_defer_agfl_block(tp, args->agno, bno, &targs.oinfo);
-		if (error)
-			goto out_agbp_relse;
+		xfs_defer_agfl_block(tp, args->agno, bno, &targs.oinfo);
 	}
 
 	targs.tp = tp;
@@ -3203,13 +3164,10 @@ xfs_alloc_vextent(
 	xfs_alloctype_t		type;	/* input allocation type */
 	int			bump_rotor = 0;
 	xfs_agnumber_t		rotorstep = xfs_rotorstep; /* inode32 agf stepper */
-	xfs_agnumber_t		minimum_agno = 0;
 
 	mp = args->mp;
 	type = args->otype = args->type;
 	args->agbno = NULLAGBLOCK;
-	if (args->tp->t_firstblock != NULLFSBLOCK)
-		minimum_agno = XFS_FSB_TO_AGNO(mp, args->tp->t_firstblock);
 	/*
 	 * Just fix this up, for the case where the last a.g. is shorter
 	 * (or there's only one a.g.) and the caller couldn't easily figure
@@ -3243,13 +3201,6 @@ xfs_alloc_vextent(
 		 */
 		args->agno = XFS_FSB_TO_AGNO(mp, args->fsbno);
 		args->pag = xfs_perag_get(mp, args->agno);
-
-		if (minimum_agno > args->agno) {
-			trace_xfs_alloc_vextent_skip_deadlock(args);
-			error = 0;
-			break;
-		}
-
 		error = xfs_alloc_fix_freelist(args, 0);
 		if (error) {
 			trace_xfs_alloc_vextent_nofix(args);
@@ -3281,8 +3232,6 @@ xfs_alloc_vextent(
 	case XFS_ALLOCTYPE_FIRST_AG:
 		/*
 		 * Rotate through the allocation groups looking for a winner.
-		 * If we are blocking, we must obey minimum_agno contraints for
-		 * avoiding ABBA deadlocks on AGF locking.
 		 */
 		if (type == XFS_ALLOCTYPE_FIRST_AG) {
 			/*
@@ -3290,7 +3239,7 @@ xfs_alloc_vextent(
 			 */
 			args->agno = XFS_FSB_TO_AGNO(mp, args->fsbno);
 			args->type = XFS_ALLOCTYPE_THIS_AG;
-			sagno = minimum_agno;
+			sagno = 0;
 			flags = 0;
 		} else {
 			/*
@@ -3299,7 +3248,6 @@ xfs_alloc_vextent(
 			args->agno = sagno = XFS_FSB_TO_AGNO(mp, args->fsbno);
 			flags = XFS_ALLOC_FLAG_TRYLOCK;
 		}
-
 		/*
 		 * Loop over allocation groups twice; first time with
 		 * trylock set, second time without.
@@ -3328,21 +3276,19 @@ xfs_alloc_vextent(
 			if (args->agno == sagno &&
 			    type == XFS_ALLOCTYPE_START_BNO)
 				args->type = XFS_ALLOCTYPE_THIS_AG;
-
 			/*
-			 * If we are try-locking, we can't deadlock on AGF
-			 * locks, so we can wrap all the way back to the first
-			 * AG. Otherwise, wrap back to the start AG so we can't
-			 * deadlock, and let the end of scan handler decide what
-			 * to do next.
-			 */
+			* For the first allocation, we can try any AG to get
+			* space.  However, if we already have allocated a
+			* block, we don't want to try AGs whose number is below
+			* sagno. Otherwise, we may end up with out-of-order
+			* locking of AGF, which might cause deadlock.
+			*/
 			if (++(args->agno) == mp->m_sb.sb_agcount) {
-				if (flags & XFS_ALLOC_FLAG_TRYLOCK)
-					args->agno = 0;
-				else
+				if (args->tp->t_firstblock != NULLFSBLOCK)
 					args->agno = sagno;
+				else
+					args->agno = 0;
 			}
-
 			/*
 			 * Reached the starting a.g., must either be done
 			 * or switch to non-trylock mode.
@@ -3354,14 +3300,7 @@ xfs_alloc_vextent(
 					break;
 				}
 
-				/*
-				 * Blocking pass next, so we must obey minimum
-				 * agno constraints to avoid ABBA AGF deadlocks.
-				 */
 				flags = 0;
-				if (minimum_agno > sagno)
-					sagno = minimum_agno;
-
 				if (type == XFS_ALLOCTYPE_START_BNO) {
 					args->agbno = XFS_FSB_TO_AGBNO(mp,
 						args->fsbno);
@@ -3383,9 +3322,9 @@ xfs_alloc_vextent(
 		ASSERT(0);
 		/* NOTREACHED */
 	}
-	if (args->agbno == NULLAGBLOCK) {
+	if (args->agbno == NULLAGBLOCK)
 		args->fsbno = NULLFSBLOCK;
-	} else {
+	else {
 		args->fsbno = XFS_AGB_TO_FSB(mp, args->agno, args->agbno);
 #ifdef DEBUG
 		ASSERT(args->len >= args->minlen);
@@ -3395,29 +3334,6 @@ xfs_alloc_vextent(
 			args->len);
 #endif
 
-	}
-
-	/*
-	 * We end up here with a locked AGF. If we failed, the caller is likely
-	 * going to try to allocate again with different parameters, and that
-	 * can widen the AGs that are searched for free space. If we have to do
-	 * BMBT block allocation, we have to do a new allocation.
-	 *
-	 * Hence leaving this function with the AGF locked opens up potential
-	 * ABBA AGF deadlocks because a future allocation attempt in this
-	 * transaction may attempt to lock a lower number AGF.
-	 *
-	 * We can't release the AGF until the transaction is commited, so at
-	 * this point we must update the "firstblock" tracker to point at this
-	 * AG if the tracker is empty or points to a lower AG. This allows the
-	 * next allocation attempt to be modified appropriately to avoid
-	 * deadlocks.
-	 */
-	if (args->agbp &&
-	    (args->tp->t_firstblock == NULLFSBLOCK ||
-	     args->pag->pag_agno > minimum_agno)) {
-		args->tp->t_firstblock = XFS_AGB_TO_FSB(mp,
-					args->pag->pag_agno, 0);
 	}
 	xfs_perag_put(args->pag);
 	return 0;
@@ -3465,8 +3381,7 @@ xfs_free_extent_fix_freelist(
 int
 __xfs_free_extent(
 	struct xfs_trans		*tp,
-	struct xfs_perag		*pag,
-	xfs_agblock_t			agbno,
+	xfs_fsblock_t			bno,
 	xfs_extlen_t			len,
 	const struct xfs_owner_info	*oinfo,
 	enum xfs_ag_resv_type		type,
@@ -3474,9 +3389,12 @@ __xfs_free_extent(
 {
 	struct xfs_mount		*mp = tp->t_mountp;
 	struct xfs_buf			*agbp;
+	xfs_agnumber_t			agno = XFS_FSB_TO_AGNO(mp, bno);
+	xfs_agblock_t			agbno = XFS_FSB_TO_AGBNO(mp, bno);
 	struct xfs_agf			*agf;
 	int				error;
 	unsigned int			busy_flags = 0;
+	struct xfs_perag		*pag;
 
 	ASSERT(len != 0);
 	ASSERT(type != XFS_AG_RESV_AGFL);
@@ -3485,9 +3403,10 @@ __xfs_free_extent(
 			XFS_ERRTAG_FREE_EXTENT))
 		return -EIO;
 
+	pag = xfs_perag_get(mp, agno);
 	error = xfs_free_extent_fix_freelist(tp, pag, &agbp);
 	if (error)
-		return error;
+		goto err;
 	agf = agbp->b_addr;
 
 	if (XFS_IS_CORRUPT(mp, agbno >= mp->m_sb.sb_agblocks)) {
@@ -3501,18 +3420,20 @@ __xfs_free_extent(
 		goto err_release;
 	}
 
-	error = xfs_free_ag_extent(tp, agbp, pag->pag_agno, agbno, len, oinfo,
-			type);
+	error = xfs_free_ag_extent(tp, agbp, agno, agbno, len, oinfo, type);
 	if (error)
 		goto err_release;
 
 	if (skip_discard)
 		busy_flags |= XFS_EXTENT_BUSY_SKIP_DISCARD;
 	xfs_extent_busy_insert(tp, pag, agbno, len, busy_flags);
+	xfs_perag_put(pag);
 	return 0;
 
 err_release:
 	xfs_trans_brelse(tp, agbp);
+err:
+	xfs_perag_put(pag);
 	return error;
 }
 

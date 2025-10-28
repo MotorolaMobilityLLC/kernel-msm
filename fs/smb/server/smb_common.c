@@ -18,8 +18,8 @@
 #include "mgmt/share_config.h"
 
 /*for shortname implementation */
-static const char *basechars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_-!@#$%";
-#define MANGLE_BASE (strlen(basechars) - 1)
+static const char basechars[43] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_-!@#$%";
+#define MANGLE_BASE (sizeof(basechars) / sizeof(char) - 1)
 #define MAGIC_CHAR '~'
 #define PERIOD '.'
 #define mangle(V) ((char)(basechars[(V) % MANGLE_BASE]))
@@ -729,10 +729,10 @@ bool is_asterisk(char *p)
 	return p && p[0] == '*';
 }
 
-int __ksmbd_override_fsids(struct ksmbd_work *work,
-		struct ksmbd_share_config *share)
+int ksmbd_override_fsids(struct ksmbd_work *work)
 {
 	struct ksmbd_session *sess = work->sess;
+	struct ksmbd_share_config *share = work->tcon->share_conf;
 	struct cred *cred;
 	struct group_info *gi;
 	unsigned int uid;
@@ -770,11 +770,6 @@ int __ksmbd_override_fsids(struct ksmbd_work *work,
 		return -EINVAL;
 	}
 	return 0;
-}
-
-int ksmbd_override_fsids(struct ksmbd_work *work)
-{
-	return __ksmbd_override_fsids(work, work->tcon->share_conf);
 }
 
 void ksmbd_revert_fsids(struct ksmbd_work *work)

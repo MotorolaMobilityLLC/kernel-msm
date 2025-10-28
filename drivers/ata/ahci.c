@@ -1891,10 +1891,8 @@ static int ahci_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	n_ports = max(ahci_nr_ports(hpriv->cap), fls(hpriv->port_map));
 
 	host = ata_host_alloc_pinfo(&pdev->dev, ppi, n_ports);
-	if (!host) {
-		rc = -ENOMEM;
-		goto err_rm_sysfs_file;
-	}
+	if (!host)
+		return -ENOMEM;
 	host->private_data = hpriv;
 
 	if (ahci_init_msi(pdev, n_ports, hpriv) < 0) {
@@ -1947,11 +1945,11 @@ static int ahci_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	/* initialize adapter */
 	rc = ahci_configure_dma_masks(pdev, hpriv);
 	if (rc)
-		goto err_rm_sysfs_file;
+		return rc;
 
 	rc = ahci_pci_reset_controller(host);
 	if (rc)
-		goto err_rm_sysfs_file;
+		return rc;
 
 	ahci_pci_init_controller(host);
 	ahci_pci_print_info(host);
@@ -1960,15 +1958,10 @@ static int ahci_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	rc = ahci_host_activate(host, &ahci_sht);
 	if (rc)
-		goto err_rm_sysfs_file;
+		return rc;
 
 	pm_runtime_put_noidle(&pdev->dev);
 	return 0;
-
-err_rm_sysfs_file:
-	sysfs_remove_file_from_group(&pdev->dev.kobj,
-				     &dev_attr_remapped_nvme.attr, NULL);
-	return rc;
 }
 
 static void ahci_shutdown_one(struct pci_dev *pdev)

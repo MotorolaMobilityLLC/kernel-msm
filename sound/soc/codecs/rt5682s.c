@@ -2828,9 +2828,7 @@ static int rt5682s_register_dai_clks(struct snd_soc_component *component)
 		}
 
 		if (dev->of_node) {
-			ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, dai_clk_hw);
-			if (ret)
-				return ret;
+			devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, dai_clk_hw);
 		} else {
 			ret = devm_clk_hw_register_clkdev(dev, dai_clk_hw,
 							  init.name, dev_name(dev));

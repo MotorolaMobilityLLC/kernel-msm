@@ -555,7 +555,6 @@ static void vgic_mmio_write_invlpi(struct kvm_vcpu *vcpu,
 				   unsigned long val)
 {
 	struct vgic_irq *irq;
-	u32 intid;
 
 	/*
 	 * If the guest wrote only to the upper 32bit part of the
@@ -567,13 +566,9 @@ static void vgic_mmio_write_invlpi(struct kvm_vcpu *vcpu,
 	if ((addr & 4) || !vgic_lpis_enabled(vcpu))
 		return;
 
-	intid = lower_32_bits(val);
-	if (intid < VGIC_MIN_LPI)
-		return;
-
 	vgic_set_rdist_busy(vcpu, true);
 
-	irq = vgic_get_irq(vcpu->kvm, NULL, intid);
+	irq = vgic_get_irq(vcpu->kvm, NULL, lower_32_bits(val));
 	if (irq) {
 		vgic_its_inv_lpi(vcpu->kvm, irq);
 		vgic_put_irq(vcpu->kvm, irq);
@@ -947,19 +942,8 @@ free:
 	return ret;
 }
 
-void vgic_v3_free_redist_region(struct kvm *kvm, struct vgic_redist_region *rdreg)
+void vgic_v3_free_redist_region(struct vgic_redist_region *rdreg)
 {
-	struct kvm_vcpu *vcpu;
-	unsigned long c;
-
-	lockdep_assert_held(&kvm->arch.config_lock);
-
-	/* Garbage collect the region */
-	kvm_for_each_vcpu(c, vcpu, kvm) {
-		if (vcpu->arch.vgic_cpu.rdreg == rdreg)
-			vcpu->arch.vgic_cpu.rdreg = NULL;
-	}
-
 	list_del(&rdreg->list);
 	kfree(rdreg);
 }
@@ -984,7 +968,7 @@ int vgic_v3_set_redist_base(struct kvm *kvm, u32 index, u64 addr, u32 count)
 
 		mutex_lock(&kvm->arch.config_lock);
 		rdreg = vgic_v3_rdist_region_from_index(kvm, index);
-		vgic_v3_free_redist_region(kvm, rdreg);
+		vgic_v3_free_redist_region(rdreg);
 		mutex_unlock(&kvm->arch.config_lock);
 		return ret;
 	}

@@ -53,7 +53,7 @@ static void atana33xc20_wait(ktime_t start_ktime, unsigned int min_ms)
 	ktime_t now_ktime, min_ktime;
 
 	min_ktime = ktime_add(start_ktime, ms_to_ktime(min_ms));
-	now_ktime = ktime_get_boottime();
+	now_ktime = ktime_get();
 
 	if (ktime_before(now_ktime, min_ktime))
 		msleep(ktime_to_ms(ktime_sub(min_ktime, now_ktime)) + 1);
@@ -72,11 +72,10 @@ static int atana33xc20_suspend(struct device *dev)
 	if (p->el3_was_on)
 		atana33xc20_wait(p->el_on3_off_time, 150);
 
-	drm_dp_dpcd_set_powered(p->aux, false);
 	ret = regulator_disable(p->supply);
 	if (ret)
 		return ret;
-	p->powered_off_time = ktime_get_boottime();
+	p->powered_off_time = ktime_get();
 	p->el3_was_on = false;
 
 	return 0;
@@ -94,8 +93,7 @@ static int atana33xc20_resume(struct device *dev)
 	ret = regulator_enable(p->supply);
 	if (ret)
 		return ret;
-	drm_dp_dpcd_set_powered(p->aux, true);
-	p->powered_on_time = ktime_get_boottime();
+	p->powered_on_time = ktime_get();
 
 	if (p->no_hpd) {
 		msleep(HPD_MAX_MS);
@@ -109,17 +107,19 @@ static int atana33xc20_resume(struct device *dev)
 		if (hpd_asserted < 0)
 			ret = hpd_asserted;
 
-		if (ret) {
+		if (ret)
 			dev_warn(dev, "Error waiting for HPD GPIO: %d\n", ret);
-			goto error;
-		}
-	} else if (p->aux->wait_hpd_asserted) {
+
+		return ret;
+	}
+
+	if (p->aux->wait_hpd_asserted) {
 		ret = p->aux->wait_hpd_asserted(p->aux, HPD_MAX_US);
 
-		if (ret) {
+		if (ret)
 			dev_warn(dev, "Controller error waiting for HPD: %d\n", ret);
-			goto error;
-		}
+
+		return ret;
 	}
 
 	/*
@@ -131,12 +131,6 @@ static int atana33xc20_resume(struct device *dev)
 	 * right times.
 	 */
 	return 0;
-
-error:
-	drm_dp_dpcd_set_powered(p->aux, false);
-	regulator_disable(p->supply);
-
-	return ret;
 }
 
 static int atana33xc20_disable(struct drm_panel *panel)
@@ -148,7 +142,7 @@ static int atana33xc20_disable(struct drm_panel *panel)
 		return 0;
 
 	gpiod_set_value_cansleep(p->el_on3_gpio, 0);
-	p->el_on3_off_time = ktime_get_boottime();
+	p->el_on3_off_time = ktime_get();
 	p->enabled = false;
 
 	/*

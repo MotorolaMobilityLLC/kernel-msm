@@ -6,19 +6,10 @@
 import argparse
 import json
 import logging
-import os
 import pathlib
 import sys
 
-def args_crates_cfgs(cfgs):
-    crates_cfgs = {}
-    for cfg in cfgs:
-        crate, vals = cfg.split("=", 1)
-        crates_cfgs[crate] = vals.replace("--cfg", "").split()
-
-    return crates_cfgs
-
-def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
+def generate_crates(srctree, objtree, sysroot_src):
     # Generate the configuration list.
     cfg = []
     with open(objtree / "include" / "generated" / "rustc_cfg") as fd:
@@ -32,7 +23,6 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
     # Avoid O(n^2) iterations by keeping a map of indexes.
     crates = []
     crates_indexes = {}
-    crates_cfgs = args_crates_cfgs(cfgs)
 
     def append_crate(display_name, root_module, deps, cfg=[], is_workspace_member=True, is_proc_macro=False):
         crates_indexes[display_name] = len(crates)
@@ -49,26 +39,13 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
             }
         })
 
-    def append_sysroot_crate(
-        display_name,
-        deps,
-        cfg=[],
-    ):
-        append_crate(
-            display_name,
-            sysroot_src / display_name / "src" / "lib.rs",
-            deps,
-            cfg,
-            is_workspace_member=False,
-        )
-
-    # NB: sysroot crates reexport items from one another so setting up our transitive dependencies
-    # here is important for ensuring that rust-analyzer can resolve symbols. The sources of truth
-    # for this dependency graph are `(sysroot_src / crate / "Cargo.toml" for crate in crates)`.
-    append_sysroot_crate("core", [], cfg=crates_cfgs.get("core", []))
-    append_sysroot_crate("alloc", ["core"])
-    append_sysroot_crate("std", ["alloc", "core"])
-    append_sysroot_crate("proc_macro", ["core", "std"])
+    # First, the ones in `rust/` since they are a bit special.
+    append_crate(
+        "core",
+        sysroot_src / "core" / "src" / "lib.rs",
+        [],
+        is_workspace_member=False,
+    )
 
     append_crate(
         "compiler_builtins",
@@ -80,16 +57,15 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
         "alloc",
         srctree / "rust" / "alloc" / "lib.rs",
         ["core", "compiler_builtins"],
-        cfg=crates_cfgs.get("alloc", []),
     )
 
     append_crate(
         "macros",
         srctree / "rust" / "macros" / "lib.rs",
-        ["std", "proc_macro"],
+        [],
         is_proc_macro=True,
     )
-    crates[-1]["proc_macro_dylib_path"] = f"{objtree}/rust/libmacros.so"
+    crates[-1]["proc_macro_dylib_path"] = "rust/libmacros.so"
 
     append_crate(
         "bindings",
@@ -113,26 +89,16 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
         "exclude_dirs": [],
     }
 
-    def is_root_crate(build_file, target):
-        try:
-            return f"{target}.o" in open(build_file).read()
-        except FileNotFoundError:
-            return False
-
     # Then, the rest outside of `rust/`.
     #
     # We explicitly mention the top-level folders we want to cover.
-    extra_dirs = map(lambda dir: srctree / dir, ("samples", "drivers"))
-    if external_src is not None:
-        extra_dirs = [external_src]
-    for folder in extra_dirs:
-        for path in folder.rglob("*.rs"):
+    for folder in ("samples", "drivers"):
+        for path in (srctree / folder).rglob("*.rs"):
             logging.info("Checking %s", path)
             name = path.name.replace(".rs", "")
 
             # Skip those that are not crate roots.
-            if not is_root_crate(path.parent / "Makefile", name) and \
-               not is_root_crate(path.parent / "Kbuild", name):
+            if f"{name}.o" not in open(path.parent / "Makefile").read():
                 continue
 
             logging.info("Adding %s", name)
@@ -148,11 +114,9 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', action='store_true')
-    parser.add_argument('--cfgs', action='append', default=[])
     parser.add_argument("srctree", type=pathlib.Path)
     parser.add_argument("objtree", type=pathlib.Path)
     parser.add_argument("sysroot_src", type=pathlib.Path)
-    parser.add_argument("exttree", type=pathlib.Path, nargs="?")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -161,7 +125,7 @@ def main():
     )
 
     rust_project = {
-        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs),
+        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src),
         "sysroot_src": str(args.sysroot_src),
     }
 

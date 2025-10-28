@@ -295,7 +295,7 @@ int clk_enable(struct clk *clk)
 	int ret;
 
 	if (!clk)
-		return 0;
+		return -EINVAL;
 
 	spin_lock_irqsave(&clock_lock, flags);
 	ret = __clk_enable(clk);

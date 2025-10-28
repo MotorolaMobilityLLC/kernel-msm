@@ -589,10 +589,9 @@ __poll_t tcp_poll(struct file *file, struct socket *sock, poll_table *wait)
 		 */
 		mask |= EPOLLOUT | EPOLLWRNORM;
 	}
-	/* This barrier is coupled with smp_wmb() in tcp_done_with_error() */
+	/* This barrier is coupled with smp_wmb() in tcp_reset() */
 	smp_rmb();
-	if (READ_ONCE(sk->sk_err) ||
-	    !skb_queue_empty_lockless(&sk->sk_error_queue))
+	if (sk->sk_err || !skb_queue_empty_lockless(&sk->sk_error_queue))
 		mask |= EPOLLERR;
 
 	return mask;
@@ -1681,13 +1680,12 @@ EXPORT_SYMBOL(tcp_recv_skb);
  *	  or for 'peeking' the socket using this routine
  *	  (although both would be easy to implement).
  */
-static int __tcp_read_sock(struct sock *sk, read_descriptor_t *desc,
-			   sk_read_actor_t recv_actor, bool noack,
-			   u32 *copied_seq)
+int tcp_read_sock(struct sock *sk, read_descriptor_t *desc,
+		  sk_read_actor_t recv_actor)
 {
 	struct sk_buff *skb;
 	struct tcp_sock *tp = tcp_sk(sk);
-	u32 seq = *copied_seq;
+	u32 seq = tp->copied_seq;
 	u32 offset;
 	int copied = 0;
 
@@ -1741,12 +1739,9 @@ static int __tcp_read_sock(struct sock *sk, read_descriptor_t *desc,
 		tcp_eat_recv_skb(sk, skb);
 		if (!desc->count)
 			break;
-		WRITE_ONCE(*copied_seq, seq);
+		WRITE_ONCE(tp->copied_seq, seq);
 	}
-	WRITE_ONCE(*copied_seq, seq);
-
-	if (noack)
-		goto out;
+	WRITE_ONCE(tp->copied_seq, seq);
 
 	tcp_rcv_space_adjust(sk);
 
@@ -1755,24 +1750,9 @@ static int __tcp_read_sock(struct sock *sk, read_descriptor_t *desc,
 		tcp_recv_skb(sk, seq, &offset);
 		tcp_cleanup_rbuf(sk, copied);
 	}
-out:
 	return copied;
 }
-
-int tcp_read_sock(struct sock *sk, read_descriptor_t *desc,
-		  sk_read_actor_t recv_actor)
-{
-	return __tcp_read_sock(sk, desc, recv_actor, false,
-			       &tcp_sk(sk)->copied_seq);
-}
 EXPORT_SYMBOL(tcp_read_sock);
-
-int tcp_read_sock_noack(struct sock *sk, read_descriptor_t *desc,
-			sk_read_actor_t recv_actor, bool noack,
-			u32 *copied_seq)
-{
-	return __tcp_read_sock(sk, desc, recv_actor, noack, copied_seq);
-}
 
 int tcp_read_skb(struct sock *sk, skb_read_actor_t recv_actor)
 {
@@ -2756,10 +2736,6 @@ void tcp_set_state(struct sock *sk, int state)
 		if (oldstate != TCP_ESTABLISHED)
 			TCP_INC_STATS(sock_net(sk), TCP_MIB_CURRESTAB);
 		break;
-	case TCP_CLOSE_WAIT:
-		if (oldstate == TCP_SYN_RECV)
-			TCP_INC_STATS(sock_net(sk), TCP_MIB_CURRESTAB);
-		break;
 
 	case TCP_CLOSE:
 		if (oldstate == TCP_CLOSE_WAIT || oldstate == TCP_ESTABLISHED)
@@ -2771,7 +2747,7 @@ void tcp_set_state(struct sock *sk, int state)
 			inet_put_port(sk);
 		fallthrough;
 	default:
-		if (oldstate == TCP_ESTABLISHED || oldstate == TCP_CLOSE_WAIT)
+		if (oldstate == TCP_ESTABLISHED)
 			TCP_DEC_STATS(sock_net(sk), TCP_MIB_CURRESTAB);
 	}
 
@@ -2833,7 +2809,7 @@ void tcp_shutdown(struct sock *sk, int how)
 	/* If we've already sent a FIN, or it's a closed state, skip this. */
 	if ((1 << sk->sk_state) &
 	    (TCPF_ESTABLISHED | TCPF_SYN_SENT |
-	     TCPF_CLOSE_WAIT)) {
+	     TCPF_SYN_RECV | TCPF_CLOSE_WAIT)) {
 		/* Clear out any half completed packets.  FIN if needed. */
 		if (tcp_close_state(sk))
 			tcp_send_fin(sk);
@@ -2942,7 +2918,7 @@ void __tcp_close(struct sock *sk, long timeout)
 		 * machine. State transitions:
 		 *
 		 * TCP_ESTABLISHED -> TCP_FIN_WAIT1
-		 * TCP_SYN_RECV	-> TCP_FIN_WAIT1 (it is difficult)
+		 * TCP_SYN_RECV	-> TCP_FIN_WAIT1 (forget it, it's impossible)
 		 * TCP_CLOSE_WAIT -> TCP_LAST_ACK
 		 *
 		 * are legal only when FIN has been sent (i.e. in window),
@@ -3054,8 +3030,6 @@ void tcp_close(struct sock *sk, long timeout)
 	lock_sock(sk);
 	__tcp_close(sk, timeout);
 	release_sock(sk);
-	if (!sk->sk_net_refcnt)
-		inet_csk_clear_xmit_timers_sync(sk);
 	sock_put(sk);
 }
 EXPORT_SYMBOL(tcp_close);
@@ -3123,7 +3097,7 @@ int tcp_disconnect(struct sock *sk, int flags)
 	if (old_state == TCP_LISTEN) {
 		inet_csk_listen_stop(sk);
 	} else if (unlikely(tp->repair)) {
-		WRITE_ONCE(sk->sk_err, ECONNABORTED);
+		sk->sk_err = ECONNABORTED;
 	} else if (tcp_need_reset(old_state) ||
 		   (tp->snd_nxt != tp->write_seq &&
 		    (1 << old_state) & (TCPF_CLOSING | TCPF_LAST_ACK))) {
@@ -3131,9 +3105,9 @@ int tcp_disconnect(struct sock *sk, int flags)
 		 * states
 		 */
 		tcp_send_active_reset(sk, gfp_any());
-		WRITE_ONCE(sk->sk_err, ECONNRESET);
+		sk->sk_err = ECONNRESET;
 	} else if (old_state == TCP_SYN_SENT)
-		WRITE_ONCE(sk->sk_err, ECONNRESET);
+		sk->sk_err = ECONNRESET;
 
 	tcp_clear_xmit_timers(sk);
 	__skb_queue_purge(&sk->sk_receive_queue);
@@ -4739,7 +4713,7 @@ int tcp_abort(struct sock *sk, int err)
 	bh_lock_sock(sk);
 
 	if (!sock_flag(sk, SOCK_DEAD)) {
-		WRITE_ONCE(sk->sk_err, err);
+		sk->sk_err = err;
 		/* This barrier is coupled with smp_rmb() in tcp_poll() */
 		smp_wmb();
 		sk_error_report(sk);

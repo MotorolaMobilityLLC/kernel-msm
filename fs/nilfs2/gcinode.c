@@ -83,8 +83,10 @@ int nilfs_gccache_submit_read_data(struct inode *inode, sector_t blkoff,
 		goto out;
 	}
 
-	if (!buffer_mapped(bh))
+	if (!buffer_mapped(bh)) {
+		bh->b_bdev = inode->i_sb->s_bdev;
 		set_buffer_mapped(bh);
+	}
 	bh->b_blocknr = pbn;
 	bh->b_end_io = end_buffer_read_sync;
 	get_bh(bh);
@@ -163,7 +165,7 @@ int nilfs_init_gcinode(struct inode *inode)
 
 	inode->i_mode = S_IFREG;
 	mapping_set_gfp_mask(inode->i_mapping, GFP_NOFS);
-	inode->i_mapping->a_ops = &nilfs_buffer_cache_aops;
+	inode->i_mapping->a_ops = &empty_aops;
 
 	ii->i_flags = 0;
 	nilfs_bmap_init_gc(ii->i_bmap);

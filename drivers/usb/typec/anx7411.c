@@ -289,8 +289,6 @@ struct anx7411_data {
 	struct power_supply *psy;
 	struct power_supply_desc psy_desc;
 	struct device *dev;
-	struct fwnode_handle *switch_node;
-	struct fwnode_handle *mux_node;
 };
 
 static u8 snk_identity[] = {
@@ -1022,16 +1020,6 @@ static void anx7411_port_unregister_altmodes(struct typec_altmode **adev)
 		}
 }
 
-static void anx7411_port_unregister(struct typec_params *typecp)
-{
-	fwnode_handle_put(typecp->caps.fwnode);
-	anx7411_port_unregister_altmodes(typecp->port_amode);
-	if (typecp->port)
-		typec_unregister_port(typecp->port);
-	if (typecp->role_sw)
-		usb_role_switch_put(typecp->role_sw);
-}
-
 static int anx7411_usb_mux_set(struct typec_mux_dev *mux,
 			       struct typec_mux_state *state)
 {
@@ -1100,7 +1088,6 @@ static void anx7411_unregister_mux(struct anx7411_data *ctx)
 	if (ctx->typec.typec_mux) {
 		typec_mux_unregister(ctx->typec.typec_mux);
 		ctx->typec.typec_mux = NULL;
-		fwnode_handle_put(ctx->mux_node);
 	}
 }
 
@@ -1109,7 +1096,6 @@ static void anx7411_unregister_switch(struct anx7411_data *ctx)
 	if (ctx->typec.typec_switch) {
 		typec_switch_unregister(ctx->typec.typec_switch);
 		ctx->typec.typec_switch = NULL;
-		fwnode_handle_put(ctx->switch_node);
 	}
 }
 
@@ -1117,29 +1103,28 @@ static int anx7411_typec_switch_probe(struct anx7411_data *ctx,
 				      struct device *dev)
 {
 	int ret;
+	struct device_node *node;
 
-	ctx->switch_node = device_get_named_child_node(dev, "orientation_switch");
-	if (!ctx->switch_node)
+	node = of_get_child_by_name(dev->of_node, "orientation_switch");
+	if (!node)
 		return 0;
 
-	ret = anx7411_register_switch(ctx, dev, ctx->switch_node);
+	ret = anx7411_register_switch(ctx, dev, &node->fwnode);
 	if (ret) {
 		dev_err(dev, "failed register switch");
-		fwnode_handle_put(ctx->switch_node);
 		return ret;
 	}
 
-	ctx->mux_node = device_get_named_child_node(dev, "mode_switch");
-	if (!ctx->mux_node) {
+	node = of_get_child_by_name(dev->of_node, "mode_switch");
+	if (!node) {
 		dev_err(dev, "no typec mux exist");
 		ret = -ENODEV;
 		goto unregister_switch;
 	}
 
-	ret = anx7411_register_mux(ctx, dev, ctx->mux_node);
+	ret = anx7411_register_mux(ctx, dev, &node->fwnode);
 	if (ret) {
 		dev_err(dev, "failed register mode switch");
-		fwnode_handle_put(ctx->mux_node);
 		ret = -ENODEV;
 		goto unregister_switch;
 	}
@@ -1168,34 +1153,34 @@ static int anx7411_typec_port_probe(struct anx7411_data *ctx,
 	ret = fwnode_property_read_string(fwnode, "power-role", &buf);
 	if (ret) {
 		dev_err(dev, "power-role not found: %d\n", ret);
-		goto put_fwnode;
+		return ret;
 	}
 
 	ret = typec_find_port_power_role(buf);
 	if (ret < 0)
-		goto put_fwnode;
+		return ret;
 	cap->type = ret;
 
 	ret = fwnode_property_read_string(fwnode, "data-role", &buf);
 	if (ret) {
 		dev_err(dev, "data-role not found: %d\n", ret);
-		goto put_fwnode;
+		return ret;
 	}
 
 	ret = typec_find_port_data_role(buf);
 	if (ret < 0)
-		goto put_fwnode;
+		return ret;
 	cap->data = ret;
 
 	ret = fwnode_property_read_string(fwnode, "try-power-role", &buf);
 	if (ret) {
 		dev_err(dev, "try-power-role not found: %d\n", ret);
-		goto put_fwnode;
+		return ret;
 	}
 
 	ret = typec_find_power_role(buf);
 	if (ret < 0)
-		goto put_fwnode;
+		return ret;
 	cap->prefer_role = ret;
 
 	/* Get source pdos */
@@ -1207,7 +1192,7 @@ static int anx7411_typec_port_probe(struct anx7411_data *ctx,
 						     typecp->src_pdo_nr);
 		if (ret < 0) {
 			dev_err(dev, "source cap validate failed: %d\n", ret);
-			goto put_fwnode;
+			return -EINVAL;
 		}
 
 		typecp->caps_flags |= HAS_SOURCE_CAP;
@@ -1221,7 +1206,7 @@ static int anx7411_typec_port_probe(struct anx7411_data *ctx,
 						     typecp->sink_pdo_nr);
 		if (ret < 0) {
 			dev_err(dev, "sink cap validate failed: %d\n", ret);
-			goto put_fwnode;
+			return -EINVAL;
 		}
 
 		for (i = 0; i < typecp->sink_pdo_nr; i++) {
@@ -1265,21 +1250,13 @@ static int anx7411_typec_port_probe(struct anx7411_data *ctx,
 		ret = PTR_ERR(ctx->typec.port);
 		ctx->typec.port = NULL;
 		dev_err(dev, "Failed to register type c port %d\n", ret);
-		goto put_usb_role_switch;
+		return ret;
 	}
 
 	typec_port_register_altmodes(ctx->typec.port, NULL, ctx,
 				     ctx->typec.port_amode,
 				     MAX_ALTMODE);
 	return 0;
-
-put_usb_role_switch:
-	if (ctx->typec.role_sw)
-		usb_role_switch_put(ctx->typec.role_sw);
-put_fwnode:
-	fwnode_handle_put(fwnode);
-
-	return ret;
 }
 
 static int anx7411_typec_check_connection(struct anx7411_data *ctx)
@@ -1551,7 +1528,8 @@ free_wq:
 	destroy_workqueue(plat->workqueue);
 
 free_typec_port:
-	anx7411_port_unregister(&plat->typec);
+	typec_unregister_port(plat->typec.port);
+	anx7411_port_unregister_altmodes(plat->typec.port_amode);
 
 free_typec_switch:
 	anx7411_unregister_switch(plat);
@@ -1576,11 +1554,17 @@ static void anx7411_i2c_remove(struct i2c_client *client)
 	if (plat->spi_client)
 		i2c_unregister_device(plat->spi_client);
 
+	if (plat->typec.role_sw)
+		usb_role_switch_put(plat->typec.role_sw);
+
 	anx7411_unregister_mux(plat);
 
 	anx7411_unregister_switch(plat);
 
-	anx7411_port_unregister(&plat->typec);
+	if (plat->typec.port)
+		typec_unregister_port(plat->typec.port);
+
+	anx7411_port_unregister_altmodes(plat->typec.port_amode);
 }
 
 static const struct i2c_device_id anx7411_id[] = {

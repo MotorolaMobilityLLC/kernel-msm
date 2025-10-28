@@ -982,8 +982,7 @@ static void __send_cleanup_vector(struct apic_chip_data *apicd)
 		hlist_add_head(&apicd->clist, per_cpu_ptr(&cleanup_list, cpu));
 		apic->send_IPI(cpu, IRQ_MOVE_CLEANUP_VECTOR);
 	} else {
-		pr_warn("IRQ %u schedule cleanup for offline CPU %u\n", apicd->irq, cpu);
-		free_moved_vector(apicd);
+		apicd->prev_vector = 0;
 	}
 	raw_spin_unlock(&vector_lock);
 }
@@ -1020,7 +1019,6 @@ void irq_complete_move(struct irq_cfg *cfg)
  */
 void irq_force_complete_move(struct irq_desc *desc)
 {
-	unsigned int cpu = smp_processor_id();
 	struct apic_chip_data *apicd;
 	struct irq_data *irqd;
 	unsigned int vector;
@@ -1045,11 +1043,10 @@ void irq_force_complete_move(struct irq_desc *desc)
 		goto unlock;
 
 	/*
-	 * If prev_vector is empty or the descriptor is neither currently
-	 * nor previously on the outgoing CPU no action required.
+	 * If prev_vector is empty, no action required.
 	 */
 	vector = apicd->prev_vector;
-	if (!vector || (apicd->cpu != cpu && apicd->prev_cpu != cpu))
+	if (!vector)
 		goto unlock;
 
 	/*

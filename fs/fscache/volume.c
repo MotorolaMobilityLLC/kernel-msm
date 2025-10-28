@@ -27,19 +27,6 @@ struct fscache_volume *fscache_get_volume(struct fscache_volume *volume,
 	return volume;
 }
 
-struct fscache_volume *fscache_try_get_volume(struct fscache_volume *volume,
-					      enum fscache_volume_trace where)
-{
-	int ref;
-
-	if (!__refcount_inc_not_zero(&volume->ref, &ref))
-		return NULL;
-
-	trace_fscache_volume(volume->debug_id, ref + 1, where);
-	return volume;
-}
-EXPORT_SYMBOL(fscache_try_get_volume);
-
 static void fscache_see_volume(struct fscache_volume *volume,
 			       enum fscache_volume_trace where)
 {
@@ -322,7 +309,8 @@ maybe_wait:
 	}
 	return;
 no_wait:
-	clear_and_wake_up_bit(FSCACHE_VOLUME_CREATING, &volume->flags);
+	clear_bit_unlock(FSCACHE_VOLUME_CREATING, &volume->flags);
+	wake_up_bit(&volume->flags, FSCACHE_VOLUME_CREATING);
 }
 
 /*
@@ -432,7 +420,6 @@ void fscache_put_volume(struct fscache_volume *volume,
 			fscache_free_volume(volume);
 	}
 }
-EXPORT_SYMBOL(fscache_put_volume);
 
 /*
  * Relinquish a volume representation cookie.

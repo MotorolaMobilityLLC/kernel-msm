@@ -132,26 +132,18 @@ void rt6_age_exceptions(struct fib6_info *f6i, struct fib6_gc_args *gc_args,
 
 static inline int ip6_route_get_saddr(struct net *net, struct fib6_info *f6i,
 				      const struct in6_addr *daddr,
-				      unsigned int prefs, int l3mdev_index,
+				      unsigned int prefs,
 				      struct in6_addr *saddr)
 {
-	struct net_device *l3mdev;
-	struct net_device *dev;
-	bool same_vrf;
 	int err = 0;
 
-	rcu_read_lock();
-
-	l3mdev = dev_get_by_index_rcu(net, l3mdev_index);
-	if (!f6i || !f6i->fib6_prefsrc.plen || l3mdev)
-		dev = f6i ? fib6_info_nh_dev(f6i) : NULL;
-	same_vrf = !l3mdev || l3mdev_master_dev_rcu(dev) == l3mdev;
-	if (f6i && f6i->fib6_prefsrc.plen && same_vrf)
+	if (f6i && f6i->fib6_prefsrc.plen) {
 		*saddr = f6i->fib6_prefsrc.addr;
-	else
-		err = ipv6_dev_get_saddr(net, same_vrf ? dev : l3mdev, daddr, prefs, saddr);
+	} else {
+		struct net_device *dev = f6i ? fib6_info_nh_dev(f6i) : NULL;
 
-	rcu_read_unlock();
+		err = ipv6_dev_get_saddr(net, dev, daddr, prefs, saddr);
+	}
 
 	return err;
 }

@@ -1488,9 +1488,7 @@ static int init_channel(struct ngene_channel *chan)
 	}
 
 	if (dev->ci.en && (io & NGENE_IO_TSOUT)) {
-		ret = dvb_ca_en50221_init(adapter, dev->ci.en, 0, 1);
-		if (ret != 0)
-			goto err;
+		dvb_ca_en50221_init(adapter, dev->ci.en, 0, 1);
 		set_transfer(chan, 1);
 		chan->dev->channel[2].DataFormatFlags = DF_SWAP32;
 		set_transfer(&chan->dev->channel[2], 1);

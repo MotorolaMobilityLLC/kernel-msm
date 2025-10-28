@@ -918,8 +918,7 @@ static __init int gsmi_init(void)
 	gsmi_dev.pdev = platform_device_register_full(&gsmi_dev_info);
 	if (IS_ERR(gsmi_dev.pdev)) {
 		printk(KERN_ERR "gsmi: unable to register platform device\n");
-		ret = PTR_ERR(gsmi_dev.pdev);
-		goto out_unregister;
+		return PTR_ERR(gsmi_dev.pdev);
 	}
 
 	/* SMI access needs to be serialized */
@@ -1057,11 +1056,10 @@ out_err:
 	gsmi_buf_free(gsmi_dev.name_buf);
 	kmem_cache_destroy(gsmi_dev.mem_pool);
 	platform_device_unregister(gsmi_dev.pdev);
-out_unregister:
+	pr_info("gsmi: failed to load: %d\n", ret);
 #ifdef CONFIG_PM
 	platform_driver_unregister(&gsmi_driver_info);
 #endif
-	pr_info("gsmi: failed to load: %d\n", ret);
 	return ret;
 }
 

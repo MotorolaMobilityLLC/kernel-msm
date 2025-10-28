@@ -13,10 +13,9 @@ enum cc_vendor {
 };
 
 extern enum cc_vendor cc_vendor;
-
-#ifdef CONFIG_ARCH_HAS_CC_PLATFORM
 extern u64 cc_mask;
 
+#ifdef CONFIG_ARCH_HAS_CC_PLATFORM
 static inline void cc_set_mask(u64 mask)
 {
 	RIP_REL_REF(cc_mask) = mask;
@@ -24,10 +23,7 @@ static inline void cc_set_mask(u64 mask)
 
 u64 cc_mkenc(u64 val);
 u64 cc_mkdec(u64 val);
-void cc_random_init(void);
 #else
-static const u64 cc_mask = 0;
-
 static inline u64 cc_mkenc(u64 val)
 {
 	return val;
@@ -37,7 +33,6 @@ static inline u64 cc_mkdec(u64 val)
 {
 	return val;
 }
-static inline void cc_random_init(void) { }
 #endif
 
 #endif /* _ASM_X86_COCO_H */

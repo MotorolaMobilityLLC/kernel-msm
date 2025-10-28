@@ -339,7 +339,8 @@ do {									\
 		}							\
 	}								\
 	/* free the buffer info list */					\
-	devm_kfree(ice_hw_to_dev(hw), (qi)->ring.cmd_buf);		\
+	if ((qi)->ring.cmd_buf)						\
+		devm_kfree(ice_hw_to_dev(hw), (qi)->ring.cmd_buf);	\
 	/* free DMA head */						\
 	devm_kfree(ice_hw_to_dev(hw), (qi)->ring.dma_head);		\
 } while (0)

@@ -41,7 +41,7 @@ static int nfs_symlink_filler(struct file *file, struct folio *folio)
 error:
 	folio_set_error(folio);
 	folio_unlock(folio);
-	return error;
+	return -EIO;
 }
 
 static const char *nfs_get_link(struct dentry *dentry,

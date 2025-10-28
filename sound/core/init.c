@@ -307,8 +307,8 @@ static int snd_card_init(struct snd_card *card, struct device *parent,
 	card->number = idx;
 #ifdef MODULE
 	WARN_ON(!module);
-#endif
 	card->module = module;
+#endif
 	INIT_LIST_HEAD(&card->devices);
 	init_rwsem(&card->controls_rwsem);
 	rwlock_init(&card->ctl_files_rwlock);
@@ -518,14 +518,6 @@ int snd_card_disconnect(struct snd_card *card)
 	}
 	spin_unlock(&card->files_lock);	
 
-#ifdef CONFIG_PM
-	/* wake up sleepers here before other callbacks for avoiding potential
-	 * deadlocks with other locks (e.g. in kctls);
-	 * then this notifies the shutdown and sleepers would abort immediately
-	 */
-	wake_up_all(&card->power_sleep);
-#endif
-
 	/* notify all connected devices about disconnection */
 	/* at this point, they cannot respond to any calls except release() */
 
@@ -541,11 +533,6 @@ int snd_card_disconnect(struct snd_card *card)
 		synchronize_irq(card->sync_irq);
 
 	snd_info_card_disconnect(card);
-#ifdef CONFIG_SND_DEBUG
-	debugfs_remove(card->debugfs_root);
-	card->debugfs_root = NULL;
-#endif
-
 	if (card->registered) {
 		device_del(&card->card_dev);
 		card->registered = false;
@@ -558,6 +545,7 @@ int snd_card_disconnect(struct snd_card *card)
 	mutex_unlock(&snd_card_mutex);
 
 #ifdef CONFIG_PM
+	wake_up(&card->power_sleep);
 	snd_power_sync_ref(card);
 #endif
 	return 0;	
@@ -607,6 +595,10 @@ static int snd_card_do_free(struct snd_card *card)
 		dev_warn(card->dev, "unable to free card info\n");
 		/* Not fatal error */
 	}
+#ifdef CONFIG_SND_DEBUG
+	debugfs_remove(card->debugfs_root);
+	card->debugfs_root = NULL;
+#endif
 	if (card->release_completion)
 		complete(card->release_completion);
 	if (!card->managed)
@@ -673,19 +665,13 @@ int snd_card_free(struct snd_card *card)
 }
 EXPORT_SYMBOL(snd_card_free);
 
-/* check, if the character is in the valid ASCII range */
-static inline bool safe_ascii_char(char c)
-{
-	return isascii(c) && isalnum(c);
-}
-
 /* retrieve the last word of shortname or longname */
 static const char *retrieve_id_from_card_name(const char *name)
 {
 	const char *spos = name;
 
 	while (*name) {
-		if (isspace(*name) && safe_ascii_char(name[1]))
+		if (isspace(*name) && isalnum(name[1]))
 			spos = name + 1;
 		name++;
 	}
@@ -712,12 +698,12 @@ static void copy_valid_id_string(struct snd_card *card, const char *src,
 {
 	char *id = card->id;
 
-	while (*nid && !safe_ascii_char(*nid))
+	while (*nid && !isalnum(*nid))
 		nid++;
 	if (isdigit(*nid))
 		*id++ = isalpha(*src) ? *src : 'D';
 	while (*nid && (size_t)(id - card->id) < sizeof(card->id) - 1) {
-		if (safe_ascii_char(*nid))
+		if (isalnum(*nid))
 			*id++ = *nid;
 		nid++;
 	}
@@ -813,7 +799,7 @@ static ssize_t id_store(struct device *dev, struct device_attribute *attr,
 
 	for (idx = 0; idx < copy; idx++) {
 		c = buf[idx];
-		if (!safe_ascii_char(c) && c != '_' && c != '-')
+		if (!isalnum(c) && c != '_' && c != '-')
 			return -EINVAL;
 	}
 	memcpy(buf1, buf, copy);

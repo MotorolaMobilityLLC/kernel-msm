@@ -101,11 +101,6 @@
 		};
 	};
 
-	poweroff {
-		compatible = "regulator-poweroff";
-		cpu-supply = <&vgen2_reg>;
-	};
-
 	reg_module_3v3: regulator-module-3v3 {
 		compatible = "regulator-fixed";
 		regulator-always-on;
@@ -223,6 +218,10 @@
 	pinctrl-0 = <&pinctrl_flexcan2_default>;
 	pinctrl-1 = <&pinctrl_flexcan2_sleep>;
 	status = "disabled";
+};
+
+&clks {
+	fsl,pmic-stby-poweroff;
 };
 
 /* Apalis SPI1 */
@@ -512,6 +511,7 @@
 
 	pmic: pmic@8 {
 		compatible = "fsl,pfuze100";
+		fsl,pmic-stby-poweroff;
 		reg = <0x08>;
 
 		regulators {

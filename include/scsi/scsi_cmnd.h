@@ -54,11 +54,8 @@ struct scsi_pointer {
 #define SCMD_INITIALIZED	(1 << 1)
 #define SCMD_LAST		(1 << 2)
 #define SCMD_FAIL_IF_RECOVERING	(1 << 4)
-/* If set, retry a passthrough command in case of a unit attention. */
-#define SCMD_RETRY_PASSTHROUGH	(1 << 5)
 /* flags preserved across unprep / reprep */
-#define SCMD_PRESERVED_FLAGS	\
-	(SCMD_INITIALIZED | SCMD_FAIL_IF_RECOVERING | SCMD_RETRY_PASSTHROUGH)
+#define SCMD_PRESERVED_FLAGS	(SCMD_INITIALIZED | SCMD_FAIL_IF_RECOVERING)
 
 /* for scmd->state */
 #define SCMD_STATE_COMPLETE	0
@@ -238,7 +235,7 @@ static inline sector_t scsi_get_lba(struct scsi_cmnd *scmd)
 
 static inline unsigned int scsi_logical_block_count(struct scsi_cmnd *scmd)
 {
-	unsigned int shift = ilog2(scmd->device->sector_size);
+	unsigned int shift = ilog2(scmd->device->sector_size) - SECTOR_SHIFT;
 
 	return blk_rq_bytes(scsi_cmd_to_rq(scmd)) >> shift;
 }

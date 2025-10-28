@@ -1279,7 +1279,7 @@ int mlx5_eswitch_enable_locked(struct mlx5_eswitch *esw, int num_vfs)
 	}
 
 	if (err)
-		goto err_esw_enable;
+		goto abort;
 
 	esw->fdb_table.flags |= MLX5_ESW_FDB_CREATED;
 
@@ -1293,8 +1293,7 @@ int mlx5_eswitch_enable_locked(struct mlx5_eswitch *esw, int num_vfs)
 
 	return 0;
 
-err_esw_enable:
-	mlx5_eq_notifier_unregister(esw->dev, &esw->nb);
+abort:
 	mlx5_esw_acls_ns_cleanup(esw);
 	return err;
 }

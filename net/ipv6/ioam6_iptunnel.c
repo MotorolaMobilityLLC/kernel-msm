@@ -351,9 +351,9 @@ do_encap:
 		goto drop;
 
 	if (!ipv6_addr_equal(&orig_daddr, &ipv6_hdr(skb)->daddr)) {
-		local_bh_disable();
+		preempt_disable();
 		dst = dst_cache_get(&ilwt->cache);
-		local_bh_enable();
+		preempt_enable();
 
 		if (unlikely(!dst)) {
 			struct ipv6hdr *hdr = ipv6_hdr(skb);
@@ -373,9 +373,9 @@ do_encap:
 				goto drop;
 			}
 
-			local_bh_disable();
+			preempt_disable();
 			dst_cache_set_ip6(&ilwt->cache, dst, &fl6.saddr);
-			local_bh_enable();
+			preempt_enable();
 		}
 
 		skb_dst_drop(skb);

@@ -19,7 +19,7 @@
 
 static void perf_output_wakeup(struct perf_output_handle *handle)
 {
-	atomic_set(&handle->rb->poll, EPOLLIN | EPOLLRDNORM);
+	atomic_set(&handle->rb->poll, EPOLLIN);
 
 	handle->event->pending_wakeup = 1;
 	irq_work_queue(&handle->event->pending_irq);
@@ -683,9 +683,7 @@ int rb_alloc_aux(struct perf_buffer *rb, struct perf_event *event,
 		 * max_order, to aid PMU drivers in double buffering.
 		 */
 		if (!watermark)
-			watermark = min_t(unsigned long,
-					  U32_MAX,
-					  (unsigned long)nr_pages << (PAGE_SHIFT - 1));
+			watermark = nr_pages << (PAGE_SHIFT - 1);
 
 		/*
 		 * Use aux_watermark as the basis for chunking to

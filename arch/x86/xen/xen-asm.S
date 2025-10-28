@@ -20,32 +20,9 @@
 
 #include <linux/init.h>
 #include <linux/linkage.h>
-#include <linux/objtool.h>
 #include <../entry/calling.h>
 
 .pushsection .noinstr.text, "ax"
-/*
- * PV hypercall interface to the hypervisor.
- *
- * Called via inline asm(), so better preserve %rcx and %r11.
- *
- * Input:
- *	%eax: hypercall number
- *	%rdi, %rsi, %rdx, %r10, %r8: args 1..5 for the hypercall
- * Output: %rax
- */
-SYM_FUNC_START(xen_hypercall_pv)
-	ANNOTATE_NOENDBR
-	push %rcx
-	push %r11
-	UNWIND_HINT_SAVE
-	syscall
-	UNWIND_HINT_RESTORE
-	pop %r11
-	pop %rcx
-	RET
-SYM_FUNC_END(xen_hypercall_pv)
-
 /*
  * Disabling events is simply a matter of making the event mask
  * non-zero.
@@ -199,6 +176,7 @@ SYM_CODE_START(xen_early_idt_handler_array)
 SYM_CODE_END(xen_early_idt_handler_array)
 	__FINIT
 
+hypercall_iret = hypercall_page + __HYPERVISOR_iret * 32
 /*
  * Xen64 iret frame:
  *
@@ -208,28 +186,17 @@ SYM_CODE_END(xen_early_idt_handler_array)
  *	cs
  *	rip		<-- standard iret frame
  *
- *	flags		<-- xen_iret must push from here on
+ *	flags
  *
- *	rcx
- *	r11
- * rsp->rax
+ *	rcx		}
+ *	r11		}<-- pushed by hypercall page
+ * rsp->rax		}
  */
-.macro xen_hypercall_iret
-	pushq $0	/* Flags */
-	push %rcx
-	push %r11
-	push %rax
-	mov  $__HYPERVISOR_iret, %eax
-	syscall		/* Do the IRET. */
-#ifdef CONFIG_SLS
-	int3
-#endif
-.endm
-
 SYM_CODE_START(xen_iret)
 	UNWIND_HINT_EMPTY
 	ANNOTATE_NOENDBR
-	xen_hypercall_iret
+	pushq $0
+	jmp hypercall_iret
 SYM_CODE_END(xen_iret)
 
 /*
@@ -334,7 +301,8 @@ SYM_CODE_START(xen_entry_SYSENTER_compat)
 	ENDBR
 	lea 16(%rsp), %rsp	/* strip %rcx, %r11 */
 	mov $-ENOSYS, %rax
-	xen_hypercall_iret
+	pushq $0
+	jmp hypercall_iret
 SYM_CODE_END(xen_entry_SYSENTER_compat)
 SYM_CODE_END(xen_entry_SYSCALL_compat)
 

@@ -20,7 +20,8 @@ The gl_holders list contains all the queued lock requests (not
 just the holders) associated with the glock. If there are any
 held locks, then they will be contiguous entries at the head
 of the list. Locks are granted in strictly the order that they
-are queued.
+are queued, except for those marked LM_FLAG_PRIORITY which are
+used only during recovery, and even then only for journal locks.
 
 There are three lock states that users of the glock layer can request,
 namely shared (SH), deferred (DF) and exclusive (EX). Those translate

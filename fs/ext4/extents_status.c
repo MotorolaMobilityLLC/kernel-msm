@@ -312,8 +312,6 @@ void ext4_es_find_extent_range(struct inode *inode,
 			       ext4_lblk_t lblk, ext4_lblk_t end,
 			       struct extent_status *es)
 {
-	es->es_lblk = es->es_len = es->es_pblk = 0;
-
 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
 		return;
 
@@ -847,10 +845,12 @@ out:
 /*
  * ext4_es_insert_extent() adds information to an inode's extent
  * status tree.
+ *
+ * Return 0 on success, error code on failure.
  */
-void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
-			   ext4_lblk_t len, ext4_fsblk_t pblk,
-			   unsigned int status)
+int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+			  ext4_lblk_t len, ext4_fsblk_t pblk,
+			  unsigned int status)
 {
 	struct extent_status newes;
 	ext4_lblk_t end = lblk + len - 1;
@@ -862,13 +862,13 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
 	bool revise_pending = false;
 
 	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-		return;
+		return 0;
 
 	es_debug("add [%u/%u) %llu %x to extent status tree of inode %lu\n",
 		 lblk, len, pblk, status, inode->i_ino);
 
 	if (!len)
-		return;
+		return 0;
 
 	BUG_ON(end < lblk);
 
@@ -937,7 +937,7 @@ error:
 		goto retry;
 
 	ext4_es_print_tree(inode);
-	return;
+	return 0;
 }
 
 /*

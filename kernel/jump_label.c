@@ -115,6 +115,8 @@ EXPORT_SYMBOL_GPL(static_key_count);
 
 void static_key_slow_inc_cpuslocked(struct static_key *key)
 {
+	int v, v1;
+
 	STATIC_KEY_CHECK_USE(key);
 	lockdep_assert_cpus_held();
 
@@ -130,9 +132,11 @@ void static_key_slow_inc_cpuslocked(struct static_key *key)
 	 * so it counts as "enabled" in jump_label_update().  Note that
 	 * atomic_inc_unless_negative() checks >= 0, so roll our own.
 	 */
-	for (int v = atomic_read(&key->enabled); v > 0; )
-		if (likely(atomic_try_cmpxchg(&key->enabled, &v, v + 1)))
+	for (v = atomic_read(&key->enabled); v > 0; v = v1) {
+		v1 = atomic_cmpxchg(&key->enabled, v, v + 1);
+		if (likely(v1 == v))
 			return;
+	}
 
 	jump_label_lock();
 	if (atomic_read(&key->enabled) == 0) {
@@ -199,7 +203,7 @@ void static_key_disable_cpuslocked(struct static_key *key)
 	}
 
 	jump_label_lock();
-	if (atomic_cmpxchg(&key->enabled, 1, 0) == 1)
+	if (atomic_cmpxchg(&key->enabled, 1, 0))
 		jump_label_update(key);
 	jump_label_unlock();
 }

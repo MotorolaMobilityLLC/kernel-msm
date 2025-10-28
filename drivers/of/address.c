@@ -50,7 +50,7 @@ struct of_bus {
 	u64		(*map)(__be32 *addr, const __be32 *range,
 				int na, int ns, int pna);
 	int		(*translate)(__be32 *addr, u64 offset, int na);
-	int		flag_cells;
+	bool	has_flags;
 	unsigned int	(*get_flags)(const __be32 *addr);
 };
 
@@ -95,41 +95,9 @@ static int of_bus_default_translate(__be32 *addr, u64 offset, int na)
 	return 0;
 }
 
-static unsigned int of_bus_default_flags_get_flags(const __be32 *addr)
-{
-	return of_read_number(addr, 1);
-}
-
 static unsigned int of_bus_default_get_flags(const __be32 *addr)
 {
 	return IORESOURCE_MEM;
-}
-
-static u64 of_bus_default_flags_map(__be32 *addr, const __be32 *range, int na,
-				    int ns, int pna)
-{
-	u64 cp, s, da;
-
-	/* Check that flags match */
-	if (*addr != *range)
-		return OF_BAD_ADDR;
-
-	/* Read address values, skipping high cell */
-	cp = of_read_number(range + 1, na - 1);
-	s  = of_read_number(range + na + pna, ns);
-	da = of_read_number(addr + 1, na - 1);
-
-	pr_debug("default flags map, cp=%llx, s=%llx, da=%llx\n", cp, s, da);
-
-	if (da < cp || da >= (cp + s))
-		return OF_BAD_ADDR;
-	return da - cp;
-}
-
-static int of_bus_default_flags_translate(__be32 *addr, u64 offset, int na)
-{
-	/* Keep "flags" part (high cell) in translated address */
-	return of_bus_default_translate(addr + 1, offset, na - 1);
 }
 
 #ifdef CONFIG_PCI
@@ -221,6 +189,10 @@ static u64 of_bus_pci_map(__be32 *addr, const __be32 *range, int na, int ns,
 	return da - cp;
 }
 
+static int of_bus_pci_translate(__be32 *addr, u64 offset, int na)
+{
+	return of_bus_default_translate(addr + 1, offset, na - 1);
+}
 #endif /* CONFIG_PCI */
 
 int of_pci_address_to_resource(struct device_node *dev, int bar,
@@ -330,6 +302,11 @@ static u64 of_bus_isa_map(__be32 *addr, const __be32 *range, int na, int ns,
 	return da - cp;
 }
 
+static int of_bus_isa_translate(__be32 *addr, u64 offset, int na)
+{
+	return of_bus_default_translate(addr + 1, offset, na - 1);
+}
+
 static unsigned int of_bus_isa_get_flags(const __be32 *addr)
 {
 	unsigned int flags = 0;
@@ -340,11 +317,6 @@ static unsigned int of_bus_isa_get_flags(const __be32 *addr)
 	else
 		flags |= IORESOURCE_MEM;
 	return flags;
-}
-
-static int of_bus_default_flags_match(struct device_node *np)
-{
-	return of_bus_n_addr_cells(np) == 3;
 }
 
 /*
@@ -360,8 +332,8 @@ static struct of_bus of_busses[] = {
 		.match = of_bus_pci_match,
 		.count_cells = of_bus_pci_count_cells,
 		.map = of_bus_pci_map,
-		.translate = of_bus_default_flags_translate,
-		.flag_cells = 1,
+		.translate = of_bus_pci_translate,
+		.has_flags = true,
 		.get_flags = of_bus_pci_get_flags,
 	},
 #endif /* CONFIG_PCI */
@@ -372,20 +344,9 @@ static struct of_bus of_busses[] = {
 		.match = of_bus_isa_match,
 		.count_cells = of_bus_isa_count_cells,
 		.map = of_bus_isa_map,
-		.translate = of_bus_default_flags_translate,
-		.flag_cells = 1,
+		.translate = of_bus_isa_translate,
+		.has_flags = true,
 		.get_flags = of_bus_isa_get_flags,
-	},
-	/* Default with flags cell */
-	{
-		.name = "default-flags",
-		.addresses = "reg",
-		.match = of_bus_default_flags_match,
-		.count_cells = of_bus_default_count_cells,
-		.map = of_bus_default_flags_map,
-		.translate = of_bus_default_flags_translate,
-		.flag_cells = 1,
-		.get_flags = of_bus_default_flags_get_flags,
 	},
 	/* Default */
 	{
@@ -466,8 +427,7 @@ static int of_translate_one(struct device_node *parent, struct of_bus *bus,
 	}
 	if (ranges == NULL || rlen == 0) {
 		offset = of_read_number(addr, na);
-		/* set address to zero, pass flags through */
-		memset(addr + pbus->flag_cells, 0, (pna - pbus->flag_cells) * 4);
+		memset(addr, 0, pna * 4);
 		pr_debug("empty ranges; 1:1 translation\n");
 		goto finish;
 	}
@@ -635,7 +595,7 @@ struct device_node *__of_get_dma_parent(const struct device_node *np)
 	if (ret < 0)
 		return of_get_parent(np);
 
-	return args.np;
+	return of_node_get(args.np);
 }
 #endif
 
@@ -795,7 +755,7 @@ struct of_pci_range *of_pci_range_parser_one(struct of_pci_range_parser *parser,
 	int na = parser->na;
 	int ns = parser->ns;
 	int np = parser->pna + na + ns;
-	int busflag_na = parser->bus->flag_cells;
+	int busflag_na = 0;
 
 	if (!range)
 		return NULL;
@@ -804,6 +764,10 @@ struct of_pci_range *of_pci_range_parser_one(struct of_pci_range_parser *parser,
 		return NULL;
 
 	range->flags = parser->bus->get_flags(parser->range);
+
+	/* A extra cell for resource flags */
+	if (parser->bus->has_flags)
+		busflag_na = 1;
 
 	range->bus_addr = of_read_number(parser->range + busflag_na, na - busflag_na);
 

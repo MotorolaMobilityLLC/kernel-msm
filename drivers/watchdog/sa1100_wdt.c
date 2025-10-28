@@ -191,8 +191,9 @@ static int sa1100dog_probe(struct platform_device *pdev)
 	if (!res)
 		return -ENXIO;
 	reg_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-	if (!reg_base)
-		return -ENOMEM;
+	ret = PTR_ERR_OR_ZERO(reg_base);
+	if (ret)
+		return ret;
 
 	clk = clk_get(NULL, "OSTIMER0");
 	if (IS_ERR(clk)) {

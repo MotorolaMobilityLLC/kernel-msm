@@ -474,25 +474,24 @@ struct sgx_epc_page *__sgx_alloc_epc_page(void)
 {
 	struct sgx_epc_page *page;
 	int nid_of_current = numa_node_id();
-	int nid_start, nid;
+	int nid = nid_of_current;
 
-	/*
-	 * Try local node first. If it doesn't have an EPC section,
-	 * fall back to the non-local NUMA nodes.
-	 */
-	if (node_isset(nid_of_current, sgx_numa_mask))
-		nid_start = nid_of_current;
-	else
-		nid_start = next_node_in(nid_of_current, sgx_numa_mask);
+	if (node_isset(nid_of_current, sgx_numa_mask)) {
+		page = __sgx_alloc_epc_page_from_node(nid_of_current);
+		if (page)
+			return page;
+	}
 
-	nid = nid_start;
-	do {
+	/* Fall back to the non-local NUMA nodes: */
+	while (true) {
+		nid = next_node_in(nid, sgx_numa_mask);
+		if (nid == nid_of_current)
+			break;
+
 		page = __sgx_alloc_epc_page_from_node(nid);
 		if (page)
 			return page;
-
-		nid = next_node_in(nid, sgx_numa_mask);
-	} while (nid != nid_start);
+	}
 
 	return ERR_PTR(-ENOMEM);
 }

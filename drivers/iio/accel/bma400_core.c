@@ -1245,8 +1245,7 @@ static int bma400_activity_event_en(struct bma400_data *data,
 static int bma400_tap_event_en(struct bma400_data *data,
 			       enum iio_event_direction dir, int state)
 {
-	unsigned int mask;
-	unsigned int field_value = 0;
+	unsigned int mask, field_value;
 	int ret;
 
 	/*

@@ -102,7 +102,7 @@ nogood:
 			offset -= master->erasesize;
 		}
 	} else {
-		offset = (unsigned long) directory * master->erasesize;
+		offset = directory * master->erasesize;
 		while (mtd_block_isbad(master, offset)) {
 			offset += master->erasesize;
 			if (offset == master->size)

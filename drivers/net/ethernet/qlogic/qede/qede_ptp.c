@@ -28,19 +28,16 @@ struct qede_ptp {
 };
 
 /**
- * qede_ptp_adjfine() - Adjust the frequency of the PTP cycle counter.
+ * qede_ptp_adjfreq() - Adjust the frequency of the PTP cycle counter.
  *
  * @info: The PTP clock info structure.
- * @scaled_ppm: Scaled parts per million adjustment from base.
- *
- * Scaled parts per million is ppm with a 16-bit binary fractional field.
+ * @ppb: Parts per billion adjustment from base.
  *
  * Return: Zero on success, negative errno otherwise.
  */
-static int qede_ptp_adjfine(struct ptp_clock_info *info, long scaled_ppm)
+static int qede_ptp_adjfreq(struct ptp_clock_info *info, s32 ppb)
 {
 	struct qede_ptp *ptp = container_of(info, struct qede_ptp, clock_info);
-	s32 ppb = scaled_ppm_to_ppb(scaled_ppm);
 	struct qede_dev *edev = ptp->edev;
 	int rc;
 
@@ -50,7 +47,7 @@ static int qede_ptp_adjfine(struct ptp_clock_info *info, long scaled_ppm)
 		rc = ptp->ops->adjfreq(edev->cdev, ppb);
 		spin_unlock_bh(&ptp->lock);
 	} else {
-		DP_ERR(edev, "PTP adjfine called while interface is down\n");
+		DP_ERR(edev, "PTP adjfreq called while interface is down\n");
 		rc = -EFAULT;
 	}
 	__qede_unlock(edev);
@@ -465,7 +462,7 @@ int qede_ptp_enable(struct qede_dev *edev)
 	ptp->clock_info.n_ext_ts = 0;
 	ptp->clock_info.n_per_out = 0;
 	ptp->clock_info.pps = 0;
-	ptp->clock_info.adjfine = qede_ptp_adjfine;
+	ptp->clock_info.adjfreq = qede_ptp_adjfreq;
 	ptp->clock_info.adjtime = qede_ptp_adjtime;
 	ptp->clock_info.gettime64 = qede_ptp_gettime;
 	ptp->clock_info.settime64 = qede_ptp_settime;

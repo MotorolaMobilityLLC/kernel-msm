@@ -278,10 +278,6 @@ bridge()
 cleanup()
 {
 	pre_cleanup
-
-	ip link set $h2 down
-	ip link set $h1 down
-
 	vrf_cleanup
 }
 

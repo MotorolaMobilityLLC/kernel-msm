@@ -38,14 +38,6 @@ void sctp_inq_init(struct sctp_inq *queue)
 	INIT_WORK(&queue->immediate, NULL);
 }
 
-/* Properly release the chunk which is being worked on. */
-static inline void sctp_inq_chunk_free(struct sctp_chunk *chunk)
-{
-	if (chunk->head_skb)
-		chunk->skb = chunk->head_skb;
-	sctp_chunk_free(chunk);
-}
-
 /* Release the memory associated with an SCTP inqueue.  */
 void sctp_inq_free(struct sctp_inq *queue)
 {
@@ -61,7 +53,7 @@ void sctp_inq_free(struct sctp_inq *queue)
 	 * free it as well.
 	 */
 	if (queue->in_progress) {
-		sctp_inq_chunk_free(queue->in_progress);
+		sctp_chunk_free(queue->in_progress);
 		queue->in_progress = NULL;
 	}
 }
@@ -138,7 +130,9 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
 				goto new_skb;
 			}
 
-			sctp_inq_chunk_free(chunk);
+			if (chunk->head_skb)
+				chunk->skb = chunk->head_skb;
+			sctp_chunk_free(chunk);
 			chunk = queue->in_progress = NULL;
 		} else {
 			/* Nothing to do. Next chunk in the packet, please. */

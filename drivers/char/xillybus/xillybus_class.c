@@ -227,15 +227,14 @@ int xillybus_find_inode(struct inode *inode,
 			break;
 		}
 
-	if (!unit) {
-		mutex_unlock(&unit_mutex);
+	mutex_unlock(&unit_mutex);
+
+	if (!unit)
 		return -ENODEV;
-	}
 
 	*private_data = unit->private_data;
 	*index = minor - unit->lowest_minor;
 
-	mutex_unlock(&unit_mutex);
 	return 0;
 }
 EXPORT_SYMBOL(xillybus_find_inode);

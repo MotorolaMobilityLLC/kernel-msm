@@ -89,22 +89,6 @@ static int map_benchmark_thread(void *data)
 		atomic64_add(map_sq, &map->sum_sq_map);
 		atomic64_add(unmap_sq, &map->sum_sq_unmap);
 		atomic64_inc(&map->loops);
-
-		/*
-		 * We may test for a long time so periodically check whether
-		 * we need to schedule to avoid starving the others. Otherwise
-		 * we may hangup the kernel in a non-preemptible kernel when
-		 * the test kthreads number >= CPU number, the test kthreads
-		 * will run endless on every CPU since the thread resposible
-		 * for notifying the kthread stop (in do_map_benchmark())
-		 * could not be scheduled.
-		 *
-		 * Note this may degrade the test concurrency since the test
-		 * threads may need to share the CPU time with other load
-		 * in the system. So it's recommended to run this benchmark
-		 * on an idle system.
-		 */
-		cond_resched();
 	}
 
 out:
@@ -117,6 +101,7 @@ static int do_map_benchmark(struct map_benchmark_data *map)
 	struct task_struct **tsk;
 	int threads = map->bparam.threads;
 	int node = map->bparam.node;
+	const cpumask_t *cpu_mask = cpumask_of_node(node);
 	u64 loops;
 	int ret = 0;
 	int i;
@@ -137,7 +122,7 @@ static int do_map_benchmark(struct map_benchmark_data *map)
 		}
 
 		if (node != NUMA_NO_NODE)
-			kthread_bind_mask(tsk[i], cpumask_of_node(node));
+			kthread_bind_mask(tsk[i], cpu_mask);
 	}
 
 	/* clear the old value in the previous benchmark */
@@ -223,8 +208,7 @@ static long map_benchmark_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		if (map->bparam.node != NUMA_NO_NODE &&
-		    (map->bparam.node < 0 || map->bparam.node >= MAX_NUMNODES ||
-		     !node_possible(map->bparam.node))) {
+		    !node_possible(map->bparam.node)) {
 			pr_err("invalid numa node\n");
 			return -EINVAL;
 		}
@@ -268,9 +252,6 @@ static long map_benchmark_ioctl(struct file *file, unsigned int cmd,
 		 * dma_mask changed by benchmark
 		 */
 		dma_set_mask(map->dev, old_dma_mask);
-
-		if (ret)
-			return ret;
 		break;
 	default:
 		return -EINVAL;

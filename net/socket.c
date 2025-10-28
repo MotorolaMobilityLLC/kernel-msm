@@ -1538,13 +1538,8 @@ int __sock_create(struct net *net, int family, int type, int protocol,
 	rcu_read_unlock();
 
 	err = pf->create(net, sock, protocol, kern);
-	if (err < 0) {
-		/* ->create should release the allocated sock->sk object on error
-		 * but it may leave the dangling pointer
-		 */
-		sock->sk = NULL;
+	if (err < 0)
 		goto out_module_put;
-	}
 
 	/*
 	 * Now to bump the refcnt of the [loadable] module that owns this

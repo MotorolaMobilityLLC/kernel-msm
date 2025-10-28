@@ -701,6 +701,7 @@ load_data(struct snd_sf_list *sflist, const void __user *data, long count)
 	struct snd_soundfont *sf;
 	struct soundfont_sample_info sample_info;
 	struct snd_sf_sample *sp;
+	long off;
 
 	/* patch must be opened */
 	sf = sflist->currsf;
@@ -710,16 +711,12 @@ load_data(struct snd_sf_list *sflist, const void __user *data, long count)
 	if (is_special_type(sf->type))
 		return -EINVAL;
 
-	if (count < (long)sizeof(sample_info)) {
-		return -EINVAL;
-	}
 	if (copy_from_user(&sample_info, data, sizeof(sample_info)))
 		return -EFAULT;
-	data += sizeof(sample_info);
-	count -= sizeof(sample_info);
 
-	// SoundFont uses S16LE samples.
-	if (sample_info.size * 2 != count)
+	off = sizeof(sample_info);
+
+	if (sample_info.size != (count-off)/2)
 		return -EINVAL;
 
 	/* Check for dup */
@@ -747,7 +744,7 @@ load_data(struct snd_sf_list *sflist, const void __user *data, long count)
 		int  rc;
 		rc = sflist->callback.sample_new
 			(sflist->callback.private_data, sp, sflist->memhdr,
-			 data, count);
+			 data + off, count - off);
 		if (rc < 0) {
 			sf_sample_delete(sflist, sf, sp);
 			return rc;
@@ -960,11 +957,9 @@ load_guspatch(struct snd_sf_list *sflist, const char __user *data,
 	}
 	if (copy_from_user(&patch, data, sizeof(patch)))
 		return -EFAULT;
+	
 	count -= sizeof(patch);
 	data += sizeof(patch);
-
-	if ((patch.len << (patch.mode & WAVE_16_BITS ? 1 : 0)) != count)
-		return -EINVAL;
 
 	sf = newsf(sflist, SNDRV_SFNT_PAT_TYPE_GUS|SNDRV_SFNT_PAT_SHARED, NULL);
 	if (sf == NULL)

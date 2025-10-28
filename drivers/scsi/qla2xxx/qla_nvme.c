@@ -29,10 +29,7 @@ int qla_nvme_register_remote(struct scsi_qla_host *vha, struct fc_port *fcport)
 		return 0;
 	}
 
-	if (qla_nvme_register_hba(vha))
-		return 0;
-
-	if (!vha->nvme_local_port)
+	if (!vha->nvme_local_port && qla_nvme_register_hba(vha))
 		return 0;
 
 	if (!(fcport->nvme_prli_service_param &

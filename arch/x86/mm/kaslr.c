@@ -47,23 +47,12 @@ static const unsigned long vaddr_end = CPU_ENTRY_AREA_BASE;
  */
 static __initdata struct kaslr_memory_region {
 	unsigned long *base;
-	unsigned long *end;
 	unsigned long size_tb;
 } kaslr_regions[] = {
-	{
-		.base	= &page_offset_base,
-		.end	= &physmem_end,
-	},
-	{
-		.base	= &vmalloc_base,
-	},
-	{
-		.base	= &vmemmap_base,
-	},
+	{ &page_offset_base, 0 },
+	{ &vmalloc_base, 0 },
+	{ &vmemmap_base, 0 },
 };
-
-/* The end of the possible address space for physical memory */
-unsigned long physmem_end __ro_after_init;
 
 /* Get size in bytes used by the memory region */
 static inline unsigned long get_padding(struct kaslr_memory_region *region)
@@ -93,8 +82,6 @@ void __init kernel_randomize_memory(void)
 	BUILD_BUG_ON(vaddr_end != CPU_ENTRY_AREA_BASE);
 	BUILD_BUG_ON(vaddr_end > __START_KERNEL_map);
 
-	/* Preset the end of the possible address space for physical memory */
-	physmem_end = ((1ULL << MAX_PHYSMEM_BITS) - 1);
 	if (!kaslr_memory_enabled())
 		return;
 
@@ -141,18 +128,11 @@ void __init kernel_randomize_memory(void)
 		vaddr += entropy;
 		*kaslr_regions[i].base = vaddr;
 
-		/* Calculate the end of the region */
-		vaddr += get_padding(&kaslr_regions[i]);
 		/*
-		 * KASLR trims the maximum possible size of the
-		 * direct-map. Update the physmem_end boundary.
-		 * No rounding required as the region starts
-		 * PUD aligned and size is in units of TB.
+		 * Jump the region and add a minimum padding based on
+		 * randomization alignment.
 		 */
-		if (kaslr_regions[i].end)
-			*kaslr_regions[i].end = __pa_nodebug(vaddr - 1);
-
-		/* Add a minimum padding based on randomization alignment. */
+		vaddr += get_padding(&kaslr_regions[i]);
 		vaddr = round_up(vaddr + 1, PUD_SIZE);
 		remain_entropy -= entropy;
 	}

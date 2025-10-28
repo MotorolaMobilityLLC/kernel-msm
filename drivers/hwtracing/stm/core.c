@@ -868,11 +868,8 @@ int stm_register_device(struct device *parent, struct stm_data *stm_data,
 		return -ENOMEM;
 
 	stm->major = register_chrdev(0, stm_data->name, &stm_fops);
-	if (stm->major < 0) {
-		err = stm->major;
-		vfree(stm);
-		return err;
-	}
+	if (stm->major < 0)
+		goto err_free;
 
 	device_initialize(&stm->dev);
 	stm->dev.devt = MKDEV(stm->major, 0);
@@ -916,8 +913,10 @@ int stm_register_device(struct device *parent, struct stm_data *stm_data,
 err_device:
 	unregister_chrdev(stm->major, stm_data->name);
 
-	/* calls stm_device_release() */
+	/* matches device_initialize() above */
 	put_device(&stm->dev);
+err_free:
+	vfree(stm);
 
 	return err;
 }

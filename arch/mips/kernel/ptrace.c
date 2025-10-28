@@ -31,7 +31,6 @@
 #include <linux/seccomp.h>
 #include <linux/ftrace.h>
 
-#include <asm/branch.h>
 #include <asm/byteorder.h>
 #include <asm/cpu.h>
 #include <asm/cpu-info.h>
@@ -48,12 +47,6 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/syscalls.h>
-
-unsigned long exception_ip(struct pt_regs *regs)
-{
-	return exception_epc(regs);
-}
-EXPORT_SYMBOL(exception_ip);
 
 /*
  * Called by kernel/ptrace.c when detaching..
@@ -1316,13 +1309,16 @@ long arch_ptrace(struct task_struct *child, long request,
  * Notification of system call entry/exit
  * - triggered by current->work.syscall_trace
  */
-asmlinkage long syscall_trace_enter(struct pt_regs *regs)
+asmlinkage long syscall_trace_enter(struct pt_regs *regs, long syscall)
 {
 	user_exit();
+
+	current_thread_info()->syscall = syscall;
 
 	if (test_thread_flag(TIF_SYSCALL_TRACE)) {
 		if (ptrace_report_syscall_entry(regs))
 			return -1;
+		syscall = current_thread_info()->syscall;
 	}
 
 #ifdef CONFIG_SECCOMP
@@ -1331,7 +1327,7 @@ asmlinkage long syscall_trace_enter(struct pt_regs *regs)
 		struct seccomp_data sd;
 		unsigned long args[6];
 
-		sd.nr = current_thread_info()->syscall;
+		sd.nr = syscall;
 		sd.arch = syscall_get_arch(current);
 		syscall_get_arguments(current, regs, args);
 		for (i = 0; i < 6; i++)
@@ -1341,23 +1337,23 @@ asmlinkage long syscall_trace_enter(struct pt_regs *regs)
 		ret = __secure_computing(&sd);
 		if (ret == -1)
 			return ret;
+		syscall = current_thread_info()->syscall;
 	}
 #endif
 
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
 		trace_sys_enter(regs, regs->regs[2]);
 
-	audit_syscall_entry(current_thread_info()->syscall,
-			    regs->regs[4], regs->regs[5],
+	audit_syscall_entry(syscall, regs->regs[4], regs->regs[5],
 			    regs->regs[6], regs->regs[7]);
 
 	/*
 	 * Negative syscall numbers are mistaken for rejected syscalls, but
 	 * won't have had the return value set appropriately, so we do so now.
 	 */
-	if (current_thread_info()->syscall < 0)
+	if (syscall < 0)
 		syscall_set_return_value(current, regs, -ENOSYS, 0);
-	return current_thread_info()->syscall;
+	return syscall;
 }
 
 /*

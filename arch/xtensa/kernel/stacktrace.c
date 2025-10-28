@@ -12,8 +12,6 @@
 #include <linux/sched.h>
 #include <linux/stacktrace.h>
 
-#include <asm/ftrace.h>
-#include <asm/sections.h>
 #include <asm/stacktrace.h>
 #include <asm/traps.h>
 #include <linux/uaccess.h>
@@ -190,7 +188,7 @@ void walk_stackframe(unsigned long *sp,
 		if (a1 <= (unsigned long)sp)
 			break;
 
-		frame.pc = MAKE_PC_FROM_RA(a0, _text);
+		frame.pc = MAKE_PC_FROM_RA(a0, a1);
 		frame.sp = a1;
 
 		if (fn(&frame, data))

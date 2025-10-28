@@ -52,7 +52,7 @@ static struct fpga_region *fpga_region_get(struct fpga_region *region)
 	}
 
 	get_device(dev);
-	if (!try_module_get(region->ops_owner)) {
+	if (!try_module_get(dev->parent->driver->owner)) {
 		put_device(dev);
 		mutex_unlock(&region->mutex);
 		return ERR_PTR(-ENODEV);
@@ -74,7 +74,7 @@ static void fpga_region_put(struct fpga_region *region)
 
 	dev_dbg(dev, "put\n");
 
-	module_put(region->ops_owner);
+	module_put(dev->parent->driver->owner);
 	put_device(dev);
 	mutex_unlock(&region->mutex);
 }
@@ -180,16 +180,14 @@ static struct attribute *fpga_region_attrs[] = {
 ATTRIBUTE_GROUPS(fpga_region);
 
 /**
- * __fpga_region_register_full - create and register an FPGA Region device
+ * fpga_region_register_full - create and register an FPGA Region device
  * @parent: device parent
  * @info: parameters for FPGA Region
- * @owner: module containing the get_bridges function
  *
  * Return: struct fpga_region or ERR_PTR()
  */
 struct fpga_region *
-__fpga_region_register_full(struct device *parent, const struct fpga_region_info *info,
-			    struct module *owner)
+fpga_region_register_full(struct device *parent, const struct fpga_region_info *info)
 {
 	struct fpga_region *region;
 	int id, ret = 0;
@@ -214,7 +212,6 @@ __fpga_region_register_full(struct device *parent, const struct fpga_region_info
 	region->compat_id = info->compat_id;
 	region->priv = info->priv;
 	region->get_bridges = info->get_bridges;
-	region->ops_owner = owner;
 
 	mutex_init(&region->mutex);
 	INIT_LIST_HEAD(&region->bridge_list);
@@ -243,14 +240,13 @@ err_free:
 
 	return ERR_PTR(ret);
 }
-EXPORT_SYMBOL_GPL(__fpga_region_register_full);
+EXPORT_SYMBOL_GPL(fpga_region_register_full);
 
 /**
- * __fpga_region_register - create and register an FPGA Region device
+ * fpga_region_register - create and register an FPGA Region device
  * @parent: device parent
  * @mgr: manager that programs this region
  * @get_bridges: optional function to get bridges to a list
- * @owner: module containing the get_bridges function
  *
  * This simple version of the register function should be sufficient for most users.
  * The fpga_region_register_full() function is available for users that need to
@@ -259,17 +255,17 @@ EXPORT_SYMBOL_GPL(__fpga_region_register_full);
  * Return: struct fpga_region or ERR_PTR()
  */
 struct fpga_region *
-__fpga_region_register(struct device *parent, struct fpga_manager *mgr,
-		       int (*get_bridges)(struct fpga_region *), struct module *owner)
+fpga_region_register(struct device *parent, struct fpga_manager *mgr,
+		     int (*get_bridges)(struct fpga_region *))
 {
 	struct fpga_region_info info = { 0 };
 
 	info.mgr = mgr;
 	info.get_bridges = get_bridges;
 
-	return __fpga_region_register_full(parent, &info, owner);
+	return fpga_region_register_full(parent, &info);
 }
-EXPORT_SYMBOL_GPL(__fpga_region_register);
+EXPORT_SYMBOL_GPL(fpga_region_register);
 
 /**
  * fpga_region_unregister - unregister an FPGA region

@@ -59,8 +59,7 @@ static int inv_icm42600_probe(struct spi_device *spi)
 		return -EINVAL;
 	chip = (uintptr_t)match;
 
-	/* use SPI specific regmap */
-	regmap = devm_regmap_init_spi(spi, &inv_icm42600_spi_regmap_config);
+	regmap = devm_regmap_init_spi(spi, &inv_icm42600_regmap_config);
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 

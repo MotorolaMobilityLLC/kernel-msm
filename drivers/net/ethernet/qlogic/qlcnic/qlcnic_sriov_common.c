@@ -454,10 +454,8 @@ static int qlcnic_sriov_set_guest_vlan_mode(struct qlcnic_adapter *adapter,
 
 	num_vlans = sriov->num_allowed_vlans;
 	sriov->allowed_vlans = kcalloc(num_vlans, sizeof(u16), GFP_KERNEL);
-	if (!sriov->allowed_vlans) {
-		qlcnic_sriov_free_vlans(adapter);
+	if (!sriov->allowed_vlans)
 		return -ENOMEM;
-	}
 
 	vlans = (u16 *)&cmd->rsp.arg[3];
 	for (i = 0; i < num_vlans; i++)
@@ -2169,10 +2167,8 @@ int qlcnic_sriov_alloc_vlans(struct qlcnic_adapter *adapter)
 		vf = &sriov->vf_info[i];
 		vf->sriov_vlans = kcalloc(sriov->num_allowed_vlans,
 					  sizeof(*vf->sriov_vlans), GFP_KERNEL);
-		if (!vf->sriov_vlans) {
-			qlcnic_sriov_free_vlans(adapter);
+		if (!vf->sriov_vlans)
 			return -ENOMEM;
-		}
 	}
 
 	return 0;

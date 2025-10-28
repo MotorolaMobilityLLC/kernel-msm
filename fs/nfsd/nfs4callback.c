@@ -297,17 +297,17 @@ static int decode_cb_compound4res(struct xdr_stream *xdr,
 	u32 length;
 	__be32 *p;
 
-	p = xdr_inline_decode(xdr, XDR_UNIT);
+	p = xdr_inline_decode(xdr, 4 + 4);
 	if (unlikely(p == NULL))
 		goto out_overflow;
-	hdr->status = be32_to_cpup(p);
+	hdr->status = be32_to_cpup(p++);
 	/* Ignore the tag */
-	if (xdr_stream_decode_u32(xdr, &length) < 0)
+	length = be32_to_cpup(p++);
+	p = xdr_inline_decode(xdr, length + 4);
+	if (unlikely(p == NULL))
 		goto out_overflow;
-	if (xdr_inline_decode(xdr, length) == NULL)
-		goto out_overflow;
-	if (xdr_stream_decode_u32(xdr, &hdr->nops) < 0)
-		goto out_overflow;
+	p += XDR_QUADLEN(length);
+	hdr->nops = be32_to_cpup(p);
 	return 0;
 out_overflow:
 	return -EIO;
@@ -986,7 +986,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
 		args.authflavor = clp->cl_cred.cr_flavor;
 		clp->cl_cb_ident = conn->cb_ident;
 	} else {
-		if (!conn->cb_xprt || !ses)
+		if (!conn->cb_xprt)
 			return -EINVAL;
 		clp->cl_cb_session = ses;
 		args.bc_xprt = conn->cb_xprt;
@@ -1202,7 +1202,6 @@ static bool nfsd4_cb_sequence_done(struct rpc_task *task, struct nfsd4_callback 
 		ret = false;
 		break;
 	case -NFS4ERR_DELAY:
-		cb->cb_seq_status = 1;
 		if (!rpc_restart_call(task))
 			goto out;
 
@@ -1410,11 +1409,8 @@ nfsd4_run_cb_work(struct work_struct *work)
 		nfsd4_process_cb_update(cb);
 
 	clnt = clp->cl_cb_client;
-	if (!clnt || clp->cl_state == NFSD4_COURTESY) {
-		/*
-		 * Callback channel broken, client killed or
-		 * nfs4_client in courtesy state; give up.
-		 */
+	if (!clnt) {
+		/* Callback channel broken, or client killed; give up: */
 		nfsd41_destroy_cb(cb);
 		return;
 	}

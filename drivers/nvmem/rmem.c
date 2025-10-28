@@ -46,10 +46,7 @@ static int rmem_read(void *context, unsigned int offset,
 
 	memunmap(addr);
 
-	if (count < 0)
-		return count;
-
-	return count == bytes ? 0 : -EIO;
+	return count;
 }
 
 static int rmem_probe(struct platform_device *pdev)

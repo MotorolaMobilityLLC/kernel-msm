@@ -84,8 +84,6 @@ struct pmbus_data {
 
 	u32 flags;		/* from platform data */
 
-	u8 revision;	/* The PMBus revision the device is compliant with */
-
 	int exponent[PMBUS_PAGES];
 				/* linear mode: exponent for output voltages */
 
@@ -1095,14 +1093,9 @@ static int pmbus_get_boolean(struct i2c_client *client, struct pmbus_boolean *b,
 
 	regval = status & mask;
 	if (regval) {
-		if (data->revision >= PMBUS_REV_12) {
-			ret = _pmbus_write_byte_data(client, page, reg, regval);
-			if (ret)
-				goto unlock;
-		} else {
-			pmbus_clear_fault_page(client, page);
-		}
-
+		ret = _pmbus_write_byte_data(client, page, reg, regval);
+		if (ret)
+			goto unlock;
 	}
 	if (s1 && s2) {
 		s64 v1, v2;
@@ -2645,10 +2638,6 @@ static int pmbus_init_common(struct i2c_client *client, struct pmbus_data *data,
 		if (ret > 0 && (ret & PB_WP_ANY))
 			data->flags |= PMBUS_WRITE_PROTECTED | PMBUS_SKIP_STATUS_CHECK;
 	}
-
-	ret = i2c_smbus_read_byte_data(client, PMBUS_REVISION);
-	if (ret >= 0)
-		data->revision = ret;
 
 	if (data->info->pages)
 		pmbus_clear_faults(client);

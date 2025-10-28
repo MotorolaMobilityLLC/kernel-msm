@@ -1883,9 +1883,10 @@ static int hci_sock_setsockopt_old(struct socket *sock, int level, int optname,
 
 	switch (optname) {
 	case HCI_DATA_DIR:
-		err = bt_copy_from_sockptr(&opt, sizeof(opt), optval, len);
-		if (err)
+		if (copy_from_sockptr(&opt, optval, sizeof(opt))) {
+			err = -EFAULT;
 			break;
+		}
 
 		if (opt)
 			hci_pi(sk)->cmsg_mask |= HCI_CMSG_DIR;
@@ -1894,9 +1895,10 @@ static int hci_sock_setsockopt_old(struct socket *sock, int level, int optname,
 		break;
 
 	case HCI_TIME_STAMP:
-		err = bt_copy_from_sockptr(&opt, sizeof(opt), optval, len);
-		if (err)
+		if (copy_from_sockptr(&opt, optval, sizeof(opt))) {
+			err = -EFAULT;
 			break;
+		}
 
 		if (opt)
 			hci_pi(sk)->cmsg_mask |= HCI_CMSG_TSTAMP;
@@ -1914,9 +1916,11 @@ static int hci_sock_setsockopt_old(struct socket *sock, int level, int optname,
 			uf.event_mask[1] = *((u32 *) f->event_mask + 1);
 		}
 
-		err = bt_copy_from_sockptr(&uf, sizeof(uf), optval, len);
-		if (err)
+		len = min_t(unsigned int, len, sizeof(uf));
+		if (copy_from_sockptr(&uf, optval, len)) {
+			err = -EFAULT;
 			break;
+		}
 
 		if (!capable(CAP_NET_RAW)) {
 			uf.type_mask &= hci_sec_filter.type_mask;
@@ -1975,9 +1979,10 @@ static int hci_sock_setsockopt(struct socket *sock, int level, int optname,
 			goto done;
 		}
 
-		err = bt_copy_from_sockptr(&opt, sizeof(opt), optval, len);
-		if (err)
+		if (copy_from_sockptr(&opt, optval, sizeof(opt))) {
+			err = -EFAULT;
 			break;
+		}
 
 		hci_pi(sk)->mtu = opt;
 		break;
@@ -2139,12 +2144,18 @@ static int hci_sock_create(struct net *net, struct socket *sock, int protocol,
 
 	sock->ops = &hci_sock_ops;
 
-	sk = bt_sock_alloc(net, sock, &hci_sk_proto, protocol, GFP_ATOMIC,
-			   kern);
+	sk = sk_alloc(net, PF_BLUETOOTH, GFP_ATOMIC, &hci_sk_proto, kern);
 	if (!sk)
 		return -ENOMEM;
 
+	sock_init_data(sock, sk);
+
+	sock_reset_flag(sk, SOCK_ZAPPED);
+
+	sk->sk_protocol = protocol;
+
 	sock->state = SS_UNCONNECTED;
+	sk->sk_state = BT_OPEN;
 	sk->sk_destruct = hci_sock_destruct;
 
 	bt_sock_link(&hci_sk_list, sk);

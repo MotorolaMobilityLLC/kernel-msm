@@ -348,8 +348,6 @@ void *vmw_bo_map_and_cache(struct vmw_buffer_object *vbo)
 	void *virtual;
 	int ret;
 
-	atomic_inc(&vbo->map_count);
-
 	virtual = ttm_kmap_obj_virtual(&vbo->map, &not_used);
 	if (virtual)
 		return virtual;
@@ -372,17 +370,10 @@ void *vmw_bo_map_and_cache(struct vmw_buffer_object *vbo)
  */
 void vmw_bo_unmap(struct vmw_buffer_object *vbo)
 {
-	int map_count;
-
 	if (vbo->map.bo == NULL)
 		return;
 
-	map_count = atomic_dec_return(&vbo->map_count);
-
-	if (!map_count) {
-		ttm_bo_kunmap(&vbo->map);
-		vbo->map.bo = NULL;
-	}
+	ttm_bo_kunmap(&vbo->map);
 }
 
 
@@ -519,7 +510,6 @@ int vmw_bo_init(struct vmw_private *dev_priv,
 	BUILD_BUG_ON(TTM_MAX_BO_PRIORITY <= 3);
 	vmw_bo->base.priority = 3;
 	vmw_bo->res_tree = RB_ROOT;
-	atomic_set(&vmw_bo->map_count, 0);
 
 	size = ALIGN(size, PAGE_SIZE);
 	drm_gem_private_object_init(vdev, &vmw_bo->base.base, size);

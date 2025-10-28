@@ -237,9 +237,15 @@ static inline void save_vector_registers(void)
 #endif
 }
 
-static inline void setup_low_address_protection(void)
+static inline void setup_control_registers(void)
 {
-	__ctl_set_bit(0, 28);
+	unsigned long reg;
+
+	__ctl_store(reg, 0, 0);
+	reg |= CR0_LOW_ADDRESS_PROTECTION;
+	reg |= CR0_EMERGENCY_SIGNAL_SUBMASK;
+	reg |= CR0_EXTERNAL_CALL_SUBMASK;
+	__ctl_load(reg, 0, 0);
 }
 
 static inline void setup_access_registers(void)
@@ -298,7 +304,7 @@ void __init startup_init(void)
 	save_vector_registers();
 	setup_topology();
 	sclp_early_detect();
-	setup_low_address_protection();
+	setup_control_registers();
 	setup_access_registers();
 	lockdep_on();
 }

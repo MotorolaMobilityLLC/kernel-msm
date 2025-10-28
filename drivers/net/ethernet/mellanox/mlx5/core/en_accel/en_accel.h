@@ -102,14 +102,8 @@ static inline void
 mlx5e_udp_gso_handle_tx_skb(struct sk_buff *skb)
 {
 	int payload_len = skb_shinfo(skb)->gso_size + sizeof(struct udphdr);
-	struct udphdr *udphdr;
 
-	if (skb->encapsulation)
-		udphdr = (struct udphdr *)skb_inner_transport_header(skb);
-	else
-		udphdr = udp_hdr(skb);
-
-	udphdr->len = htons(payload_len);
+	udp_hdr(skb)->len = htons(payload_len);
 }
 
 struct mlx5e_accel_tx_state {

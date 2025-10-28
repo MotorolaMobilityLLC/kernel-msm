@@ -2662,8 +2662,10 @@ static int lookup_one_common(struct user_namespace *mnt_userns,
 	if (!len)
 		return -EACCES;
 
-	if (is_dot_dotdot(name, len))
-		return -EACCES;
+	if (unlikely(name[0] == '.')) {
+		if (len < 2 || (len == 2 && name[1] == '.'))
+			return -EACCES;
+	}
 
 	while (len--) {
 		unsigned int c = *(const unsigned char *)name++;
@@ -5155,9 +5157,10 @@ const char *vfs_get_link(struct dentry *dentry, struct delayed_call *done)
 EXPORT_SYMBOL(vfs_get_link);
 
 /* get the link contents into pagecache */
-static char *__page_get_link(struct dentry *dentry, struct inode *inode,
-			     struct delayed_call *callback)
+const char *page_get_link(struct dentry *dentry, struct inode *inode,
+			  struct delayed_call *callback)
 {
+	char *kaddr;
 	struct page *page;
 	struct address_space *mapping = inode->i_mapping;
 
@@ -5176,23 +5179,8 @@ static char *__page_get_link(struct dentry *dentry, struct inode *inode,
 	}
 	set_delayed_call(callback, page_put_link, page);
 	BUG_ON(mapping_gfp_mask(mapping) & __GFP_HIGHMEM);
-	return page_address(page);
-}
-
-const char *page_get_link_raw(struct dentry *dentry, struct inode *inode,
-			      struct delayed_call *callback)
-{
-	return __page_get_link(dentry, inode, callback);
-}
-EXPORT_SYMBOL_GPL(page_get_link_raw);
-
-const char *page_get_link(struct dentry *dentry, struct inode *inode,
-					struct delayed_call *callback)
-{
-	char *kaddr = __page_get_link(dentry, inode, callback);
-
-	if (!IS_ERR(kaddr))
-		nd_terminate_link(kaddr, inode->i_size, PAGE_SIZE - 1);
+	kaddr = page_address(page);
+	nd_terminate_link(kaddr, inode->i_size, PAGE_SIZE - 1);
 	return kaddr;
 }
 

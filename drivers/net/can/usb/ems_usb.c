@@ -335,14 +335,15 @@ static void ems_usb_rx_err(struct ems_usb *dev, struct ems_cpc_msg *msg)
 	struct net_device_stats *stats = &dev->netdev->stats;
 
 	skb = alloc_can_err_skb(dev->netdev, &cf);
+	if (skb == NULL)
+		return;
 
 	if (msg->type == CPC_MSG_TYPE_CAN_STATE) {
 		u8 state = msg->msg.can_state;
 
 		if (state & SJA1000_SR_BS) {
 			dev->can.state = CAN_STATE_BUS_OFF;
-			if (skb)
-				cf->can_id |= CAN_ERR_BUSOFF;
+			cf->can_id |= CAN_ERR_BUSOFF;
 
 			dev->can.can_stats.bus_off++;
 			can_bus_off(dev->netdev);
@@ -360,53 +361,44 @@ static void ems_usb_rx_err(struct ems_usb *dev, struct ems_cpc_msg *msg)
 
 		/* bus error interrupt */
 		dev->can.can_stats.bus_error++;
+		stats->rx_errors++;
 
-		if (skb) {
-			cf->can_id |= CAN_ERR_PROT | CAN_ERR_BUSERROR;
+		cf->can_id |= CAN_ERR_PROT | CAN_ERR_BUSERROR;
 
-			switch (ecc & SJA1000_ECC_MASK) {
-			case SJA1000_ECC_BIT:
-				cf->data[2] |= CAN_ERR_PROT_BIT;
-				break;
-			case SJA1000_ECC_FORM:
-				cf->data[2] |= CAN_ERR_PROT_FORM;
-				break;
-			case SJA1000_ECC_STUFF:
-				cf->data[2] |= CAN_ERR_PROT_STUFF;
-				break;
-			default:
-				cf->data[3] = ecc & SJA1000_ECC_SEG;
-				break;
-			}
+		switch (ecc & SJA1000_ECC_MASK) {
+		case SJA1000_ECC_BIT:
+			cf->data[2] |= CAN_ERR_PROT_BIT;
+			break;
+		case SJA1000_ECC_FORM:
+			cf->data[2] |= CAN_ERR_PROT_FORM;
+			break;
+		case SJA1000_ECC_STUFF:
+			cf->data[2] |= CAN_ERR_PROT_STUFF;
+			break;
+		default:
+			cf->data[3] = ecc & SJA1000_ECC_SEG;
+			break;
 		}
 
 		/* Error occurred during transmission? */
-		if ((ecc & SJA1000_ECC_DIR) == 0) {
-			stats->tx_errors++;
-			if (skb)
-				cf->data[2] |= CAN_ERR_PROT_TX;
-		} else {
-			stats->rx_errors++;
-		}
+		if ((ecc & SJA1000_ECC_DIR) == 0)
+			cf->data[2] |= CAN_ERR_PROT_TX;
 
-		if (skb && (dev->can.state == CAN_STATE_ERROR_WARNING ||
-			    dev->can.state == CAN_STATE_ERROR_PASSIVE)) {
+		if (dev->can.state == CAN_STATE_ERROR_WARNING ||
+		    dev->can.state == CAN_STATE_ERROR_PASSIVE) {
 			cf->can_id |= CAN_ERR_CRTL;
 			cf->data[1] = (txerr > rxerr) ?
 			    CAN_ERR_CRTL_TX_PASSIVE : CAN_ERR_CRTL_RX_PASSIVE;
 		}
 	} else if (msg->type == CPC_MSG_TYPE_OVERRUN) {
-		if (skb) {
-			cf->can_id |= CAN_ERR_CRTL;
-			cf->data[1] = CAN_ERR_CRTL_RX_OVERFLOW;
-		}
+		cf->can_id |= CAN_ERR_CRTL;
+		cf->data[1] = CAN_ERR_CRTL_RX_OVERFLOW;
 
 		stats->rx_over_errors++;
 		stats->rx_errors++;
 	}
 
-	if (skb)
-		netif_rx(skb);
+	netif_rx(skb);
 }
 
 /*

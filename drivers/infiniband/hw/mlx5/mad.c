@@ -188,8 +188,7 @@ static int process_pma_cmd(struct mlx5_ib_dev *dev, u32 port_num,
 		mdev = dev->mdev;
 		mdev_port_num = 1;
 	}
-	if (MLX5_CAP_GEN(dev->mdev, num_ports) == 1 &&
-	    !mlx5_core_mp_enabled(mdev)) {
+	if (MLX5_CAP_GEN(dev->mdev, num_ports) == 1) {
 		/* set local port to one for Function-Per-Port HCA. */
 		mdev = dev->mdev;
 		mdev_port_num = 1;

@@ -56,7 +56,7 @@ static void rpcif_hb_prepare_read(struct rpcif *rpc, void *to,
 	op.data.nbytes = len;
 	op.data.buf.in = to;
 
-	rpcif_prepare(rpc->dev, &op, NULL, NULL);
+	rpcif_prepare(rpc, &op, NULL, NULL);
 }
 
 static void rpcif_hb_prepare_write(struct rpcif *rpc, unsigned long to,
@@ -70,7 +70,7 @@ static void rpcif_hb_prepare_write(struct rpcif *rpc, unsigned long to,
 	op.data.nbytes = len;
 	op.data.buf.out = from;
 
-	rpcif_prepare(rpc->dev, &op, NULL, NULL);
+	rpcif_prepare(rpc, &op, NULL, NULL);
 }
 
 static u16 rpcif_hb_read16(struct hyperbus_device *hbdev, unsigned long addr)
@@ -81,7 +81,7 @@ static u16 rpcif_hb_read16(struct hyperbus_device *hbdev, unsigned long addr)
 
 	rpcif_hb_prepare_read(&hyperbus->rpc, &data, addr, 2);
 
-	rpcif_manual_xfer(hyperbus->rpc.dev);
+	rpcif_manual_xfer(&hyperbus->rpc);
 
 	return data.x[0];
 }
@@ -94,7 +94,7 @@ static void rpcif_hb_write16(struct hyperbus_device *hbdev, unsigned long addr,
 
 	rpcif_hb_prepare_write(&hyperbus->rpc, addr, &data, 2);
 
-	rpcif_manual_xfer(hyperbus->rpc.dev);
+	rpcif_manual_xfer(&hyperbus->rpc);
 }
 
 static void rpcif_hb_copy_from(struct hyperbus_device *hbdev, void *to,
@@ -105,7 +105,7 @@ static void rpcif_hb_copy_from(struct hyperbus_device *hbdev, void *to,
 
 	rpcif_hb_prepare_read(&hyperbus->rpc, to, from, len);
 
-	rpcif_dirmap_read(hyperbus->rpc.dev, from, len, to);
+	rpcif_dirmap_read(&hyperbus->rpc, from, len, to);
 }
 
 static const struct hyperbus_ops rpcif_hb_ops = {
@@ -130,9 +130,9 @@ static int rpcif_hb_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, hyperbus);
 
-	pm_runtime_enable(hyperbus->rpc.dev);
+	rpcif_enable_rpm(&hyperbus->rpc);
 
-	error = rpcif_hw_init(hyperbus->rpc.dev, true);
+	error = rpcif_hw_init(&hyperbus->rpc, true);
 	if (error)
 		goto out_disable_rpm;
 
@@ -150,29 +150,24 @@ static int rpcif_hb_probe(struct platform_device *pdev)
 	return 0;
 
 out_disable_rpm:
-	pm_runtime_disable(hyperbus->rpc.dev);
+	rpcif_disable_rpm(&hyperbus->rpc);
 	return error;
 }
 
-static void rpcif_hb_remove(struct platform_device *pdev)
+static int rpcif_hb_remove(struct platform_device *pdev)
 {
 	struct rpcif_hyperbus *hyperbus = platform_get_drvdata(pdev);
 
 	hyperbus_unregister_device(&hyperbus->hbdev);
 
-	pm_runtime_disable(hyperbus->rpc.dev);
-}
+	rpcif_disable_rpm(&hyperbus->rpc);
 
-static const struct platform_device_id rpc_if_hyperflash_id_table[] = {
-	{ .name = "rpc-if-hyperflash" },
-	{ /* sentinel */ }
-};
-MODULE_DEVICE_TABLE(platform, rpc_if_hyperflash_id_table);
+	return 0;
+}
 
 static struct platform_driver rpcif_platform_driver = {
 	.probe	= rpcif_hb_probe,
-	.remove_new = rpcif_hb_remove,
-	.id_table = rpc_if_hyperflash_id_table,
+	.remove	= rpcif_hb_remove,
 	.driver	= {
 		.name	= "rpc-if-hyperflash",
 	},

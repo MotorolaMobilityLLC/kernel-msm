@@ -102,12 +102,13 @@ static int fec_ptp_enable_pps(struct fec_enet_private *fep, uint enable)
 	struct timespec64 ts;
 	u64 ns;
 
-	spin_lock_irqsave(&fep->tmreg_lock, flags);
-
-	if (fep->pps_enable == enable) {
-		spin_unlock_irqrestore(&fep->tmreg_lock, flags);
+	if (fep->pps_enable == enable)
 		return 0;
-	}
+
+	fep->pps_channel = DEFAULT_PPS_CHANNEL;
+	fep->reload_period = PPS_OUPUT_RELOAD_PERIOD;
+
+	spin_lock_irqsave(&fep->tmreg_lock, flags);
 
 	if (enable) {
 		/* clear capture or output compare interrupt status if have.
@@ -262,21 +263,18 @@ void fec_ptp_start_cyclecounter(struct net_device *ndev)
 }
 
 /**
- * fec_ptp_adjfine - adjust ptp cycle frequency
+ * fec_ptp_adjfreq - adjust ptp cycle frequency
  * @ptp: the ptp clock structure
- * @scaled_ppm: scaled parts per million adjustment from base
+ * @ppb: parts per billion adjustment from base
  *
  * Adjust the frequency of the ptp cycle counter by the
- * indicated amount from the base frequency.
- *
- * Scaled parts per million is ppm with a 16-bit binary fractional field.
+ * indicated ppb from the base frequency.
  *
  * Because ENET hardware frequency adjust is complex,
  * using software method to do that.
  */
-static int fec_ptp_adjfine(struct ptp_clock_info *ptp, long scaled_ppm)
+static int fec_ptp_adjfreq(struct ptp_clock_info *ptp, s32 ppb)
 {
-	s32 ppb = scaled_ppm_to_ppb(scaled_ppm);
 	unsigned long flags;
 	int neg_adj = 0;
 	u32 i, tmp;
@@ -442,9 +440,6 @@ static int fec_ptp_enable(struct ptp_clock_info *ptp,
 	int ret = 0;
 
 	if (rq->type == PTP_CLK_REQ_PPS) {
-		fep->pps_channel = DEFAULT_PPS_CHANNEL;
-		fep->reload_period = PPS_OUPUT_RELOAD_PERIOD;
-
 		ret = fec_ptp_enable_pps(fep, on);
 
 		return ret;
@@ -591,7 +586,7 @@ void fec_ptp_init(struct platform_device *pdev, int irq_idx)
 	fep->ptp_caps.n_per_out = 0;
 	fep->ptp_caps.n_pins = 0;
 	fep->ptp_caps.pps = 1;
-	fep->ptp_caps.adjfine = fec_ptp_adjfine;
+	fep->ptp_caps.adjfreq = fec_ptp_adjfreq;
 	fep->ptp_caps.adjtime = fec_ptp_adjtime;
 	fep->ptp_caps.gettime64 = fec_ptp_gettime;
 	fep->ptp_caps.settime64 = fec_ptp_settime;
@@ -637,9 +632,6 @@ void fec_ptp_stop(struct platform_device *pdev)
 {
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct fec_enet_private *fep = netdev_priv(ndev);
-
-	if (fep->pps_enable)
-		fec_ptp_enable_pps(fep, 0);
 
 	cancel_delayed_work_sync(&fep->time_keep);
 	if (fep->ptp_clock)

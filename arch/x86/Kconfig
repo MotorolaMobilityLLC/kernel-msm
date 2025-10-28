@@ -62,7 +62,6 @@ config X86
 	select ACPI_SYSTEM_POWER_STATES_SUPPORT	if ACPI
 	select ARCH_32BIT_OFF_T			if X86_32
 	select ARCH_CLOCKSOURCE_INIT
-	select ARCH_CONFIGURES_CPU_MITIGATIONS
 	select ARCH_CORRECT_STACKTRACE_ON_KRETPROBE
 	select ARCH_ENABLE_HUGEPAGE_MIGRATION if X86_64 && HUGETLB_PAGE && MIGRATION
 	select ARCH_ENABLE_MEMORY_HOTPLUG if X86_64
@@ -209,7 +208,7 @@ config X86
 	select HAVE_SAMPLE_FTRACE_DIRECT_MULTI	if X86_64
 	select HAVE_EBPF_JIT
 	select HAVE_EFFICIENT_UNALIGNED_ACCESS
-	select HAVE_EISA			if X86_32
+	select HAVE_EISA
 	select HAVE_EXIT_THREAD
 	select HAVE_FAST_GUP
 	select HAVE_FENTRY			if X86_64 || DYNAMIC_FTRACE
@@ -2451,17 +2450,17 @@ config CC_HAS_SLS
 config CC_HAS_RETURN_THUNK
 	def_bool $(cc-option,-mfunction-return=thunk-extern)
 
-menuconfig CPU_MITIGATIONS
-	bool "Mitigations for CPU vulnerabilities"
+menuconfig SPECULATION_MITIGATIONS
+	bool "Mitigations for speculative execution vulnerabilities"
 	default y
 	help
-	  Say Y here to enable options which enable mitigations for hardware
-	  vulnerabilities (usually related to speculative execution).
+	  Say Y here to enable options which enable mitigations for
+	  speculative execution hardware vulnerabilities.
 
 	  If you say N, all mitigations will be disabled. You really
 	  should know what you are doing to say so.
 
-if CPU_MITIGATIONS
+if SPECULATION_MITIGATIONS
 
 config PAGE_TABLE_ISOLATION
 	bool "Remove the kernel mapping in user mode"
@@ -2507,8 +2506,7 @@ config CPU_IBPB_ENTRY
 	depends on CPU_SUP_AMD && X86_64
 	default y
 	help
-	  Compile the kernel with support for the retbleed=ibpb and
-	  spec_rstack_overflow={ibpb,ibpb-vmexit} mitigations.
+	  Compile the kernel with support for the retbleed=ibpb mitigation.
 
 config CPU_IBRS_ENTRY
 	bool "Enable IBRS on kernel entry"
@@ -2565,16 +2563,6 @@ config MITIGATION_RFDS
 	  allows unprivileged speculative access to stale data previously
 	  stored in floating point, vector and integer registers.
 	  See also <file:Documentation/admin-guide/hw-vuln/reg-file-data-sampling.rst>
-
-config MITIGATION_SPECTRE_BHI
-	bool "Mitigate Spectre-BHB (Branch History Injection)"
-	depends on CPU_SUP_INTEL
-	default y
-	help
-	  Enable BHI mitigations. BHI attacks are a form of Spectre V2 attacks
-	  where the branch history buffer is poisoned to speculatively steer
-	  indirect branches.
-	  See <file:Documentation/admin-guide/hw-vuln/spectre.rst>
 
 endif
 

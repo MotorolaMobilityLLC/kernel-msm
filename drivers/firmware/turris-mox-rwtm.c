@@ -2,7 +2,7 @@
 /*
  * Turris Mox rWTM firmware driver
  *
- * Copyright (C) 2019, 2024 Marek Behún <kabel@kernel.org>
+ * Copyright (C) 2019 Marek Behún <kabel@kernel.org>
  */
 
 #include <linux/armada-37xx-rwtm-mailbox.h>
@@ -174,9 +174,6 @@ static void mox_rwtm_rx_callback(struct mbox_client *cl, void *data)
 	struct mox_rwtm *rwtm = dev_get_drvdata(cl->dev);
 	struct armada_37xx_rwtm_rx_msg *msg = data;
 
-	if (completion_done(&rwtm->cmd_done))
-		return;
-
 	rwtm->reply = *msg;
 	complete(&rwtm->cmd_done);
 }
@@ -202,8 +199,9 @@ static int mox_get_board_info(struct mox_rwtm *rwtm)
 	if (ret < 0)
 		return ret;
 
-	if (!wait_for_completion_timeout(&rwtm->cmd_done, HZ / 2))
-		return -ETIMEDOUT;
+	ret = wait_for_completion_timeout(&rwtm->cmd_done, HZ / 2);
+	if (ret < 0)
+		return ret;
 
 	ret = mox_get_status(MBOX_CMD_BOARD_INFO, reply->retval);
 	if (ret == -ENODATA) {
@@ -237,8 +235,9 @@ static int mox_get_board_info(struct mox_rwtm *rwtm)
 	if (ret < 0)
 		return ret;
 
-	if (!wait_for_completion_timeout(&rwtm->cmd_done, HZ / 2))
-		return -ETIMEDOUT;
+	ret = wait_for_completion_timeout(&rwtm->cmd_done, HZ / 2);
+	if (ret < 0)
+		return ret;
 
 	ret = mox_get_status(MBOX_CMD_ECDSA_PUB_KEY, reply->retval);
 	if (ret == -ENODATA) {
@@ -275,8 +274,9 @@ static int check_get_random_support(struct mox_rwtm *rwtm)
 	if (ret < 0)
 		return ret;
 
-	if (!wait_for_completion_timeout(&rwtm->cmd_done, HZ / 2))
-		return -ETIMEDOUT;
+	ret = wait_for_completion_timeout(&rwtm->cmd_done, HZ / 2);
+	if (ret < 0)
+		return ret;
 
 	return mox_get_status(MBOX_CMD_GET_RANDOM, rwtm->reply.retval);
 }
@@ -499,7 +499,6 @@ static int turris_mox_rwtm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, rwtm);
 
 	mutex_init(&rwtm->busy);
-	init_completion(&rwtm->cmd_done);
 
 	rwtm->mbox_client.dev = dev;
 	rwtm->mbox_client.rx_callback = mox_rwtm_rx_callback;
@@ -512,6 +511,8 @@ static int turris_mox_rwtm_probe(struct platform_device *pdev)
 				ret);
 		goto remove_files;
 	}
+
+	init_completion(&rwtm->cmd_done);
 
 	ret = mox_get_board_info(rwtm);
 	if (ret < 0)

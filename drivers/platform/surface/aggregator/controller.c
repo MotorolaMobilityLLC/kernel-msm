@@ -1354,8 +1354,7 @@ void ssam_controller_destroy(struct ssam_controller *ctrl)
 	if (ctrl->state == SSAM_CONTROLLER_UNINITIALIZED)
 		return;
 
-	WARN_ON(ctrl->state != SSAM_CONTROLLER_STOPPED &&
-		ctrl->state != SSAM_CONTROLLER_INITIALIZED);
+	WARN_ON(ctrl->state != SSAM_CONTROLLER_STOPPED);
 
 	/*
 	 * Note: New events could still have been received after the previous

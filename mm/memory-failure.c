@@ -84,23 +84,11 @@ static int __page_handle_poison(struct page *page)
 {
 	int ret;
 
-	/*
-	 * zone_pcp_disable() can't be used here. It will
-	 * hold pcp_batch_high_lock and dissolve_free_huge_page() might hold
-	 * cpu_hotplug_lock via static_key_slow_dec() when hugetlb vmemmap
-	 * optimization is enabled. This will break current lock dependency
-	 * chain and leads to deadlock.
-	 * Disabling pcp before dissolving the page was a deterministic
-	 * approach because we made sure that those pages cannot end up in any
-	 * PCP list. Draining PCP lists expels those pages to the buddy system,
-	 * but nothing guarantees that those pages do not get back to a PCP
-	 * queue if we need to refill those.
-	 */
+	zone_pcp_disable(page_zone(page));
 	ret = dissolve_free_huge_page(page);
-	if (!ret) {
-		drain_all_pages(page_zone(page));
+	if (!ret)
 		ret = take_page_off_buddy(page);
-	}
+	zone_pcp_enable(page_zone(page));
 
 	return ret;
 }
@@ -1111,7 +1099,7 @@ static int me_huge_page(struct page_state *ps, struct page *p)
 		 * subpages.
 		 */
 		put_page(hpage);
-		if (__page_handle_poison(p) > 0) {
+		if (__page_handle_poison(p) >= 0) {
 			page_ref_inc(p);
 			res = MF_RECOVERED;
 		} else {
@@ -1889,7 +1877,7 @@ retry:
 	 */
 	if (res == 0) {
 		unlock_page(head);
-		if (__page_handle_poison(p) > 0) {
+		if (__page_handle_poison(p) >= 0) {
 			page_ref_inc(p);
 			res = MF_RECOVERED;
 		} else {
@@ -2209,7 +2197,7 @@ struct memory_failure_entry {
 struct memory_failure_cpu {
 	DECLARE_KFIFO(fifo, struct memory_failure_entry,
 		      MEMORY_FAILURE_FIFO_SIZE);
-	raw_spinlock_t lock;
+	spinlock_t lock;
 	struct work_struct work;
 };
 
@@ -2235,22 +2223,20 @@ void memory_failure_queue(unsigned long pfn, int flags)
 {
 	struct memory_failure_cpu *mf_cpu;
 	unsigned long proc_flags;
-	bool buffer_overflow;
 	struct memory_failure_entry entry = {
 		.pfn =		pfn,
 		.flags =	flags,
 	};
 
 	mf_cpu = &get_cpu_var(memory_failure_cpu);
-	raw_spin_lock_irqsave(&mf_cpu->lock, proc_flags);
-	buffer_overflow = !kfifo_put(&mf_cpu->fifo, entry);
-	if (!buffer_overflow)
+	spin_lock_irqsave(&mf_cpu->lock, proc_flags);
+	if (kfifo_put(&mf_cpu->fifo, entry))
 		schedule_work_on(smp_processor_id(), &mf_cpu->work);
-	raw_spin_unlock_irqrestore(&mf_cpu->lock, proc_flags);
-	put_cpu_var(memory_failure_cpu);
-	if (buffer_overflow)
+	else
 		pr_err("buffer overflow when queuing memory failure at %#lx\n",
 		       pfn);
+	spin_unlock_irqrestore(&mf_cpu->lock, proc_flags);
+	put_cpu_var(memory_failure_cpu);
 }
 EXPORT_SYMBOL_GPL(memory_failure_queue);
 
@@ -2263,9 +2249,9 @@ static void memory_failure_work_func(struct work_struct *work)
 
 	mf_cpu = container_of(work, struct memory_failure_cpu, work);
 	for (;;) {
-		raw_spin_lock_irqsave(&mf_cpu->lock, proc_flags);
+		spin_lock_irqsave(&mf_cpu->lock, proc_flags);
 		gotten = kfifo_get(&mf_cpu->fifo, &entry);
-		raw_spin_unlock_irqrestore(&mf_cpu->lock, proc_flags);
+		spin_unlock_irqrestore(&mf_cpu->lock, proc_flags);
 		if (!gotten)
 			break;
 		if (entry.flags & MF_SOFT_OFFLINE)
@@ -2295,7 +2281,7 @@ static int __init memory_failure_init(void)
 
 	for_each_possible_cpu(cpu) {
 		mf_cpu = &per_cpu(memory_failure_cpu, cpu);
-		raw_spin_lock_init(&mf_cpu->lock);
+		spin_lock_init(&mf_cpu->lock);
 		INIT_KFIFO(mf_cpu->fifo);
 		INIT_WORK(&mf_cpu->work, memory_failure_work_func);
 	}
@@ -2344,13 +2330,6 @@ int unpoison_memory(unsigned long pfn)
 
 	if (hw_memory_failure) {
 		unpoison_pr_info("Unpoison: Disabled after HW memory failure %#lx\n",
-				 pfn, &unpoison_rs);
-		ret = -EOPNOTSUPP;
-		goto unlock_mutex;
-	}
-
-	if (is_huge_zero_page(page)) {
-		unpoison_pr_info("Unpoison: huge zero page is not supported %#lx\n",
 				 pfn, &unpoison_rs);
 		ret = -EOPNOTSUPP;
 		goto unlock_mutex;

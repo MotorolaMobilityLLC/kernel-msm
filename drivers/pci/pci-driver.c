@@ -579,20 +579,7 @@ static void pci_pm_default_resume_early(struct pci_dev *pci_dev)
 
 static void pci_pm_bridge_power_up_actions(struct pci_dev *pci_dev)
 {
-	int ret;
-
-	ret = pci_bridge_wait_for_secondary_bus(pci_dev, "resume");
-	if (ret) {
-		/*
-		 * The downstream link failed to come up, so mark the
-		 * devices below as disconnected to make sure we don't
-		 * attempt to resume them.
-		 */
-		pci_walk_bus(pci_dev->subordinate, pci_dev_set_disconnected,
-			     NULL);
-		return;
-	}
-
+	pci_bridge_wait_for_secondary_bus(pci_dev, "resume", PCI_RESET_WAIT);
 	/*
 	 * When powering on a bridge from D3cold, the whole hierarchy may be
 	 * powered on into D0uninitialized state, resume them to give them a

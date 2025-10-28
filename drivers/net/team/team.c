@@ -984,8 +984,7 @@ static void team_port_disable(struct team *team,
 
 #define TEAM_VLAN_FEATURES (NETIF_F_HW_CSUM | NETIF_F_SG | \
 			    NETIF_F_FRAGLIST | NETIF_F_GSO_SOFTWARE | \
-			    NETIF_F_HIGHDMA | NETIF_F_LRO | \
-			    NETIF_F_GSO_ENCAP_ALL)
+			    NETIF_F_HIGHDMA | NETIF_F_LRO)
 
 #define TEAM_ENC_FEATURES	(NETIF_F_HW_CSUM | NETIF_F_SG | \
 				 NETIF_F_RXCSUM | NETIF_F_GSO_SOFTWARE)
@@ -1167,13 +1166,6 @@ static int team_port_add(struct team *team, struct net_device *port_dev,
 	if (netdev_has_upper_dev(dev, port_dev)) {
 		NL_SET_ERR_MSG(extack, "Device is already an upper device of the team interface");
 		netdev_err(dev, "Device %s is already an upper device of the team interface\n",
-			   portname);
-		return -EBUSY;
-	}
-
-	if (netdev_has_upper_dev(port_dev, dev)) {
-		NL_SET_ERR_MSG(extack, "Device is already a lower device of the team interface");
-		netdev_err(dev, "Device %s is already a lower device of the team interface\n",
 			   portname);
 		return -EBUSY;
 	}
@@ -2670,9 +2662,7 @@ static int team_nl_cmd_options_set(struct sk_buff *skb, struct genl_info *info)
 				ctx.data.u32_val = nla_get_u32(attr_data);
 				break;
 			case TEAM_OPTION_TYPE_STRING:
-				if (nla_len(attr_data) > TEAM_STRING_MAX_LEN ||
-				    !memchr(nla_data(attr_data), '\0',
-					    nla_len(attr_data))) {
+				if (nla_len(attr_data) > TEAM_STRING_MAX_LEN) {
 					err = -EINVAL;
 					goto team_put;
 				}

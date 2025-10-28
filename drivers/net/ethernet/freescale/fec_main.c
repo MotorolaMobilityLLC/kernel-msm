@@ -267,8 +267,8 @@ MODULE_PARM_DESC(macaddr, "FEC Ethernet MAC address");
 #define PKT_MINBUF_SIZE		64
 
 /* FEC receive acceleration */
-#define FEC_RACC_IPDIS		BIT(1)
-#define FEC_RACC_PRODIS		BIT(2)
+#define FEC_RACC_IPDIS		(1 << 1)
+#define FEC_RACC_PRODIS		(1 << 2)
 #define FEC_RACC_SHIFT16	BIT(7)
 #define FEC_RACC_OPTIONS	(FEC_RACC_IPDIS | FEC_RACC_PRODIS)
 
@@ -300,23 +300,8 @@ MODULE_PARM_DESC(macaddr, "FEC Ethernet MAC address");
 #define FEC_MMFR_TA		(2 << 16)
 #define FEC_MMFR_DATA(v)	(v & 0xffff)
 /* FEC ECR bits definition */
-#define FEC_ECR_RESET           BIT(0)
-#define FEC_ECR_ETHEREN         BIT(1)
-#define FEC_ECR_MAGICEN         BIT(2)
-#define FEC_ECR_SLEEP           BIT(3)
-#define FEC_ECR_EN1588          BIT(4)
-#define FEC_ECR_BYTESWP         BIT(8)
-/* FEC RCR bits definition */
-#define FEC_RCR_LOOP            BIT(0)
-#define FEC_RCR_HALFDPX         BIT(1)
-#define FEC_RCR_MII             BIT(2)
-#define FEC_RCR_PROMISC         BIT(3)
-#define FEC_RCR_BC_REJ          BIT(4)
-#define FEC_RCR_FLOWCTL         BIT(5)
-#define FEC_RCR_RMII            BIT(8)
-#define FEC_RCR_10BASET         BIT(9)
-/* TX WMARK bits */
-#define FEC_TXWMRK_STRFWD       BIT(8)
+#define FEC_ECR_MAGICEN		(1 << 2)
+#define FEC_ECR_SLEEP		(1 << 3)
 
 #define FEC_MII_TIMEOUT		30000 /* us */
 
@@ -818,8 +803,6 @@ static int fec_enet_txq_submit_tso(struct fec_enet_priv_tx_q *txq,
 	struct fec_enet_private *fep = netdev_priv(ndev);
 	int hdr_len, total_len, data_left;
 	struct bufdesc *bdp = txq->bd.cur;
-	struct bufdesc *tmp_bdp;
-	struct bufdesc_ex *ebdp;
 	struct tso_t tso;
 	unsigned int index = 0;
 	int ret;
@@ -893,34 +876,7 @@ static int fec_enet_txq_submit_tso(struct fec_enet_priv_tx_q *txq,
 	return 0;
 
 err_release:
-	/* Release all used data descriptors for TSO */
-	tmp_bdp = txq->bd.cur;
-
-	while (tmp_bdp != bdp) {
-		/* Unmap data buffers */
-		if (tmp_bdp->cbd_bufaddr &&
-		    !IS_TSO_HEADER(txq, fec32_to_cpu(tmp_bdp->cbd_bufaddr)))
-			dma_unmap_single(&fep->pdev->dev,
-					 fec32_to_cpu(tmp_bdp->cbd_bufaddr),
-					 fec16_to_cpu(tmp_bdp->cbd_datlen),
-					 DMA_TO_DEVICE);
-
-		/* Clear standard buffer descriptor fields */
-		tmp_bdp->cbd_sc = 0;
-		tmp_bdp->cbd_datlen = 0;
-		tmp_bdp->cbd_bufaddr = 0;
-
-		/* Handle extended descriptor if enabled */
-		if (fep->bufdesc_ex) {
-			ebdp = (struct bufdesc_ex *)tmp_bdp;
-			ebdp->cbd_esc = 0;
-		}
-
-		tmp_bdp = fec_enet_get_nextdesc(tmp_bdp, &txq->bd);
-	}
-
-	dev_kfree_skb_any(skb);
-
+	/* TODO: Release all used data descriptors for TSO */
 	return ret;
 }
 
@@ -1082,7 +1038,7 @@ fec_restart(struct net_device *ndev)
 	struct fec_enet_private *fep = netdev_priv(ndev);
 	u32 temp_mac[2];
 	u32 rcntl = OPT_FRAME_SIZE | 0x04;
-	u32 ecntl = FEC_ECR_ETHEREN;
+	u32 ecntl = 0x2; /* ETHEREN */
 
 	/* Whack a reset.  We should wait for this.
 	 * For i.MX6SX SOC, enet use AXI bus, we use disable MAC
@@ -1160,18 +1116,18 @@ fec_restart(struct net_device *ndev)
 		    fep->phy_interface == PHY_INTERFACE_MODE_RGMII_TXID)
 			rcntl |= (1 << 6);
 		else if (fep->phy_interface == PHY_INTERFACE_MODE_RMII)
-			rcntl |= FEC_RCR_RMII;
+			rcntl |= (1 << 8);
 		else
-			rcntl &= ~FEC_RCR_RMII;
+			rcntl &= ~(1 << 8);
 
 		/* 1G, 100M or 10M */
 		if (ndev->phydev) {
 			if (ndev->phydev->speed == SPEED_1000)
 				ecntl |= (1 << 5);
 			else if (ndev->phydev->speed == SPEED_100)
-				rcntl &= ~FEC_RCR_10BASET;
+				rcntl &= ~(1 << 9);
 			else
-				rcntl |= FEC_RCR_10BASET;
+				rcntl |= (1 << 9);
 		}
 	} else {
 #ifdef FEC_MIIGSK_ENR
@@ -1230,13 +1186,13 @@ fec_restart(struct net_device *ndev)
 
 	if (fep->quirks & FEC_QUIRK_ENET_MAC) {
 		/* enable ENET endian swap */
-		ecntl |= FEC_ECR_BYTESWP;
+		ecntl |= (1 << 8);
 		/* enable ENET store and forward mode */
-		writel(FEC_TXWMRK_STRFWD, fep->hwp + FEC_X_WMRK);
+		writel(1 << 8, fep->hwp + FEC_X_WMRK);
 	}
 
 	if (fep->bufdesc_ex)
-		ecntl |= FEC_ECR_EN1588;
+		ecntl |= (1 << 4);
 
 	if (fep->quirks & FEC_QUIRK_DELAYED_CLKS_SUPPORT &&
 	    fep->rgmii_txc_dly)
@@ -1335,7 +1291,7 @@ static void
 fec_stop(struct net_device *ndev)
 {
 	struct fec_enet_private *fep = netdev_priv(ndev);
-	u32 rmii_mode = readl(fep->hwp + FEC_R_CNTRL) & FEC_RCR_RMII;
+	u32 rmii_mode = readl(fep->hwp + FEC_R_CNTRL) & (1 << 8);
 	u32 val;
 
 	/* We cannot expect a graceful transmit stop without link !!! */
@@ -1354,7 +1310,7 @@ fec_stop(struct net_device *ndev)
 		if (fep->quirks & FEC_QUIRK_HAS_MULTI_QUEUES) {
 			writel(0, fep->hwp + FEC_ECNTRL);
 		} else {
-			writel(FEC_ECR_RESET, fep->hwp + FEC_ECNTRL);
+			writel(1, fep->hwp + FEC_ECNTRL);
 			udelay(10);
 		}
 	} else {
@@ -1368,16 +1324,11 @@ fec_stop(struct net_device *ndev)
 	/* We have to keep ENET enabled to have MII interrupt stay working */
 	if (fep->quirks & FEC_QUIRK_ENET_MAC &&
 		!(fep->wol_flag & FEC_WOL_FLAG_SLEEP_ON)) {
-		writel(FEC_ECR_ETHEREN, fep->hwp + FEC_ECNTRL);
+		writel(2, fep->hwp + FEC_ECNTRL);
 		writel(rmii_mode, fep->hwp + FEC_R_CNTRL);
 	}
-
-	if (fep->bufdesc_ex) {
-		val = readl(fep->hwp + FEC_ECNTRL);
-		val |= FEC_ECR_EN1588;
-		writel(val, fep->hwp + FEC_ECNTRL);
-	}
 }
+
 
 static void
 fec_timeout(struct net_device *ndev, unsigned int txqueue)
@@ -2285,6 +2236,8 @@ static int fec_enet_mii_probe(struct net_device *ndev)
 	fep->link = 0;
 	fep->full_duplex = 0;
 
+	phy_dev->mac_managed_pm = 1;
+
 	phy_attached_info(phy_dev);
 
 	return 0;
@@ -2296,12 +2249,10 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct fec_enet_private *fep = netdev_priv(ndev);
 	bool suppress_preamble = false;
-	struct phy_device *phydev;
 	struct device_node *node;
 	int err = -ENXIO;
 	u32 mii_speed, holdtime;
 	u32 bus_freq;
-	int addr;
 
 	/*
 	 * The i.MX28 dual fec interfaces are not equal.
@@ -2410,13 +2361,6 @@ static int fec_enet_mii_init(struct platform_device *pdev)
 	if (err)
 		goto err_out_free_mdiobus;
 	of_node_put(node);
-
-	/* find all the PHY devices on the bus and set mac_managed_pm to true */
-	for (addr = 0; addr < PHY_MAX_ADDR; addr++) {
-		phydev = mdiobus_get_phy(fep->mii_bus, addr);
-		if (phydev)
-			phydev->mac_managed_pm = true;
-	}
 
 	mii_cnt++;
 
@@ -3537,6 +3481,29 @@ fec_set_mac_address(struct net_device *ndev, void *p)
 	return 0;
 }
 
+#ifdef CONFIG_NET_POLL_CONTROLLER
+/**
+ * fec_poll_controller - FEC Poll controller function
+ * @dev: The FEC network adapter
+ *
+ * Polled functionality used by netconsole and others in non interrupt mode
+ *
+ */
+static void fec_poll_controller(struct net_device *dev)
+{
+	int i;
+	struct fec_enet_private *fep = netdev_priv(dev);
+
+	for (i = 0; i < FEC_IRQ_NUM; i++) {
+		if (fep->irq[i] > 0) {
+			disable_irq(fep->irq[i]);
+			fec_enet_interrupt(fep->irq[i], dev);
+			enable_irq(fep->irq[i]);
+		}
+	}
+}
+#endif
+
 static inline void fec_enet_set_netdev_features(struct net_device *netdev,
 	netdev_features_t features)
 {
@@ -3610,6 +3577,9 @@ static const struct net_device_ops fec_netdev_ops = {
 	.ndo_tx_timeout		= fec_timeout,
 	.ndo_set_mac_address	= fec_set_mac_address,
 	.ndo_eth_ioctl		= fec_enet_ioctl,
+#ifdef CONFIG_NET_POLL_CONTROLLER
+	.ndo_poll_controller	= fec_poll_controller,
+#endif
 	.ndo_set_features	= fec_set_features,
 };
 
@@ -3753,14 +3723,6 @@ static int fec_enet_init(struct net_device *ndev)
 free_queue_mem:
 	fec_enet_free_queue(ndev);
 	return ret;
-}
-
-static void fec_enet_deinit(struct net_device *ndev)
-{
-	struct fec_enet_private *fep = netdev_priv(ndev);
-
-	netif_napi_del(&fep->napi);
-	fec_enet_free_queue(ndev);
 }
 
 #ifdef CONFIG_OF
@@ -4167,7 +4129,6 @@ failed_register:
 	fec_enet_mii_remove(fep);
 failed_mii_init:
 failed_irq:
-	fec_enet_deinit(ndev);
 failed_init:
 	fec_ptp_stop(pdev);
 failed_reset:
@@ -4231,7 +4192,6 @@ fec_drv_remove(struct platform_device *pdev)
 	pm_runtime_put_noidle(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 
-	fec_enet_deinit(ndev);
 	free_netdev(ndev);
 	return 0;
 }

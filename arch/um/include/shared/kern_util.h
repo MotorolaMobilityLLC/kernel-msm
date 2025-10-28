@@ -67,6 +67,4 @@ extern void fatal_sigsegv(void) __attribute__ ((noreturn));
 
 void um_idle_sleep(void);
 
-void kasan_map_memory(void *start, size_t len);
-
 #endif

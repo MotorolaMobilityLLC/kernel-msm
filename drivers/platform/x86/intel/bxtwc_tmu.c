@@ -48,8 +48,9 @@ static irqreturn_t bxt_wcove_tmu_irq_handler(int irq, void *data)
 static int bxt_wcove_tmu_probe(struct platform_device *pdev)
 {
 	struct intel_soc_pmic *pmic = dev_get_drvdata(pdev->dev.parent);
+	struct regmap_irq_chip_data *regmap_irq_chip;
 	struct wcove_tmu *wctmu;
-	int ret;
+	int ret, virq, irq;
 
 	wctmu = devm_kzalloc(&pdev->dev, sizeof(*wctmu), GFP_KERNEL);
 	if (!wctmu)
@@ -58,18 +59,27 @@ static int bxt_wcove_tmu_probe(struct platform_device *pdev)
 	wctmu->dev = &pdev->dev;
 	wctmu->regmap = pmic->regmap;
 
-	wctmu->irq = platform_get_irq(pdev, 0);
-	if (wctmu->irq < 0)
-		return wctmu->irq;
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		return irq;
 
-	ret = devm_request_threaded_irq(&pdev->dev, wctmu->irq,
+	regmap_irq_chip = pmic->irq_chip_data_tmu;
+	virq = regmap_irq_get_virq(regmap_irq_chip, irq);
+	if (virq < 0) {
+		dev_err(&pdev->dev,
+			"failed to get virtual interrupt=%d\n", irq);
+		return virq;
+	}
+
+	ret = devm_request_threaded_irq(&pdev->dev, virq,
 					NULL, bxt_wcove_tmu_irq_handler,
 					IRQF_ONESHOT, "bxt_wcove_tmu", wctmu);
 	if (ret) {
 		dev_err(&pdev->dev, "request irq failed: %d,virq: %d\n",
-			ret, wctmu->irq);
+							ret, virq);
 		return ret;
 	}
+	wctmu->irq = virq;
 
 	/* Unmask TMU second level Wake & System alarm */
 	regmap_update_bits(wctmu->regmap, BXTWC_MTMUIRQ_REG,

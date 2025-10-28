@@ -140,11 +140,6 @@ static int afs_mntpt_set_params(struct fs_context *fc, struct dentry *mntpt)
 		put_page(page);
 		if (ret < 0)
 			return ret;
-
-		/* Don't cross a backup volume mountpoint from a backup volume */
-		if (src_as->volume && src_as->volume->type == AFSVL_BACKVOL &&
-		    ctx->type == AFSVL_BACKVOL)
-			return -ENODEV;
 	}
 
 	return 0;

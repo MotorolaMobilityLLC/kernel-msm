@@ -12,7 +12,6 @@
 #ifndef _LINUX_SLAB_H
 #define	_LINUX_SLAB_H
 
-#include <linux/cache.h>
 #include <linux/gfp.h>
 #include <linux/overflow.h>
 #include <linux/types.h>
@@ -199,7 +198,7 @@ void kfree(const void *objp);
 void kfree_sensitive(const void *objp);
 size_t __ksize(const void *objp);
 
-DEFINE_FREE(kfree, void *, if (!IS_ERR_OR_NULL(_T)) kfree(_T))
+DEFINE_FREE(kfree, void *, if (_T) kfree(_T))
 
 /**
  * ksize - Report actual allocation size of associated object
@@ -216,9 +215,8 @@ DEFINE_FREE(kfree, void *, if (!IS_ERR_OR_NULL(_T)) kfree(_T))
 size_t ksize(const void *objp);
 
 #ifdef CONFIG_PRINTK
-bool kmem_dump_obj(void *object);
-#else
-static inline bool kmem_dump_obj(void *object) { return false; }
+bool kmem_valid_obj(void *object);
+void kmem_dump_obj(void *object);
 #endif
 
 /*
@@ -226,17 +224,12 @@ static inline bool kmem_dump_obj(void *object) { return false; }
  * alignment larger than the alignment of a 64-bit integer.
  * Setting ARCH_DMA_MINALIGN in arch headers allows that.
  */
-#ifdef ARCH_HAS_DMA_MINALIGN
-#if ARCH_DMA_MINALIGN > 8 && !defined(ARCH_KMALLOC_MINALIGN)
+#if defined(ARCH_DMA_MINALIGN) && ARCH_DMA_MINALIGN > 8
 #define ARCH_KMALLOC_MINALIGN ARCH_DMA_MINALIGN
-#endif
-#endif
-
-#ifndef ARCH_KMALLOC_MINALIGN
+#define KMALLOC_MIN_SIZE ARCH_DMA_MINALIGN
+#define KMALLOC_SHIFT_LOW ilog2(ARCH_DMA_MINALIGN)
+#else
 #define ARCH_KMALLOC_MINALIGN __alignof__(unsigned long long)
-#elif ARCH_KMALLOC_MINALIGN > 8
-#define KMALLOC_MIN_SIZE ARCH_KMALLOC_MINALIGN
-#define KMALLOC_SHIFT_LOW ilog2(KMALLOC_MIN_SIZE)
 #endif
 
 /*

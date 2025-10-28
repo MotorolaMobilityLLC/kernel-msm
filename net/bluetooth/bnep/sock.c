@@ -205,12 +205,20 @@ static int bnep_sock_create(struct net *net, struct socket *sock, int protocol,
 	if (sock->type != SOCK_RAW)
 		return -ESOCKTNOSUPPORT;
 
-	sk = bt_sock_alloc(net, sock, &bnep_proto, protocol, GFP_ATOMIC, kern);
+	sk = sk_alloc(net, PF_BLUETOOTH, GFP_ATOMIC, &bnep_proto, kern);
 	if (!sk)
 		return -ENOMEM;
 
+	sock_init_data(sock, sk);
+
 	sock->ops = &bnep_sock_ops;
+
 	sock->state = SS_UNCONNECTED;
+
+	sock_reset_flag(sk, SOCK_ZAPPED);
+
+	sk->sk_protocol = protocol;
+	sk->sk_state	= BT_OPEN;
 
 	bt_sock_link(&bnep_sk_list, sk);
 	return 0;

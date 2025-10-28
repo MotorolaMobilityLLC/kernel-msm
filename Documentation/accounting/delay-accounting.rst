@@ -109,17 +109,17 @@ Get sum of delays, since system boot, for all pids with tgid 5::
 	CPU             count     real total  virtual total    delay total  delay average
 	                    8        7000000        6872122        3382277          0.423ms
 	IO              count    delay total  delay average
-                   0              0          0.000ms
+		            0              0              0ms
 	SWAP            count    delay total  delay average
-                       0              0          0.000ms
+	                    0              0              0ms
 	RECLAIM         count    delay total  delay average
-                   0              0          0.000ms
+		            0              0              0ms
 	THRASHING       count    delay total  delay average
-                       0              0          0.000ms
+	                    0              0              0ms
 	COMPACT         count    delay total  delay average
-                       0              0          0.000ms
-   WPCOPY          count    delay total  delay average
-                       0              0          0.000ms
+	                    0              0              0ms
+        WPCOPY          count    delay total  delay average
+                            0              0              0ms
 
 Get IO accounting for pid 1, it works only with -p::
 

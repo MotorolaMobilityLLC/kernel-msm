@@ -201,7 +201,6 @@ struct fpga_manager_ops {
  * @state: state of fpga manager
  * @compat_id: FPGA manager id for compatibility check.
  * @mops: pointer to struct of fpga manager ops
- * @mops_owner: module containing the mops
  * @priv: low level driver private date
  */
 struct fpga_manager {
@@ -211,7 +210,6 @@ struct fpga_manager {
 	enum fpga_mgr_states state;
 	struct fpga_compat_id *compat_id;
 	const struct fpga_manager_ops *mops;
-	struct module *mops_owner;
 	void *priv;
 };
 
@@ -232,30 +230,18 @@ struct fpga_manager *fpga_mgr_get(struct device *dev);
 
 void fpga_mgr_put(struct fpga_manager *mgr);
 
-#define fpga_mgr_register_full(parent, info) \
-	__fpga_mgr_register_full(parent, info, THIS_MODULE)
 struct fpga_manager *
-__fpga_mgr_register_full(struct device *parent, const struct fpga_manager_info *info,
-			 struct module *owner);
+fpga_mgr_register_full(struct device *parent, const struct fpga_manager_info *info);
 
-#define fpga_mgr_register(parent, name, mops, priv) \
-	__fpga_mgr_register(parent, name, mops, priv, THIS_MODULE)
 struct fpga_manager *
-__fpga_mgr_register(struct device *parent, const char *name,
-		    const struct fpga_manager_ops *mops, void *priv, struct module *owner);
-
+fpga_mgr_register(struct device *parent, const char *name,
+		  const struct fpga_manager_ops *mops, void *priv);
 void fpga_mgr_unregister(struct fpga_manager *mgr);
 
-#define devm_fpga_mgr_register_full(parent, info) \
-	__devm_fpga_mgr_register_full(parent, info, THIS_MODULE)
 struct fpga_manager *
-__devm_fpga_mgr_register_full(struct device *parent, const struct fpga_manager_info *info,
-			      struct module *owner);
-#define devm_fpga_mgr_register(parent, name, mops, priv) \
-	__devm_fpga_mgr_register(parent, name, mops, priv, THIS_MODULE)
+devm_fpga_mgr_register_full(struct device *parent, const struct fpga_manager_info *info);
 struct fpga_manager *
-__devm_fpga_mgr_register(struct device *parent, const char *name,
-			 const struct fpga_manager_ops *mops, void *priv,
-			 struct module *owner);
+devm_fpga_mgr_register(struct device *parent, const char *name,
+		       const struct fpga_manager_ops *mops, void *priv);
 
 #endif /*_LINUX_FPGA_MGR_H */

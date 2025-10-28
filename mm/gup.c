@@ -51,8 +51,7 @@ static inline void sanity_check_pinned_pages(struct page **pages,
 		struct page *page = *pages;
 		struct folio *folio = page_folio(page);
 
-		if (is_zero_page(page) ||
-		    !folio_test_anon(folio))
+		if (!folio_test_anon(folio))
 			continue;
 		if (!folio_test_large(folio) || folio_test_hugetlb(folio))
 			VM_BUG_ON_PAGE(!PageAnonExclusive(&folio->page), page);
@@ -130,13 +129,6 @@ struct folio *try_grab_folio(struct page *page, int refs, unsigned int flags)
 		struct folio *folio;
 
 		/*
-		 * Don't take a pin on the zero page - it's not going anywhere
-		 * and it is used in a *lot* of places.
-		 */
-		if (is_zero_page(page))
-			return page_folio(page);
-
-		/*
 		 * Can't do FOLL_LONGTERM + FOLL_PIN gup fast path if not in a
 		 * right zone, so fail and let the caller fall back to the slow
 		 * path.
@@ -185,8 +177,6 @@ struct folio *try_grab_folio(struct page *page, int refs, unsigned int flags)
 static void gup_put_folio(struct folio *folio, int refs, unsigned int flags)
 {
 	if (flags & FOLL_PIN) {
-		if (is_zero_folio(folio))
-			return;
 		node_stat_mod_folio(folio, NR_FOLL_PIN_RELEASED, refs);
 		if (folio_test_large(folio))
 			atomic_sub(refs, folio_pincount_ptr(folio));
@@ -227,13 +217,6 @@ bool __must_check try_grab_page(struct page *page, unsigned int flags)
 	if (flags & FOLL_GET)
 		folio_ref_inc(folio);
 	else if (flags & FOLL_PIN) {
-		/*
-		 * Don't take a pin on the zero page - it's not going anywhere
-		 * and it is used in a *lot* of places.
-		 */
-		if (is_zero_page(page))
-			return true;
-
 		/*
 		 * Similar to try_grab_folio(): be sure to *also*
 		 * increment the normal page refcount field at least once,
@@ -1961,14 +1944,14 @@ struct page *get_dump_page(unsigned long addr)
 /*
  * Returns the number of collected pages. Return value is always >= 0.
  */
-static void collect_longterm_unpinnable_pages(
+static unsigned long collect_longterm_unpinnable_pages(
 					struct list_head *movable_page_list,
 					unsigned long nr_pages,
 					struct page **pages)
 {
+	unsigned long i, collected = 0;
 	struct folio *prev_folio = NULL;
 	bool drain_allow = true;
-	unsigned long i;
 
 	for (i = 0; i < nr_pages; i++) {
 		struct folio *folio = page_folio(pages[i]);
@@ -1979,6 +1962,8 @@ static void collect_longterm_unpinnable_pages(
 
 		if (folio_is_longterm_pinnable(folio))
 			continue;
+
+		collected++;
 
 		if (folio_is_device_coherent(folio))
 			continue;
@@ -2001,6 +1986,8 @@ static void collect_longterm_unpinnable_pages(
 				    NR_ISOLATED_ANON + folio_is_file_lru(folio),
 				    folio_nr_pages(folio));
 	}
+
+	return collected;
 }
 
 /*
@@ -2093,10 +2080,12 @@ err:
 static long check_and_migrate_movable_pages(unsigned long nr_pages,
 					    struct page **pages)
 {
+	unsigned long collected;
 	LIST_HEAD(movable_page_list);
 
-	collect_longterm_unpinnable_pages(&movable_page_list, nr_pages, pages);
-	if (list_empty(&movable_page_list))
+	collected = collect_longterm_unpinnable_pages(&movable_page_list,
+						nr_pages, pages);
+	if (!collected)
 		return 0;
 
 	return migrate_longterm_unpinnable_pages(&movable_page_list, nr_pages,
@@ -3166,9 +3155,6 @@ EXPORT_SYMBOL_GPL(get_user_pages_fast);
  *
  * FOLL_PIN means that the pages must be released via unpin_user_page(). Please
  * see Documentation/core-api/pin_user_pages.rst for further details.
- *
- * Note that if a zero_page is amongst the returned pages, it will not have
- * pins in it and unpin_user_page() will not remove pins from it.
  */
 int pin_user_pages_fast(unsigned long start, int nr_pages,
 			unsigned int gup_flags, struct page **pages)
@@ -3245,9 +3231,6 @@ EXPORT_SYMBOL_GPL(pin_user_pages_fast_only);
  *
  * FOLL_PIN means that the pages must be released via unpin_user_page(). Please
  * see Documentation/core-api/pin_user_pages.rst for details.
- *
- * Note that if a zero_page is amongst the returned pages, it will not have
- * pins in it and unpin_user_page*() will not remove pins from it.
  */
 long pin_user_pages_remote(struct mm_struct *mm,
 			   unsigned long start, unsigned long nr_pages,
@@ -3283,9 +3266,6 @@ EXPORT_SYMBOL(pin_user_pages_remote);
  *
  * FOLL_PIN means that the pages must be released via unpin_user_page(). Please
  * see Documentation/core-api/pin_user_pages.rst for details.
- *
- * Note that if a zero_page is amongst the returned pages, it will not have
- * pins in it and unpin_user_page*() will not remove pins from it.
  */
 long pin_user_pages(unsigned long start, unsigned long nr_pages,
 		    unsigned int gup_flags, struct page **pages,
@@ -3308,9 +3288,6 @@ EXPORT_SYMBOL(pin_user_pages);
  * pin_user_pages_unlocked() is the FOLL_PIN variant of
  * get_user_pages_unlocked(). Behavior is the same, except that this one sets
  * FOLL_PIN and rejects FOLL_GET.
- *
- * Note that if a zero_page is amongst the returned pages, it will not have
- * pins in it and unpin_user_page*() will not remove pins from it.
  */
 long pin_user_pages_unlocked(unsigned long start, unsigned long nr_pages,
 			     struct page **pages, unsigned int gup_flags)

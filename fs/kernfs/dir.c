@@ -125,9 +125,9 @@ static struct kernfs_node *kernfs_common_ancestor(struct kernfs_node *a,
  * kn_to:   /n1/n2/n3         [depth=3]
  * result:  /../..
  *
- * [3] when @kn_to is %NULL result will be "(null)"
+ * [3] when @kn_to is NULL result will be "(null)"
  *
- * Return: the length of the constructed path.  If the path would have been
+ * Returns the length of the full path.  If the full length is equal to or
  * greater than @buflen, @buf contains the truncated path with the trailing
  * '\0'.  On error, -errno is returned.
  */
@@ -138,17 +138,16 @@ static int kernfs_path_from_node_locked(struct kernfs_node *kn_to,
 	struct kernfs_node *kn, *common;
 	const char parent_str[] = "/..";
 	size_t depth_from, depth_to, len = 0;
-	ssize_t copied;
 	int i, j;
 
 	if (!kn_to)
-		return strscpy(buf, "(null)", buflen);
+		return strlcpy(buf, "(null)", buflen);
 
 	if (!kn_from)
 		kn_from = kernfs_root(kn_to)->kn;
 
 	if (kn_from == kn_to)
-		return strscpy(buf, "/", buflen);
+		return strlcpy(buf, "/", buflen);
 
 	if (!buf)
 		return -EINVAL;
@@ -162,19 +161,18 @@ static int kernfs_path_from_node_locked(struct kernfs_node *kn_to,
 
 	buf[0] = '\0';
 
-	for (i = 0; i < depth_from; i++) {
-		copied = strscpy(buf + len, parent_str, buflen - len);
-		if (copied < 0)
-			return copied;
-		len += copied;
-	}
+	for (i = 0; i < depth_from; i++)
+		len += strlcpy(buf + len, parent_str,
+			       len < buflen ? buflen - len : 0);
 
 	/* Calculate how many bytes we need for the rest */
 	for (i = depth_to - 1; i >= 0; i--) {
 		for (kn = kn_to, j = 0; j < i; j++)
 			kn = kn->parent;
-
-		len += scnprintf(buf + len, buflen - len, "/%s", kn->name);
+		len += strlcpy(buf + len, "/",
+			       len < buflen ? buflen - len : 0);
+		len += strlcpy(buf + len, kn->name,
+			       len < buflen ? buflen - len : 0);
 	}
 
 	return len;
@@ -187,12 +185,10 @@ static int kernfs_path_from_node_locked(struct kernfs_node *kn_to,
  * @buflen: size of @buf
  *
  * Copies the name of @kn into @buf of @buflen bytes.  The behavior is
- * similar to strlcpy().
+ * similar to strlcpy().  It returns the length of @kn's name and if @buf
+ * isn't long enough, it's filled upto @buflen-1 and nul terminated.
  *
- * Fills buffer with "(null)" if @kn is %NULL.
- *
- * Return: the length of @kn's name and if @buf isn't long enough,
- * it's filled up to @buflen-1 and nul terminated.
+ * Fills buffer with "(null)" if @kn is NULL.
  *
  * This function can be called from any context.
  */
@@ -219,7 +215,7 @@ int kernfs_name(struct kernfs_node *kn, char *buf, size_t buflen)
  * path (which includes '..'s) as needed to reach from @from to @to is
  * returned.
  *
- * Return: the length of the constructed path.  If the path would have been
+ * Returns the length of the full path.  If the full length is equal to or
  * greater than @buflen, @buf contains the truncated path with the trailing
  * '\0'.  On error, -errno is returned.
  */
@@ -270,10 +266,12 @@ void pr_cont_kernfs_path(struct kernfs_node *kn)
 	sz = kernfs_path_from_node(kn, NULL, kernfs_pr_cont_buf,
 				   sizeof(kernfs_pr_cont_buf));
 	if (sz < 0) {
-		if (sz == -E2BIG)
-			pr_cont("(name too long)");
-		else
-			pr_cont("(error)");
+		pr_cont("(error)");
+		goto out;
+	}
+
+	if (sz >= sizeof(kernfs_pr_cont_buf)) {
+		pr_cont("(name too long)");
 		goto out;
 	}
 
@@ -289,8 +287,6 @@ out:
  *
  * Determines @kn's parent, pins and returns it.  This function can be
  * called from any context.
- *
- * Return: parent node of @kn
  */
 struct kernfs_node *kernfs_get_parent(struct kernfs_node *kn)
 {
@@ -306,11 +302,11 @@ struct kernfs_node *kernfs_get_parent(struct kernfs_node *kn)
 }
 
 /**
- *	kernfs_name_hash - calculate hash of @ns + @name
+ *	kernfs_name_hash
  *	@name: Null terminated string to hash
  *	@ns:   Namespace tag to hash
  *
- *	Return: 31-bit hash of ns + name (so it fits in an off_t)
+ *	Returns 31 bit hash of ns + name (so it fits in an off_t )
  */
 static unsigned int kernfs_name_hash(const char *name, const void *ns)
 {
@@ -358,8 +354,8 @@ static int kernfs_sd_compare(const struct kernfs_node *left,
  *	Locking:
  *	kernfs_rwsem held exclusive
  *
- *	Return:
- *	%0 on success, -EEXIST on failure.
+ *	RETURNS:
+ *	0 on susccess -EEXIST on failure.
  */
 static int kernfs_link_sibling(struct kernfs_node *kn)
 {
@@ -398,10 +394,8 @@ static int kernfs_link_sibling(struct kernfs_node *kn)
  *	@kn: kernfs_node of interest
  *
  *	Try to unlink @kn from its sibling rbtree which starts from
- *	kn->parent->dir.children.
- *
- *	Return: %true if @kn was actually removed,
- *	%false if @kn wasn't on the rbtree.
+ *	kn->parent->dir.children.  Returns %true if @kn was actually
+ *	removed, %false if @kn wasn't on the rbtree.
  *
  *	Locking:
  *	kernfs_rwsem held exclusive
@@ -425,10 +419,10 @@ static bool kernfs_unlink_sibling(struct kernfs_node *kn)
  *	@kn: kernfs_node to get an active reference to
  *
  *	Get an active reference of @kn.  This function is noop if @kn
- *	is %NULL.
+ *	is NULL.
  *
- *	Return:
- *	Pointer to @kn on success, %NULL on failure.
+ *	RETURNS:
+ *	Pointer to @kn on success, NULL on failure.
  */
 struct kernfs_node *kernfs_get_active(struct kernfs_node *kn)
 {
@@ -448,7 +442,7 @@ struct kernfs_node *kernfs_get_active(struct kernfs_node *kn)
  *	@kn: kernfs_node to put an active reference to
  *
  *	Put an active reference to @kn.  This function is noop if @kn
- *	is %NULL.
+ *	is NULL.
  */
 void kernfs_put_active(struct kernfs_node *kn)
 {
@@ -470,7 +464,7 @@ void kernfs_put_active(struct kernfs_node *kn)
  * kernfs_drain - drain kernfs_node
  * @kn: kernfs_node to drain
  *
- * Drain existing usages and nuke all existing mmaps of @kn.  Multiple
+ * Drain existing usages and nuke all existing mmaps of @kn.  Mutiple
  * removers may invoke this function concurrently on @kn and all will
  * return after draining is complete.
  */
@@ -583,7 +577,7 @@ EXPORT_SYMBOL_GPL(kernfs_put);
  * kernfs_node_from_dentry - determine kernfs_node associated with a dentry
  * @dentry: the dentry in question
  *
- * Return: the kernfs_node associated with @dentry.  If @dentry is not a
+ * Return the kernfs_node associated with @dentry.  If @dentry is not a
  * kernfs one, %NULL is returned.
  *
  * While the returned kernfs_node will stay accessible as long as @dentry
@@ -704,8 +698,8 @@ struct kernfs_node *kernfs_new_node(struct kernfs_node *parent,
  * @id's lower 32bits encode ino and upper gen.  If the gen portion is
  * zero, all generations are matched.
  *
- * Return: %NULL on failure,
- * otherwise a kernfs node with reference counter incremented.
+ * RETURNS:
+ * NULL on failure. Return a kernfs node with reference counter incremented
  */
 struct kernfs_node *kernfs_find_and_get_node_by_id(struct kernfs_root *root,
 						   u64 id)
@@ -753,8 +747,8 @@ err_unlock:
  *	function increments nlink of the parent's inode if @kn is a
  *	directory and link into the children list of the parent.
  *
- *	Return:
- *	%0 on success, -EEXIST if entry with the given name already
+ *	RETURNS:
+ *	0 on success, -EEXIST if entry with the given name already
  *	exists.
  */
 int kernfs_add_one(struct kernfs_node *kn)
@@ -817,9 +811,8 @@ out_unlock:
  * @name: name to look for
  * @ns: the namespace tag to use
  *
- * Look for kernfs_node with name @name under @parent.
- *
- * Return: pointer to the found kernfs_node on success, %NULL on failure.
+ * Look for kernfs_node with name @name under @parent.  Returns pointer to
+ * the found kernfs_node on success, %NULL on failure.
  */
 static struct kernfs_node *kernfs_find_ns(struct kernfs_node *parent,
 					  const unsigned char *name,
@@ -892,9 +885,8 @@ static struct kernfs_node *kernfs_walk_ns(struct kernfs_node *parent,
  * @ns: the namespace tag to use
  *
  * Look for kernfs_node with name @name under @parent and get a reference
- * if found.  This function may sleep.
- *
- * Return: pointer to the found kernfs_node on success, %NULL on failure.
+ * if found.  This function may sleep and returns pointer to the found
+ * kernfs_node on success, %NULL on failure.
  */
 struct kernfs_node *kernfs_find_and_get_ns(struct kernfs_node *parent,
 					   const char *name, const void *ns)
@@ -918,9 +910,8 @@ EXPORT_SYMBOL_GPL(kernfs_find_and_get_ns);
  * @ns: the namespace tag to use
  *
  * Look for kernfs_node with path @path under @parent and get a reference
- * if found.  This function may sleep.
- *
- * Return: pointer to the found kernfs_node on success, %NULL on failure.
+ * if found.  This function may sleep and returns pointer to the found
+ * kernfs_node on success, %NULL on failure.
  */
 struct kernfs_node *kernfs_walk_and_get_ns(struct kernfs_node *parent,
 					   const char *path, const void *ns)
@@ -942,7 +933,7 @@ struct kernfs_node *kernfs_walk_and_get_ns(struct kernfs_node *parent,
  * @flags: KERNFS_ROOT_* flags
  * @priv: opaque data associated with the new directory
  *
- * Return: the root of the new hierarchy on success, ERR_PTR() value on
+ * Returns the root of the new hierarchy on success, ERR_PTR() value on
  * failure.
  */
 struct kernfs_root *kernfs_create_root(struct kernfs_syscall_ops *scops,
@@ -1014,8 +1005,6 @@ void kernfs_destroy_root(struct kernfs_root *root)
 /**
  * kernfs_root_to_node - return the kernfs_node associated with a kernfs_root
  * @root: root to use to lookup
- *
- * Return: @root's kernfs_node
  */
 struct kernfs_node *kernfs_root_to_node(struct kernfs_root *root)
 {
@@ -1032,7 +1021,7 @@ struct kernfs_node *kernfs_root_to_node(struct kernfs_root *root)
  * @priv: opaque data associated with the new directory
  * @ns: optional namespace tag of the directory
  *
- * Return: the created node on success, ERR_PTR() value on failure.
+ * Returns the created node on success, ERR_PTR() value on failure.
  */
 struct kernfs_node *kernfs_create_dir_ns(struct kernfs_node *parent,
 					 const char *name, umode_t mode,
@@ -1066,7 +1055,7 @@ struct kernfs_node *kernfs_create_dir_ns(struct kernfs_node *parent,
  * @parent: parent in which to create a new directory
  * @name: name of the new directory
  *
- * Return: the created node on success, ERR_PTR() value on failure.
+ * Returns the created node on success, ERR_PTR() value on failure.
  */
 struct kernfs_node *kernfs_create_empty_dir(struct kernfs_node *parent,
 					    const char *name)
@@ -1315,8 +1304,6 @@ static struct kernfs_node *kernfs_leftmost_descendant(struct kernfs_node *pos)
  * Find the next descendant to visit for post-order traversal of @root's
  * descendants.  @root is included in the iteration and the last node to be
  * visited.
- *
- * Return: the next descendant to visit or %NULL when done.
  */
 static struct kernfs_node *kernfs_next_descendant_post(struct kernfs_node *pos,
 						       struct kernfs_node *root)
@@ -1580,8 +1567,6 @@ void kernfs_unbreak_active_protection(struct kernfs_node *kn)
  * the whole kernfs_ops which won the arbitration.  This can be used to
  * guarantee, for example, all concurrent writes to a "delete" file to
  * finish only after the whole operation is complete.
- *
- * Return: %true if @kn is removed by this call, otherwise %false.
  */
 bool kernfs_remove_self(struct kernfs_node *kn)
 {
@@ -1642,8 +1627,7 @@ bool kernfs_remove_self(struct kernfs_node *kn)
  * @ns: namespace tag of the kernfs_node to remove
  *
  * Look for the kernfs_node with @name and @ns under @parent and remove it.
- *
- * Return: %0 on success, -ENOENT if such entry doesn't exist.
+ * Returns 0 on success, -ENOENT if such entry doesn't exist.
  */
 int kernfs_remove_by_name_ns(struct kernfs_node *parent, const char *name,
 			     const void *ns)
@@ -1681,8 +1665,6 @@ int kernfs_remove_by_name_ns(struct kernfs_node *parent, const char *name,
  * @new_parent: new parent to put @sd under
  * @new_name: new name
  * @new_ns: new namespace tag
- *
- * Return: %0 on success, -errno on failure.
  */
 int kernfs_rename_ns(struct kernfs_node *kn, struct kernfs_node *new_parent,
 		     const char *new_name, const void *new_ns)

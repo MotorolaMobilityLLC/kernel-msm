@@ -94,7 +94,7 @@ int __kernfs_setattr(struct kernfs_node *kn, const struct iattr *iattr)
  * @kn: target node
  * @iattr: iattr to set
  *
- * Return: %0 on success, -errno on failure.
+ * Returns 0 on success, -errno on failure.
  */
 int kernfs_setattr(struct kernfs_node *kn, const struct iattr *iattr)
 {
@@ -241,11 +241,11 @@ static void kernfs_init_inode(struct kernfs_node *kn, struct inode *inode)
  *	allocated and basics are initialized.  New inode is returned
  *	locked.
  *
- *	Locking:
+ *	LOCKING:
  *	Kernel thread context (may sleep).
  *
- *	Return:
- *	Pointer to allocated inode on success, %NULL on failure.
+ *	RETURNS:
+ *	Pointer to allocated inode on success, NULL on failure.
  */
 struct inode *kernfs_get_inode(struct super_block *sb, struct kernfs_node *kn)
 {

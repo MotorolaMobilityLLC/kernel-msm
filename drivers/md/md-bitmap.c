@@ -1352,7 +1352,7 @@ __acquires(bitmap->lock)
 	sector_t chunk = offset >> bitmap->chunkshift;
 	unsigned long page = chunk >> PAGE_COUNTER_SHIFT;
 	unsigned long pageoff = (chunk & PAGE_COUNTER_MASK) << COUNTER_BYTE_SHIFT;
-	sector_t csize = ((sector_t)1) << bitmap->chunkshift;
+	sector_t csize;
 	int err;
 
 	if (page >= bitmap->pages) {
@@ -1361,7 +1361,6 @@ __acquires(bitmap->lock)
 		 * End-of-device while looking for a whole page or
 		 * user set a huge number to sysfs bitmap_set_bits.
 		 */
-		*blocks = csize - (offset & (csize - 1));
 		return NULL;
 	}
 	err = md_bitmap_checkpage(bitmap, page, create, 0);
@@ -1370,7 +1369,8 @@ __acquires(bitmap->lock)
 	    bitmap->bp[page].map == NULL)
 		csize = ((sector_t)1) << (bitmap->chunkshift +
 					  PAGE_COUNTER_SHIFT);
-
+	else
+		csize = ((sector_t)1) << bitmap->chunkshift;
 	*blocks = csize - (offset & (csize - 1));
 
 	if (err < 0)
@@ -2022,29 +2022,33 @@ int md_bitmap_copy_from_slot(struct mddev *mddev, int slot,
 }
 EXPORT_SYMBOL_GPL(md_bitmap_copy_from_slot);
 
-int md_bitmap_get_stats(struct bitmap *bitmap, struct md_bitmap_stats *stats)
+
+void md_bitmap_status(struct seq_file *seq, struct bitmap *bitmap)
 {
+	unsigned long chunk_kb;
 	struct bitmap_counts *counts;
-	bitmap_super_t *sb;
 
 	if (!bitmap)
-		return -ENOENT;
-	if (bitmap->mddev->bitmap_info.external)
-		return -ENOENT;
-	if (!bitmap->storage.sb_page) /* no superblock */
-		return -EINVAL;
-	sb = kmap_local_page(bitmap->storage.sb_page);
-	stats->sync_size = le64_to_cpu(sb->sync_size);
-	kunmap_local(sb);
+		return;
 
 	counts = &bitmap->counts;
-	stats->missing_pages = counts->missing_pages;
-	stats->pages = counts->pages;
-	stats->file = bitmap->storage.file;
 
-	return 0;
+	chunk_kb = bitmap->mddev->bitmap_info.chunksize >> 10;
+	seq_printf(seq, "bitmap: %lu/%lu pages [%luKB], "
+		   "%lu%s chunk",
+		   counts->pages - counts->missing_pages,
+		   counts->pages,
+		   (counts->pages - counts->missing_pages)
+		   << (PAGE_SHIFT - 10),
+		   chunk_kb ? chunk_kb : bitmap->mddev->bitmap_info.chunksize,
+		   chunk_kb ? "KB" : "B");
+	if (bitmap->storage.file) {
+		seq_printf(seq, ", file: ");
+		seq_file_path(seq, bitmap->storage.file, " \t\n");
+	}
+
+	seq_printf(seq, "\n");
 }
-EXPORT_SYMBOL_GPL(md_bitmap_get_stats);
 
 int md_bitmap_resize(struct bitmap *bitmap, sector_t blocks,
 		  int chunksize, int init)

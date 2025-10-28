@@ -68,15 +68,12 @@ DEFINE_COOKIE(net_cookie);
 
 static struct net_generic *net_alloc_generic(void)
 {
-	unsigned int gen_ptrs = READ_ONCE(max_gen_ptrs);
-	unsigned int generic_size;
 	struct net_generic *ng;
-
-	generic_size = offsetof(struct net_generic, ptr[gen_ptrs]);
+	unsigned int generic_size = offsetof(struct net_generic, ptr[max_gen_ptrs]);
 
 	ng = kzalloc(generic_size, GFP_KERNEL);
 	if (ng)
-		ng->s.len = gen_ptrs;
+		ng->s.len = max_gen_ptrs;
 
 	return ng;
 }
@@ -657,16 +654,11 @@ EXPORT_SYMBOL_GPL(__put_net);
  * get_net_ns - increment the refcount of the network namespace
  * @ns: common namespace (net)
  *
- * Returns the net's common namespace or ERR_PTR() if ref is zero.
+ * Returns the net's common namespace.
  */
 struct ns_common *get_net_ns(struct ns_common *ns)
 {
-	struct net *net;
-
-	net = maybe_get_net(container_of(ns, struct net, ns));
-	if (net)
-		return &net->ns;
-	return ERR_PTR(-EINVAL);
+	return &get_net(container_of(ns, struct net, ns))->ns;
 }
 EXPORT_SYMBOL_GPL(get_net_ns);
 
@@ -1229,11 +1221,7 @@ static int register_pernet_operations(struct list_head *list,
 		if (error < 0)
 			return error;
 		*ops->id = error;
-		/* This does not require READ_ONCE as writers already hold
-		 * pernet_ops_rwsem. But WRITE_ONCE is needed to protect
-		 * net_alloc_generic.
-		 */
-		WRITE_ONCE(max_gen_ptrs, max(max_gen_ptrs, *ops->id + 1));
+		max_gen_ptrs = max(max_gen_ptrs, *ops->id + 1);
 	}
 	error = __register_pernet_operations(list, ops);
 	if (error) {

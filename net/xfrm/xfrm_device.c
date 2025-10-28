@@ -248,8 +248,6 @@ int xfrm_dev_state_add(struct net *net, struct xfrm_state *x,
 
 	dev = dev_get_by_index(net, xuo->ifindex);
 	if (!dev) {
-		struct xfrm_dst_lookup_params params;
-
 		if (!(xuo->flags & XFRM_OFFLOAD_INBOUND)) {
 			saddr = &x->props.saddr;
 			daddr = &x->id.daddr;
@@ -258,12 +256,9 @@ int xfrm_dev_state_add(struct net *net, struct xfrm_state *x,
 			daddr = &x->props.saddr;
 		}
 
-		memset(&params, 0, sizeof(params));
-		params.net = net;
-		params.saddr = saddr;
-		params.daddr = daddr;
-		params.mark = xfrm_smark_get(0, x);
-		dst = __xfrm_dst_lookup(x->props.family, &params);
+		dst = __xfrm_dst_lookup(net, 0, 0, saddr, daddr,
+					x->props.family,
+					xfrm_smark_get(0, x));
 		if (IS_ERR(dst))
 			return 0;
 

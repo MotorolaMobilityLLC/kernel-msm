@@ -971,10 +971,7 @@ void services_compute_xperms_decision(struct extended_perms_decision *xpermd,
 					xpermd->driver))
 			return;
 	} else {
-		pr_warn_once(
-			"SELinux: unknown extended permission (%u) will be ignored\n",
-			node->datum.u.xperms->specified);
-		return;
+		BUG();
 	}
 
 	if (node->key.specified == AVTAB_XPERMS_ALLOWED) {
@@ -1011,8 +1008,7 @@ void services_compute_xperms_decision(struct extended_perms_decision *xpermd,
 					node->datum.u.xperms->perms.p[i];
 		}
 	} else {
-		pr_warn_once("SELinux: unknown specified key (%u)\n",
-			     node->key.specified);
+		BUG();
 	}
 }
 
@@ -3574,8 +3570,7 @@ void selinux_audit_rule_free(void *vrule)
 	}
 }
 
-int selinux_audit_rule_init(u32 field, u32 op, char *rulestr, void **vrule,
-			    gfp_t gfp)
+int selinux_audit_rule_init(u32 field, u32 op, char *rulestr, void **vrule)
 {
 	struct selinux_state *state = &selinux_state;
 	struct selinux_policy *policy;
@@ -3616,7 +3611,7 @@ int selinux_audit_rule_init(u32 field, u32 op, char *rulestr, void **vrule,
 		return -EINVAL;
 	}
 
-	tmprule = kzalloc(sizeof(struct selinux_audit_rule), gfp);
+	tmprule = kzalloc(sizeof(struct selinux_audit_rule), GFP_KERNEL);
 	if (!tmprule)
 		return -ENOMEM;
 

@@ -1030,7 +1030,6 @@ static struct snd_soc_card kbl_audio_card_da7219_m98927 = {
 	.codec_conf = max98927_codec_conf,
 	.num_configs = ARRAY_SIZE(max98927_codec_conf),
 	.fully_routed = true,
-	.disable_route_checks = true,
 	.late_probe = kabylake_card_late_probe,
 };
 
@@ -1049,7 +1048,6 @@ static struct snd_soc_card kbl_audio_card_max98927 = {
 	.codec_conf = max98927_codec_conf,
 	.num_configs = ARRAY_SIZE(max98927_codec_conf),
 	.fully_routed = true,
-	.disable_route_checks = true,
 	.late_probe = kabylake_card_late_probe,
 };
 
@@ -1067,7 +1065,6 @@ static struct snd_soc_card kbl_audio_card_da7219_m98373 = {
 	.codec_conf = max98373_codec_conf,
 	.num_configs = ARRAY_SIZE(max98373_codec_conf),
 	.fully_routed = true,
-	.disable_route_checks = true,
 	.late_probe = kabylake_card_late_probe,
 };
 
@@ -1085,7 +1082,6 @@ static struct snd_soc_card kbl_audio_card_max98373 = {
 	.codec_conf = max98373_codec_conf,
 	.num_configs = ARRAY_SIZE(max98373_codec_conf),
 	.fully_routed = true,
-	.disable_route_checks = true,
 	.late_probe = kabylake_card_late_probe,
 };
 

@@ -84,10 +84,10 @@ static int sanitycheck(void *arg)
 		return -ENOMEM;
 
 	chain = mock_chain(NULL, f, 1);
-	if (chain)
-		dma_fence_enable_sw_signaling(chain);
-	else
+	if (!chain)
 		err = -ENOMEM;
+
+	dma_fence_enable_sw_signaling(chain);
 
 	dma_fence_signal(f);
 	dma_fence_put(f);

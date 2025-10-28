@@ -27,14 +27,13 @@ void f2fs_mark_inode_dirty_sync(struct inode *inode, bool sync)
 	if (is_inode_flag_set(inode, FI_NEW_INODE))
 		return;
 
-	if (f2fs_readonly(F2FS_I_SB(inode)->sb))
-		return;
-
 	if (f2fs_inode_dirtied(inode, sync))
 		return;
 
-	if (f2fs_is_atomic_file(inode))
+	if (f2fs_is_atomic_file(inode)) {
+		set_inode_flag(inode, FI_ATOMIC_DIRTIED);
 		return;
+	}
 
 	mark_inode_dirty_sync(inode);
 }
@@ -304,12 +303,6 @@ static bool sanity_check_inode(struct inode *inode, struct page *node_page)
 		}
 	}
 
-	if (fi->i_xattr_nid && f2fs_check_nid_range(sbi, fi->i_xattr_nid)) {
-		f2fs_warn(sbi, "%s: inode (ino=%lx) has corrupted i_xattr_nid: %u, run fsck to fix.",
-			  __func__, inode->i_ino, fi->i_xattr_nid);
-		return false;
-	}
-
 	return true;
 }
 
@@ -552,6 +545,14 @@ make_now:
 	}
 	f2fs_set_inode_flags(inode);
 
+	if (file_should_truncate(inode) &&
+			!is_sbi_flag_set(sbi, SBI_POR_DOING)) {
+		ret = f2fs_truncate(inode);
+		if (ret)
+			goto bad_inode;
+		file_dont_truncate(inode);
+	}
+
 	unlock_new_inode(inode);
 	trace_f2fs_iget(inode);
 	return inode;
@@ -722,10 +723,8 @@ int f2fs_write_inode(struct inode *inode, struct writeback_control *wbc)
 		!is_inode_flag_set(inode, FI_DIRTY_INODE))
 		return 0;
 
-	if (!f2fs_is_checkpoint_ready(sbi)) {
-		f2fs_mark_inode_dirty_sync(inode, true);
+	if (!f2fs_is_checkpoint_ready(sbi))
 		return -ENOSPC;
-	}
 
 	/*
 	 * We need to balance fs here to prevent from producing dirty node pages
@@ -749,9 +748,8 @@ void f2fs_evict_inode(struct inode *inode)
 
 	f2fs_abort_atomic_write(inode, true);
 
-	if (fi->cow_inode && f2fs_is_cow_file(fi->cow_inode)) {
+	if (fi->cow_inode) {
 		clear_inode_flag(fi->cow_inode, FI_COW_FILE);
-		F2FS_I(fi->cow_inode)->atomic_inode = NULL;
 		iput(fi->cow_inode);
 		fi->cow_inode = NULL;
 	}

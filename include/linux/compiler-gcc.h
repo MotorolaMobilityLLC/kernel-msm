@@ -102,26 +102,26 @@
 #define __noscs __attribute__((__no_sanitize__("shadow-call-stack")))
 #endif
 
-#ifdef __SANITIZE_HWADDRESS__
-#define __no_sanitize_address __attribute__((__no_sanitize__("hwaddress")))
+#if __has_attribute(__no_sanitize_address__)
+#define __no_sanitize_address __attribute__((no_sanitize_address))
 #else
-#define __no_sanitize_address __attribute__((__no_sanitize_address__))
+#define __no_sanitize_address
 #endif
 
 #if defined(__SANITIZE_THREAD__) && __has_attribute(__no_sanitize_thread__)
-#define __no_sanitize_thread __attribute__((__no_sanitize_thread__))
+#define __no_sanitize_thread __attribute__((no_sanitize_thread))
 #else
 #define __no_sanitize_thread
 #endif
 
 #if __has_attribute(__no_sanitize_undefined__)
-#define __no_sanitize_undefined __attribute__((__no_sanitize_undefined__))
+#define __no_sanitize_undefined __attribute__((no_sanitize_undefined))
 #else
 #define __no_sanitize_undefined
 #endif
 
 #if defined(CONFIG_KCOV) && __has_attribute(__no_sanitize_coverage__)
-#define __no_sanitize_coverage __attribute__((__no_sanitize_coverage__))
+#define __no_sanitize_coverage __attribute__((no_sanitize_coverage))
 #else
 #define __no_sanitize_coverage
 #endif

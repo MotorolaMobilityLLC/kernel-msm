@@ -342,7 +342,9 @@ xfs_btree_bload_drop_buf(
 	if (*bpp == NULL)
 		return;
 
-	xfs_buf_delwri_queue_here(*bpp, buffers_list);
+	if (!xfs_buf_delwri_queue(*bpp, buffers_list))
+		ASSERT(0);
+
 	xfs_buf_relse(*bpp);
 	*bpp = NULL;
 }

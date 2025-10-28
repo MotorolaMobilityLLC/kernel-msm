@@ -1172,9 +1172,10 @@ void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
 	LIST_HEAD(freeme);
 
 	spin_lock(&inode->i_lock);
-	if (!nfs4_stateid_match_other(&lo->plh_stateid, arg_stateid))
+	if (!pnfs_layout_is_valid(lo) ||
+	    !nfs4_stateid_match_other(&lo->plh_stateid, arg_stateid))
 		goto out_unlock;
-	if (stateid && pnfs_layout_is_valid(lo)) {
+	if (stateid) {
 		u32 seq = be32_to_cpu(arg_stateid->seqid);
 
 		pnfs_mark_matching_lsegs_invalid(lo, &freeme, range, seq);
@@ -1196,7 +1197,7 @@ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
 		enum pnfs_iomode *iomode)
 {
 	/* Serialise LAYOUTGET/LAYOUTRETURN */
-	if (atomic_read(&lo->plh_outstanding) != 0 && lo->plh_return_seq == 0)
+	if (atomic_read(&lo->plh_outstanding) != 0)
 		return false;
 	if (test_and_set_bit(NFS_LAYOUT_RETURN_LOCK, &lo->plh_flags))
 		return false;
@@ -1996,14 +1997,6 @@ pnfs_update_layout(struct inode *ino,
 	}
 
 lookup_again:
-	if (!nfs4_valid_open_stateid(ctx->state)) {
-		trace_pnfs_update_layout(ino, pos, count,
-					 iomode, lo, lseg,
-					 PNFS_UPDATE_LAYOUT_INVALID_OPEN);
-		lseg = ERR_PTR(-EIO);
-		goto out;
-	}
-
 	lseg = ERR_PTR(nfs4_client_recover_expired_lease(clp));
 	if (IS_ERR(lseg))
 		goto out;

@@ -106,9 +106,7 @@ static int pwm_imx_tpm_round_state(struct pwm_chip *chip,
 	p->prescale = prescale;
 
 	period_count = (clock_unit + ((1 << prescale) >> 1)) >> prescale;
-	if (period_count == 0)
-		return -EINVAL;
-	p->mod = period_count - 1;
+	p->mod = period_count;
 
 	/* calculate real period HW can support */
 	tmp = (u64)period_count << prescale;

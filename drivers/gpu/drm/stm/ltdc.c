@@ -37,7 +37,6 @@
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_simple_kms_helper.h>
 #include <drm/drm_vblank.h>
-#include <drm/drm_managed.h>
 
 #include <video/videomode.h>
 
@@ -1201,6 +1200,7 @@ static void ltdc_crtc_atomic_print_state(struct drm_printer *p,
 }
 
 static const struct drm_crtc_funcs ltdc_crtc_funcs = {
+	.destroy = drm_crtc_cleanup,
 	.set_config = drm_atomic_helper_set_config,
 	.page_flip = drm_atomic_helper_page_flip,
 	.reset = drm_atomic_helper_crtc_reset,
@@ -1213,6 +1213,7 @@ static const struct drm_crtc_funcs ltdc_crtc_funcs = {
 };
 
 static const struct drm_crtc_funcs ltdc_crtc_with_crc_support_funcs = {
+	.destroy = drm_crtc_cleanup,
 	.set_config = drm_atomic_helper_set_config,
 	.page_flip = drm_atomic_helper_page_flip,
 	.reset = drm_atomic_helper_crtc_reset,
@@ -1514,9 +1515,6 @@ static void ltdc_plane_atomic_disable(struct drm_plane *plane,
 	/* Disable layer */
 	regmap_write_bits(ldev->regmap, LTDC_L1CR + lofs, LXCR_LEN | LXCR_CLUTEN |  LXCR_HMEN, 0);
 
-	/* Reset the layer transparency to hide any related background color */
-	regmap_write_bits(ldev->regmap, LTDC_L1CACR + lofs, LXCACR_CONSTA, 0x00);
-
 	/* Commit shadow registers = update plane at next vblank */
 	if (ldev->caps.plane_reg_shadow)
 		regmap_write_bits(ldev->regmap, LTDC_L1RCR + lofs,
@@ -1548,6 +1546,7 @@ static void ltdc_plane_atomic_print_state(struct drm_printer *p,
 static const struct drm_plane_funcs ltdc_plane_funcs = {
 	.update_plane = drm_atomic_helper_update_plane,
 	.disable_plane = drm_atomic_helper_disable_plane,
+	.destroy = drm_plane_cleanup,
 	.reset = drm_atomic_helper_plane_reset,
 	.atomic_duplicate_state = drm_atomic_helper_plane_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_plane_destroy_state,
@@ -1574,6 +1573,7 @@ static struct drm_plane *ltdc_plane_create(struct drm_device *ddev,
 	const u64 *modifiers = ltdc_format_modifiers;
 	u32 lofs = index * LAY_OFS;
 	u32 val;
+	int ret;
 
 	/* Allocate the biggest size according to supported color formats */
 	formats = devm_kzalloc(dev, (ldev->caps.pix_fmt_nb +
@@ -1581,8 +1581,6 @@ static struct drm_plane *ltdc_plane_create(struct drm_device *ddev,
 			       ARRAY_SIZE(ltdc_drm_fmt_ycbcr_sp) +
 			       ARRAY_SIZE(ltdc_drm_fmt_ycbcr_fp)) *
 			       sizeof(*formats), GFP_KERNEL);
-	if (!formats)
-		return NULL;
 
 	for (i = 0; i < ldev->caps.pix_fmt_nb; i++) {
 		drm_fmt = ldev->caps.pix_fmt_drm[i];
@@ -1616,10 +1614,14 @@ static struct drm_plane *ltdc_plane_create(struct drm_device *ddev,
 		}
 	}
 
-	plane = drmm_universal_plane_alloc(ddev, struct drm_plane, dev,
-					   possible_crtcs, &ltdc_plane_funcs, formats,
-					   nb_fmt, modifiers, type, NULL);
-	if (IS_ERR(plane))
+	plane = devm_kzalloc(dev, sizeof(*plane), GFP_KERNEL);
+	if (!plane)
+		return NULL;
+
+	ret = drm_universal_plane_init(ddev, plane, possible_crtcs,
+				       &ltdc_plane_funcs, formats, nb_fmt,
+				       modifiers, type, NULL);
+	if (ret < 0)
 		return NULL;
 
 	if (ldev->caps.ycbcr_input) {
@@ -1640,6 +1642,15 @@ static struct drm_plane *ltdc_plane_create(struct drm_device *ddev,
 	DRM_DEBUG_DRIVER("plane:%d created\n", plane->base.id);
 
 	return plane;
+}
+
+static void ltdc_plane_destroy_all(struct drm_device *ddev)
+{
+	struct drm_plane *plane, *plane_temp;
+
+	list_for_each_entry_safe(plane, plane_temp,
+				 &ddev->mode_config.plane_list, head)
+		drm_plane_cleanup(plane);
 }
 
 static int ltdc_crtc_init(struct drm_device *ddev, struct drm_crtc *crtc)
@@ -1667,14 +1678,14 @@ static int ltdc_crtc_init(struct drm_device *ddev, struct drm_crtc *crtc)
 
 	/* Init CRTC according to its hardware features */
 	if (ldev->caps.crc)
-		ret = drmm_crtc_init_with_planes(ddev, crtc, primary, NULL,
-						 &ltdc_crtc_with_crc_support_funcs, NULL);
+		ret = drm_crtc_init_with_planes(ddev, crtc, primary, NULL,
+						&ltdc_crtc_with_crc_support_funcs, NULL);
 	else
-		ret = drmm_crtc_init_with_planes(ddev, crtc, primary, NULL,
-						 &ltdc_crtc_funcs, NULL);
+		ret = drm_crtc_init_with_planes(ddev, crtc, primary, NULL,
+						&ltdc_crtc_funcs, NULL);
 	if (ret) {
 		DRM_ERROR("Can not initialize CRTC\n");
-		return ret;
+		goto cleanup;
 	}
 
 	drm_crtc_helper_add(crtc, &ltdc_crtc_helper_funcs);
@@ -1688,8 +1699,9 @@ static int ltdc_crtc_init(struct drm_device *ddev, struct drm_crtc *crtc)
 	for (i = 1; i < ldev->caps.nb_layers; i++) {
 		overlay = ltdc_plane_create(ddev, DRM_PLANE_TYPE_OVERLAY, i);
 		if (!overlay) {
+			ret = -ENOMEM;
 			DRM_ERROR("Can not create overlay plane %d\n", i);
-			return -ENOMEM;
+			goto cleanup;
 		}
 		if (ldev->caps.dynamic_zorder)
 			drm_plane_create_zpos_property(overlay, i, 0, ldev->caps.nb_layers - 1);
@@ -1702,6 +1714,10 @@ static int ltdc_crtc_init(struct drm_device *ddev, struct drm_crtc *crtc)
 	}
 
 	return 0;
+
+cleanup:
+	ltdc_plane_destroy_all(ddev);
+	return ret;
 }
 
 static void ltdc_encoder_disable(struct drm_encoder *encoder)
@@ -1761,19 +1777,23 @@ static int ltdc_encoder_init(struct drm_device *ddev, struct drm_bridge *bridge)
 	struct drm_encoder *encoder;
 	int ret;
 
-	encoder = drmm_simple_encoder_alloc(ddev, struct drm_encoder, dev,
-					    DRM_MODE_ENCODER_DPI);
-	if (IS_ERR(encoder))
-		return PTR_ERR(encoder);
+	encoder = devm_kzalloc(ddev->dev, sizeof(*encoder), GFP_KERNEL);
+	if (!encoder)
+		return -ENOMEM;
 
 	encoder->possible_crtcs = CRTC_MASK;
 	encoder->possible_clones = 0;	/* No cloning support */
 
+	drm_simple_encoder_init(ddev, encoder, DRM_MODE_ENCODER_DPI);
+
 	drm_encoder_helper_add(encoder, &ltdc_encoder_helper_funcs);
 
 	ret = drm_bridge_attach(encoder, bridge, NULL, 0);
-	if (ret)
+	if (ret) {
+		if (ret != -EPROBE_DEFER)
+			drm_encoder_cleanup(encoder);
 		return ret;
+	}
 
 	DRM_DEBUG_DRIVER("Bridge encoder:%d created\n", encoder->base.id);
 
@@ -1943,7 +1963,8 @@ int ltdc_load(struct drm_device *ddev)
 			goto err;
 
 		if (panel) {
-			bridge = drmm_panel_bridge_add(ddev, panel);
+			bridge = drm_panel_bridge_add_typed(panel,
+							    DRM_MODE_CONNECTOR_DPI);
 			if (IS_ERR(bridge)) {
 				DRM_ERROR("panel-bridge endpoint %d\n", i);
 				ret = PTR_ERR(bridge);
@@ -2025,7 +2046,7 @@ int ltdc_load(struct drm_device *ddev)
 		}
 	}
 
-	crtc = drmm_kzalloc(ddev, sizeof(*crtc), GFP_KERNEL);
+	crtc = devm_kzalloc(dev, sizeof(*crtc), GFP_KERNEL);
 	if (!crtc) {
 		DRM_ERROR("Failed to allocate crtc\n");
 		ret = -ENOMEM;
@@ -2052,6 +2073,9 @@ int ltdc_load(struct drm_device *ddev)
 
 	return 0;
 err:
+	for (i = 0; i < nb_endpoints; i++)
+		drm_of_panel_bridge_remove(ddev->dev->of_node, 0, i);
+
 	clk_disable_unprepare(ldev->pixel_clk);
 
 	return ret;
@@ -2059,7 +2083,15 @@ err:
 
 void ltdc_unload(struct drm_device *ddev)
 {
+	struct device *dev = ddev->dev;
+	int nb_endpoints, i;
+
 	DRM_DEBUG_DRIVER("\n");
+
+	nb_endpoints = of_graph_get_endpoint_count(dev->of_node);
+
+	for (i = 0; i < nb_endpoints; i++)
+		drm_of_panel_bridge_remove(ddev->dev->of_node, 0, i);
 
 	pm_runtime_disable(ddev->dev);
 }

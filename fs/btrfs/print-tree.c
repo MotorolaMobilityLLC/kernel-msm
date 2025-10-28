@@ -9,7 +9,7 @@
 
 struct root_name_map {
 	u64 id;
-	const char *name;
+	char name[16];
 };
 
 static const struct root_name_map root_map[] = {

@@ -20,10 +20,9 @@
 
 static struct rxe_recv_sockets recv_sockets;
 
-static struct dst_entry *rxe_find_route4(struct rxe_qp *qp,
-					 struct net_device *ndev,
-					 struct in_addr *saddr,
-					 struct in_addr *daddr)
+static struct dst_entry *rxe_find_route4(struct net_device *ndev,
+				  struct in_addr *saddr,
+				  struct in_addr *daddr)
 {
 	struct rtable *rt;
 	struct flowi4 fl = { { 0 } };
@@ -36,7 +35,7 @@ static struct dst_entry *rxe_find_route4(struct rxe_qp *qp,
 
 	rt = ip_route_output_key(&init_net, &fl);
 	if (IS_ERR(rt)) {
-		rxe_dbg_qp(qp, "no route to %pI4\n", &daddr->s_addr);
+		pr_err_ratelimited("no route to %pI4\n", &daddr->s_addr);
 		return NULL;
 	}
 
@@ -44,8 +43,7 @@ static struct dst_entry *rxe_find_route4(struct rxe_qp *qp,
 }
 
 #if IS_ENABLED(CONFIG_IPV6)
-static struct dst_entry *rxe_find_route6(struct rxe_qp *qp,
-					 struct net_device *ndev,
+static struct dst_entry *rxe_find_route6(struct net_device *ndev,
 					 struct in6_addr *saddr,
 					 struct in6_addr *daddr)
 {
@@ -62,12 +60,12 @@ static struct dst_entry *rxe_find_route6(struct rxe_qp *qp,
 					       recv_sockets.sk6->sk, &fl6,
 					       NULL);
 	if (IS_ERR(ndst)) {
-		rxe_dbg_qp(qp, "no route to %pI6\n", daddr);
+		pr_err_ratelimited("no route to %pI6\n", daddr);
 		return NULL;
 	}
 
 	if (unlikely(ndst->error)) {
-		rxe_dbg_qp(qp, "no route to %pI6\n", daddr);
+		pr_err("no route to %pI6\n", daddr);
 		goto put;
 	}
 
@@ -79,8 +77,7 @@ put:
 
 #else
 
-static struct dst_entry *rxe_find_route6(struct rxe_qp *qp,
-					 struct net_device *ndev,
+static struct dst_entry *rxe_find_route6(struct net_device *ndev,
 					 struct in6_addr *saddr,
 					 struct in6_addr *daddr)
 {
@@ -108,14 +105,14 @@ static struct dst_entry *rxe_find_route(struct net_device *ndev,
 
 			saddr = &av->sgid_addr._sockaddr_in.sin_addr;
 			daddr = &av->dgid_addr._sockaddr_in.sin_addr;
-			dst = rxe_find_route4(qp, ndev, saddr, daddr);
+			dst = rxe_find_route4(ndev, saddr, daddr);
 		} else if (av->network_type == RXE_NETWORK_TYPE_IPV6) {
 			struct in6_addr *saddr6;
 			struct in6_addr *daddr6;
 
 			saddr6 = &av->sgid_addr._sockaddr_in6.sin6_addr;
 			daddr6 = &av->dgid_addr._sockaddr_in6.sin6_addr;
-			dst = rxe_find_route6(qp, ndev, saddr6, daddr6);
+			dst = rxe_find_route6(ndev, saddr6, daddr6);
 #if IS_ENABLED(CONFIG_IPV6)
 			if (dst)
 				qp->dst_cookie =
@@ -288,7 +285,7 @@ static int prepare4(struct rxe_av *av, struct rxe_pkt_info *pkt,
 
 	dst = rxe_find_route(skb->dev, qp, av);
 	if (!dst) {
-		rxe_dbg_qp(qp, "Host not reachable\n");
+		pr_err("Host not reachable\n");
 		return -EHOSTUNREACH;
 	}
 
@@ -312,7 +309,7 @@ static int prepare6(struct rxe_av *av, struct rxe_pkt_info *pkt,
 
 	dst = rxe_find_route(skb->dev, qp, av);
 	if (!dst) {
-		rxe_dbg_qp(qp, "Host not reachable\n");
+		pr_err("Host not reachable\n");
 		return -EHOSTUNREACH;
 	}
 
@@ -366,13 +363,20 @@ static int rxe_send(struct sk_buff *skb, struct rxe_pkt_info *pkt)
 	rxe_get(pkt->qp);
 	atomic_inc(&pkt->qp->skb_out);
 
-	if (skb->protocol == htons(ETH_P_IP))
+	if (skb->protocol == htons(ETH_P_IP)) {
 		err = ip_local_out(dev_net(skb_dst(skb)->dev), skb->sk, skb);
-	else
+	} else if (skb->protocol == htons(ETH_P_IPV6)) {
 		err = ip6_local_out(dev_net(skb_dst(skb)->dev), skb->sk, skb);
+	} else {
+		pr_err("Unknown layer 3 protocol: %d\n", skb->protocol);
+		atomic_dec(&pkt->qp->skb_out);
+		rxe_put(pkt->qp);
+		kfree_skb(skb);
+		return -EINVAL;
+	}
 
 	if (unlikely(net_xmit_eval(err))) {
-		rxe_dbg_qp(pkt->qp, "error sending packet: %d\n", err);
+		pr_debug("error sending packet: %d\n", err);
 		return -EAGAIN;
 	}
 
@@ -413,7 +417,7 @@ int rxe_xmit_packet(struct rxe_qp *qp, struct rxe_pkt_info *pkt,
 
 	if ((is_request && (qp->req.state != QP_STATE_READY)) ||
 	    (!is_request && (qp->resp.state != QP_STATE_READY))) {
-		rxe_dbg_qp(qp, "Packet dropped. QP is not in ready state\n");
+		pr_info("Packet dropped. QP is not in ready state\n");
 		goto drop;
 	}
 
@@ -594,7 +598,7 @@ static int rxe_notify(struct notifier_block *not_blk,
 		rxe_port_down(rxe);
 		break;
 	case NETDEV_CHANGEMTU:
-		rxe_dbg(rxe, "%s changed mtu to %d\n", ndev->name, ndev->mtu);
+		pr_info("%s changed mtu to %d\n", ndev->name, ndev->mtu);
 		rxe_set_mtu(rxe, ndev->mtu);
 		break;
 	case NETDEV_CHANGE:
@@ -606,7 +610,7 @@ static int rxe_notify(struct notifier_block *not_blk,
 	case NETDEV_CHANGENAME:
 	case NETDEV_FEAT_CHANGE:
 	default:
-		rxe_dbg(rxe, "ignoring netdev event = %ld for %s\n",
+		pr_info("ignoring netdev event = %ld for %s\n",
 			event, ndev->name);
 		break;
 	}

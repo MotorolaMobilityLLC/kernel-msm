@@ -360,8 +360,10 @@ int ccw_device_set_online(struct ccw_device *cdev)
 
 	spin_lock_irq(cdev->ccwlock);
 	ret = ccw_device_online(cdev);
-	if (ret) {
-		spin_unlock_irq(cdev->ccwlock);
+	spin_unlock_irq(cdev->ccwlock);
+	if (ret == 0)
+		wait_event(cdev->private->wait_q, dev_fsm_final_state(cdev));
+	else {
 		CIO_MSG_EVENT(0, "ccw_device_online returned %d, "
 			      "device 0.%x.%04x\n",
 			      ret, cdev->private->dev_id.ssid,
@@ -370,12 +372,7 @@ int ccw_device_set_online(struct ccw_device *cdev)
 		put_device(&cdev->dev);
 		return ret;
 	}
-	/* Wait until a final state is reached */
-	while (!dev_fsm_final_state(cdev)) {
-		spin_unlock_irq(cdev->ccwlock);
-		wait_event(cdev->private->wait_q, dev_fsm_final_state(cdev));
-		spin_lock_irq(cdev->ccwlock);
-	}
+	spin_lock_irq(cdev->ccwlock);
 	/* Check if online processing was successful */
 	if ((cdev->private->state != DEV_STATE_ONLINE) &&
 	    (cdev->private->state != DEV_STATE_W4SENSE)) {
@@ -1378,18 +1375,14 @@ enum io_sch_action {
 	IO_SCH_VERIFY,
 	IO_SCH_DISC,
 	IO_SCH_NOP,
-	IO_SCH_ORPH_CDEV,
 };
 
 static enum io_sch_action sch_get_action(struct subchannel *sch)
 {
 	struct ccw_device *cdev;
-	int rc;
 
 	cdev = sch_get_cdev(sch);
-	rc = cio_update_schib(sch);
-
-	if (rc == -ENODEV) {
+	if (cio_update_schib(sch)) {
 		/* Not operational. */
 		if (!cdev)
 			return IO_SCH_UNREG;
@@ -1397,16 +1390,6 @@ static enum io_sch_action sch_get_action(struct subchannel *sch)
 			return IO_SCH_UNREG;
 		return IO_SCH_ORPH_UNREG;
 	}
-
-	/* Avoid unregistering subchannels without working device. */
-	if (rc == -EACCES) {
-		if (!cdev)
-			return IO_SCH_NOP;
-		if (ccw_device_notify(cdev, CIO_GONE) != NOTIFY_OK)
-			return IO_SCH_UNREG_CDEV;
-		return IO_SCH_ORPH_CDEV;
-	}
-
 	/* Operational. */
 	if (!cdev)
 		return IO_SCH_ATTACH;
@@ -1476,7 +1459,6 @@ static int io_subchannel_sch_event(struct subchannel *sch, int process)
 		rc = 0;
 		goto out_unlock;
 	case IO_SCH_ORPH_UNREG:
-	case IO_SCH_ORPH_CDEV:
 	case IO_SCH_ORPH_ATTACH:
 		ccw_device_set_disconnected(cdev);
 		break;
@@ -1508,7 +1490,6 @@ static int io_subchannel_sch_event(struct subchannel *sch, int process)
 	/* Handle attached ccw device. */
 	switch (action) {
 	case IO_SCH_ORPH_UNREG:
-	case IO_SCH_ORPH_CDEV:
 	case IO_SCH_ORPH_ATTACH:
 		/* Move ccw device to orphanage. */
 		rc = ccw_device_move_to_orph(cdev);

@@ -268,20 +268,33 @@ static void zpci_floating_irq_handler(struct airq_struct *airq,
 	}
 }
 
-static int __alloc_airq(struct zpci_dev *zdev, int msi_vecs,
-			unsigned long *bit)
+int arch_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 {
+	struct zpci_dev *zdev = to_zpci(pdev);
+	unsigned int hwirq, msi_vecs, cpu;
+	unsigned long bit;
+	struct msi_desc *msi;
+	struct msi_msg msg;
+	int cpu_addr;
+	int rc, irq;
+
+	zdev->aisb = -1UL;
+	zdev->msi_first_bit = -1U;
+	if (type == PCI_CAP_ID_MSI && nvec > 1)
+		return 1;
+	msi_vecs = min_t(unsigned int, nvec, zdev->max_msi);
+
 	if (irq_delivery == DIRECTED) {
 		/* Allocate cpu vector bits */
-		*bit = airq_iv_alloc(zpci_ibv[0], msi_vecs);
-		if (*bit == -1UL)
+		bit = airq_iv_alloc(zpci_ibv[0], msi_vecs);
+		if (bit == -1UL)
 			return -EIO;
 	} else {
 		/* Allocate adapter summary indicator bit */
-		*bit = airq_iv_alloc_bit(zpci_sbv);
-		if (*bit == -1UL)
+		bit = airq_iv_alloc_bit(zpci_sbv);
+		if (bit == -1UL)
 			return -EIO;
-		zdev->aisb = *bit;
+		zdev->aisb = bit;
 
 		/* Create adapter interrupt vector */
 		zdev->aibv = airq_iv_create(msi_vecs, AIRQ_IV_DATA | AIRQ_IV_BITLOCK, NULL);
@@ -289,66 +302,27 @@ static int __alloc_airq(struct zpci_dev *zdev, int msi_vecs,
 			return -ENOMEM;
 
 		/* Wire up shortcut pointer */
-		zpci_ibv[*bit] = zdev->aibv;
+		zpci_ibv[bit] = zdev->aibv;
 		/* Each function has its own interrupt vector */
-		*bit = 0;
-	}
-	return 0;
-}
-
-int arch_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
-{
-	unsigned int hwirq, msi_vecs, irqs_per_msi, i, cpu;
-	struct zpci_dev *zdev = to_zpci(pdev);
-	struct msi_desc *msi;
-	struct msi_msg msg;
-	unsigned long bit;
-	int cpu_addr;
-	int rc, irq;
-
-	zdev->aisb = -1UL;
-	zdev->msi_first_bit = -1U;
-
-	msi_vecs = min_t(unsigned int, nvec, zdev->max_msi);
-	if (msi_vecs < nvec) {
-		pr_info("%s requested %d irqs, allocate system limit of %d",
-			pci_name(pdev), nvec, zdev->max_msi);
+		bit = 0;
 	}
 
-	rc = __alloc_airq(zdev, msi_vecs, &bit);
-	if (rc < 0)
-		return rc;
-
-	/*
-	 * Request MSI interrupts:
-	 * When using MSI, nvec_used interrupt sources and their irq
-	 * descriptors are controlled through one msi descriptor.
-	 * Thus the outer loop over msi descriptors shall run only once,
-	 * while two inner loops iterate over the interrupt vectors.
-	 * When using MSI-X, each interrupt vector/irq descriptor
-	 * is bound to exactly one msi descriptor (nvec_used is one).
-	 * So the inner loops are executed once, while the outer iterates
-	 * over the MSI-X descriptors.
-	 */
+	/* Request MSI interrupts */
 	hwirq = bit;
 	msi_for_each_desc(msi, &pdev->dev, MSI_DESC_NOTASSOCIATED) {
+		rc = -EIO;
 		if (hwirq - bit >= msi_vecs)
 			break;
-		irqs_per_msi = min_t(unsigned int, msi_vecs, msi->nvec_used);
-		irq = __irq_alloc_descs(-1, 0, irqs_per_msi, 0, THIS_MODULE,
-					(irq_delivery == DIRECTED) ?
-					msi->affinity : NULL);
+		irq = __irq_alloc_descs(-1, 0, 1, 0, THIS_MODULE,
+				(irq_delivery == DIRECTED) ?
+				msi->affinity : NULL);
 		if (irq < 0)
 			return -ENOMEM;
-
-		for (i = 0; i < irqs_per_msi; i++) {
-			rc = irq_set_msi_desc_off(irq, i, msi);
-			if (rc)
-				return rc;
-			irq_set_chip_and_handler(irq + i, &zpci_irq_chip,
-						 handle_percpu_irq);
-		}
-
+		rc = irq_set_msi_desc(irq, msi);
+		if (rc)
+			return rc;
+		irq_set_chip_and_handler(irq, &zpci_irq_chip,
+					 handle_percpu_irq);
 		msg.data = hwirq - bit;
 		if (irq_delivery == DIRECTED) {
 			if (msi->affinity)
@@ -361,35 +335,31 @@ int arch_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 			msg.address_lo |= (cpu_addr << 8);
 
 			for_each_possible_cpu(cpu) {
-				for (i = 0; i < irqs_per_msi; i++)
-					airq_iv_set_data(zpci_ibv[cpu],
-							 hwirq + i, irq + i);
+				airq_iv_set_data(zpci_ibv[cpu], hwirq, irq);
 			}
 		} else {
 			msg.address_lo = zdev->msi_addr & 0xffffffff;
-			for (i = 0; i < irqs_per_msi; i++)
-				airq_iv_set_data(zdev->aibv, hwirq + i, irq + i);
+			airq_iv_set_data(zdev->aibv, hwirq, irq);
 		}
 		msg.address_hi = zdev->msi_addr >> 32;
 		pci_write_msi_msg(irq, &msg);
-		hwirq += irqs_per_msi;
+		hwirq++;
 	}
 
 	zdev->msi_first_bit = bit;
-	zdev->msi_nr_irqs = hwirq - bit;
+	zdev->msi_nr_irqs = msi_vecs;
 
 	rc = zpci_set_irq(zdev);
 	if (rc)
 		return rc;
 
-	return (zdev->msi_nr_irqs == nvec) ? 0 : zdev->msi_nr_irqs;
+	return (msi_vecs == nvec) ? 0 : msi_vecs;
 }
 
 void arch_teardown_msi_irqs(struct pci_dev *pdev)
 {
 	struct zpci_dev *zdev = to_zpci(pdev);
 	struct msi_desc *msi;
-	unsigned int i;
 	int rc;
 
 	/* Disable interrupts */
@@ -399,10 +369,8 @@ void arch_teardown_msi_irqs(struct pci_dev *pdev)
 
 	/* Release MSI interrupts */
 	msi_for_each_desc(msi, &pdev->dev, MSI_DESC_ASSOCIATED) {
-		for (i = 0; i < msi->nvec_used; i++) {
-			irq_set_msi_desc(msi->irq + i, NULL);
-			irq_free_desc(msi->irq + i);
-		}
+		irq_set_msi_desc(msi->irq, NULL);
+		irq_free_desc(msi->irq);
 		msi->msg.address_lo = 0;
 		msi->msg.address_hi = 0;
 		msi->msg.data = 0;
@@ -442,7 +410,7 @@ static void __init cpu_enable_directed_irq(void *unused)
 	union zpci_sic_iib iib = {{0}};
 	union zpci_sic_iib ziib = {{0}};
 
-	iib.cdiib.dibv_addr = virt_to_phys(zpci_ibv[smp_processor_id()]->vector);
+	iib.cdiib.dibv_addr = (u64) zpci_ibv[smp_processor_id()]->vector;
 
 	zpci_set_irq_ctrl(SIC_IRQ_MODE_SET_CPU, 0, &iib);
 	zpci_set_irq_ctrl(SIC_IRQ_MODE_D_SINGLE, PCI_ISC, &ziib);

@@ -213,8 +213,7 @@ struct ibmvnic_statistics {
 
 #define NUM_TX_STATS 3
 struct ibmvnic_tx_queue_stats {
-	u64 batched_packets;
-	u64 direct_packets;
+	u64 packets;
 	u64 bytes;
 	u64 dropped_packets;
 };

@@ -216,7 +216,7 @@ typedef struct {
 struct ctl_table;
 
 typedef struct ax25_dev {
-	struct list_head	list;
+	struct ax25_dev		*next;
 
 	struct net_device	*dev;
 	netdevice_tracker	dev_tracker;
@@ -229,7 +229,6 @@ typedef struct ax25_dev {
 #endif
 	refcount_t		refcount;
 	bool device_up;
-	struct rcu_head		rcu;
 } ax25_dev;
 
 typedef struct ax25_cb {
@@ -292,8 +291,9 @@ static inline void ax25_dev_hold(ax25_dev *ax25_dev)
 
 static inline void ax25_dev_put(ax25_dev *ax25_dev)
 {
-	if (refcount_dec_and_test(&ax25_dev->refcount))
-		kfree_rcu(ax25_dev, rcu);
+	if (refcount_dec_and_test(&ax25_dev->refcount)) {
+		kfree(ax25_dev);
+	}
 }
 static inline __be16 ax25_type_trans(struct sk_buff *skb, struct net_device *dev)
 {
@@ -333,12 +333,13 @@ int ax25_addr_size(const ax25_digi *);
 void ax25_digi_invert(const ax25_digi *, ax25_digi *);
 
 /* ax25_dev.c */
+extern ax25_dev *ax25_dev_list;
 extern spinlock_t ax25_dev_lock;
 
 #if IS_ENABLED(CONFIG_AX25)
-static inline ax25_dev *ax25_dev_ax25dev(const struct net_device *dev)
+static inline ax25_dev *ax25_dev_ax25dev(struct net_device *dev)
 {
-	return rcu_dereference_rtnl(dev->ax25_ptr);
+	return dev->ax25_ptr;
 }
 #endif
 

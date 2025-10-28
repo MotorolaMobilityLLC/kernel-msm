@@ -1148,7 +1148,10 @@ static int imon_ir_change_protocol(struct rc_dev *rc, u64 *rc_proto)
 
 	memcpy(ictx->usb_tx_buf, &ir_proto_packet, sizeof(ir_proto_packet));
 
-	unlock = mutex_trylock(&ictx->lock);
+	if (!mutex_is_locked(&ictx->lock)) {
+		unlock = true;
+		mutex_lock(&ictx->lock);
+	}
 
 	retval = send_packet(ictx);
 	if (retval)

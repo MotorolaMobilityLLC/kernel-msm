@@ -38,7 +38,6 @@ fwnode_find_pse_control(struct fwnode_handle *fwnode)
 static struct mii_timestamper *
 fwnode_find_mii_timestamper(struct fwnode_handle *fwnode)
 {
-	struct mii_timestamper *mii_ts;
 	struct of_phandle_args arg;
 	int err;
 
@@ -52,16 +51,10 @@ fwnode_find_mii_timestamper(struct fwnode_handle *fwnode)
 	else if (err)
 		return ERR_PTR(err);
 
-	if (arg.args_count != 1) {
-		mii_ts = ERR_PTR(-EINVAL);
-		goto put_node;
-	}
+	if (arg.args_count != 1)
+		return ERR_PTR(-EINVAL);
 
-	mii_ts = register_mii_timestamper(arg.np, arg.args[0]);
-
-put_node:
-	of_node_put(arg.np);
-	return mii_ts;
+	return register_mii_timestamper(arg.np, arg.args[0]);
 }
 
 int fwnode_mdiobus_phy_device_register(struct mii_bus *mdio,

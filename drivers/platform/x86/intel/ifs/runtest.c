@@ -165,35 +165,25 @@ static int doscan(void *data)
  */
 static void ifs_test_core(int cpu, struct device *dev)
 {
-	union ifs_status status = {};
 	union ifs_scan activate;
+	union ifs_status status;
 	unsigned long timeout;
 	struct ifs_data *ifsd;
-	int to_start, to_stop;
-	int status_chunk;
 	u64 msrvals[2];
 	int retries;
 
 	ifsd = ifs_get_data(dev);
 
-	activate.gen0.rsvd = 0;
+	activate.rsvd = 0;
 	activate.delay = IFS_THREAD_WAIT;
 	activate.sigmce = 0;
-	to_start = 0;
-	to_stop = ifsd->valid_chunks - 1;
-
-	if (ifsd->generation) {
-		activate.gen2.start = to_start;
-		activate.gen2.stop = to_stop;
-	} else {
-		activate.gen0.start = to_start;
-		activate.gen0.stop = to_stop;
-	}
+	activate.start = 0;
+	activate.stop = ifsd->valid_chunks - 1;
 
 	timeout = jiffies + HZ / 2;
 	retries = MAX_IFS_RETRIES;
 
-	while (to_start <= to_stop) {
+	while (activate.start <= activate.stop) {
 		if (time_after(jiffies, timeout)) {
 			status.error_code = IFS_SW_TIMEOUT;
 			break;
@@ -204,14 +194,13 @@ static void ifs_test_core(int cpu, struct device *dev)
 
 		status.data = msrvals[1];
 
-		trace_ifs_status(cpu, to_start, to_stop, status.data);
+		trace_ifs_status(cpu, activate, status);
 
 		/* Some cases can be retried, give up for others */
 		if (!can_restart(status))
 			break;
 
-		status_chunk = ifsd->generation ? status.gen2.chunk_num : status.gen0.chunk_num;
-		if (status_chunk == to_start) {
+		if (status.chunk_num == activate.start) {
 			/* Check for forward progress */
 			if (--retries == 0) {
 				if (status.error_code == IFS_NO_ERROR)
@@ -220,11 +209,7 @@ static void ifs_test_core(int cpu, struct device *dev)
 			}
 		} else {
 			retries = MAX_IFS_RETRIES;
-			if (ifsd->generation)
-				activate.gen2.start = status_chunk;
-			else
-				activate.gen0.start = status_chunk;
-			to_start = status_chunk;
+			activate.start = status.chunk_num;
 		}
 	}
 

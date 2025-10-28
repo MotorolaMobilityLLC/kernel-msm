@@ -25,8 +25,6 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 
-#include <arpa/inet.h>
-
 #include <netdb.h>
 #include <netinet/in.h>
 
@@ -1042,11 +1040,11 @@ again:
 		return 1;
 	}
 
-	if (cfg_input)
-		close(fd);
-
-	if (--cfg_repeat > 0)
+	if (--cfg_repeat > 0) {
+		if (cfg_input)
+			close(fd);
 		goto again;
+	}
 
 	return 0;
 }
@@ -1133,42 +1131,23 @@ static void parse_setsock_options(const char *name)
 	exit(1);
 }
 
-void xdisconnect(int fd)
+void xdisconnect(int fd, int addrlen)
 {
-	socklen_t addrlen = sizeof(struct sockaddr_storage);
-	struct sockaddr_storage addr, empty;
+	struct sockaddr_storage empty;
 	int msec_sleep = 10;
-	void *raw_addr;
-	int i, cmdlen;
-	char cmd[128];
-
-	/* get the local address and convert it to string */
-	if (getsockname(fd, (struct sockaddr *)&addr, &addrlen) < 0)
-		xerror("getsockname");
-
-	if (addr.ss_family == AF_INET)
-		raw_addr = &(((struct sockaddr_in *)&addr)->sin_addr);
-	else if (addr.ss_family == AF_INET6)
-		raw_addr = &(((struct sockaddr_in6 *)&addr)->sin6_addr);
-	else
-		xerror("bad family");
-
-	strcpy(cmd, "ss -M | grep -q ");
-	cmdlen = strlen(cmd);
-	if (!inet_ntop(addr.ss_family, raw_addr, &cmd[cmdlen],
-		       sizeof(cmd) - cmdlen))
-		xerror("inet_ntop");
+	int queued = 1;
+	int i;
 
 	shutdown(fd, SHUT_WR);
 
-	/*
-	 * wait until the pending data is completely flushed and all
-	 * the MPTCP sockets reached the closed status.
+	/* while until the pending data is completely flushed, the later
 	 * disconnect will bypass/ignore/drop any pending data.
 	 */
 	for (i = 0; ; i += msec_sleep) {
-		/* closed socket are not listed by 'ss' */
-		if (system(cmd) != 0)
+		if (ioctl(fd, SIOCOUTQ, &queued) < 0)
+			xerror("can't query out socket queue: %d", errno);
+
+		if (!queued)
 			break;
 
 		if (i > poll_timeout)
@@ -1216,9 +1195,9 @@ again:
 		return ret;
 
 	if (cfg_truncate > 0) {
-		shutdown(fd, SHUT_WR);
+		xdisconnect(fd, peer->ai_addrlen);
 	} else if (--cfg_repeat > 0) {
-		xdisconnect(fd);
+		xdisconnect(fd, peer->ai_addrlen);
 
 		/* the socket could be unblocking at this point, we need the
 		 * connect to be blocking

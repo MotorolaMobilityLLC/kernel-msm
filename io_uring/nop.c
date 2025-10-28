@@ -12,8 +12,6 @@
 
 int io_nop_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
-	if (READ_ONCE(sqe->rw_flags))
-		return -EINVAL;
 	return 0;
 }
 

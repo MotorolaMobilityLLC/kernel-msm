@@ -31,11 +31,6 @@ struct cachefiles_object *cachefiles_alloc_object(struct fscache_cookie *cookie)
 	if (!object)
 		return NULL;
 
-	if (cachefiles_ondemand_init_obj_info(object, volume)) {
-		kmem_cache_free(cachefiles_object_jar, object);
-		return NULL;
-	}
-
 	refcount_set(&object->ref, 1);
 
 	spin_lock_init(&object->lock);
@@ -93,7 +88,7 @@ void cachefiles_put_object(struct cachefiles_object *object,
 		ASSERTCMP(object->file, ==, NULL);
 
 		kfree(object->d_name);
-		cachefiles_ondemand_deinit_obj_info(object);
+
 		cache = object->volume->cache->cache;
 		fscache_put_cookie(object->cookie, fscache_cookie_put_object);
 		object->cookie = NULL;
@@ -327,8 +322,6 @@ static void cachefiles_commit_object(struct cachefiles_object *object,
 static void cachefiles_clean_up_object(struct cachefiles_object *object,
 				       struct cachefiles_cache *cache)
 {
-	struct file *file;
-
 	if (test_bit(FSCACHE_COOKIE_RETIRED, &object->cookie->flags)) {
 		if (!test_bit(CACHEFILES_OBJECT_USING_TMPFILE, &object->flags)) {
 			cachefiles_see_object(object, cachefiles_obj_see_clean_delete);
@@ -344,14 +337,10 @@ static void cachefiles_clean_up_object(struct cachefiles_object *object,
 	}
 
 	cachefiles_unmark_inode_in_use(object, object->file);
-
-	spin_lock(&object->lock);
-	file = object->file;
-	object->file = NULL;
-	spin_unlock(&object->lock);
-
-	if (file)
-		fput(file);
+	if (object->file) {
+		fput(object->file);
+		object->file = NULL;
+	}
 }
 
 /*

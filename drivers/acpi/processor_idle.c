@@ -16,6 +16,7 @@
 #include <linux/acpi.h>
 #include <linux/dmi.h>
 #include <linux/sched.h>       /* need_resched() */
+#include <linux/sort.h>
 #include <linux/tick.h>
 #include <linux/cpuidle.h>
 #include <linux/cpu.h>
@@ -268,10 +269,6 @@ static int acpi_processor_get_power_info_fadt(struct acpi_processor *pr)
 			 ACPI_CX_DESC_LEN, "ACPI P_LVL3 IOPORT 0x%x",
 			 pr->power.states[ACPI_STATE_C3].address);
 
-	if (!pr->power.states[ACPI_STATE_C2].address &&
-	    !pr->power.states[ACPI_STATE_C3].address)
-		return -ENODEV;
-
 	return 0;
 }
 
@@ -391,24 +388,25 @@ static void acpi_processor_power_verify_c3(struct acpi_processor *pr,
 	return;
 }
 
-static void acpi_cst_latency_sort(struct acpi_processor_cx *states, size_t length)
+static int acpi_cst_latency_cmp(const void *a, const void *b)
 {
-	int i, j, k;
+	const struct acpi_processor_cx *x = a, *y = b;
 
-	for (i = 1; i < length; i++) {
-		if (!states[i].valid)
-			continue;
+	if (!(x->valid && y->valid))
+		return 0;
+	if (x->latency > y->latency)
+		return 1;
+	if (x->latency < y->latency)
+		return -1;
+	return 0;
+}
+static void acpi_cst_latency_swap(void *a, void *b, int n)
+{
+	struct acpi_processor_cx *x = a, *y = b;
 
-		for (j = i - 1, k = i; j >= 0; j--) {
-			if (!states[j].valid)
-				continue;
-
-			if (states[j].latency > states[k].latency)
-				swap(states[j].latency, states[k].latency);
-
-			k = j;
-		}
-	}
+	if (!(x->valid && y->valid))
+		return;
+	swap(x->latency, y->latency);
 }
 
 static int acpi_processor_power_verify(struct acpi_processor *pr)
@@ -453,7 +451,10 @@ static int acpi_processor_power_verify(struct acpi_processor *pr)
 
 	if (buggy_latency) {
 		pr_notice("FW issue: working around C-state latencies out of order\n");
-		acpi_cst_latency_sort(&pr->power.states[1], max_cstate);
+		sort(&pr->power.states[1], max_cstate,
+		     sizeof(struct acpi_processor_cx),
+		     acpi_cst_latency_cmp,
+		     acpi_cst_latency_swap);
 	}
 
 	lapic_timer_propagate_broadcast(pr);

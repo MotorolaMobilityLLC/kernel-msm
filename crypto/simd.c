@@ -136,19 +136,27 @@ static int simd_skcipher_init(struct crypto_skcipher *tfm)
 	return 0;
 }
 
-struct simd_skcipher_alg *simd_skcipher_create_compat(struct skcipher_alg *ialg,
-						      const char *algname,
+struct simd_skcipher_alg *simd_skcipher_create_compat(const char *algname,
 						      const char *drvname,
 						      const char *basename)
 {
 	struct simd_skcipher_alg *salg;
+	struct crypto_skcipher *tfm;
+	struct skcipher_alg *ialg;
 	struct skcipher_alg *alg;
 	int err;
+
+	tfm = crypto_alloc_skcipher(basename, CRYPTO_ALG_INTERNAL,
+				    CRYPTO_ALG_INTERNAL | CRYPTO_ALG_ASYNC);
+	if (IS_ERR(tfm))
+		return ERR_CAST(tfm);
+
+	ialg = crypto_skcipher_alg(tfm);
 
 	salg = kzalloc(sizeof(*salg), GFP_KERNEL);
 	if (!salg) {
 		salg = ERR_PTR(-ENOMEM);
-		goto out;
+		goto out_put_tfm;
 	}
 
 	salg->ialg_name = basename;
@@ -187,15 +195,29 @@ struct simd_skcipher_alg *simd_skcipher_create_compat(struct skcipher_alg *ialg,
 	if (err)
 		goto out_free_salg;
 
-out:
+out_put_tfm:
+	crypto_free_skcipher(tfm);
 	return salg;
 
 out_free_salg:
 	kfree(salg);
 	salg = ERR_PTR(err);
-	goto out;
+	goto out_put_tfm;
 }
 EXPORT_SYMBOL_GPL(simd_skcipher_create_compat);
+
+struct simd_skcipher_alg *simd_skcipher_create(const char *algname,
+					       const char *basename)
+{
+	char drvname[CRYPTO_MAX_ALG_NAME];
+
+	if (snprintf(drvname, CRYPTO_MAX_ALG_NAME, "simd-%s", basename) >=
+	    CRYPTO_MAX_ALG_NAME)
+		return ERR_PTR(-ENAMETOOLONG);
+
+	return simd_skcipher_create_compat(algname, drvname, basename);
+}
+EXPORT_SYMBOL_GPL(simd_skcipher_create);
 
 void simd_skcipher_free(struct simd_skcipher_alg *salg)
 {
@@ -224,7 +246,7 @@ int simd_register_skciphers_compat(struct skcipher_alg *algs, int count,
 		algname = algs[i].base.cra_name + 2;
 		drvname = algs[i].base.cra_driver_name + 2;
 		basename = algs[i].base.cra_driver_name;
-		simd = simd_skcipher_create_compat(algs + i, algname, drvname, basename);
+		simd = simd_skcipher_create_compat(algname, drvname, basename);
 		err = PTR_ERR(simd);
 		if (IS_ERR(simd))
 			goto err_unregister;
@@ -361,19 +383,27 @@ static int simd_aead_init(struct crypto_aead *tfm)
 	return 0;
 }
 
-static struct simd_aead_alg *simd_aead_create_compat(struct aead_alg *ialg,
-						     const char *algname,
-						     const char *drvname,
-						     const char *basename)
+struct simd_aead_alg *simd_aead_create_compat(const char *algname,
+					      const char *drvname,
+					      const char *basename)
 {
 	struct simd_aead_alg *salg;
+	struct crypto_aead *tfm;
+	struct aead_alg *ialg;
 	struct aead_alg *alg;
 	int err;
+
+	tfm = crypto_alloc_aead(basename, CRYPTO_ALG_INTERNAL,
+				CRYPTO_ALG_INTERNAL | CRYPTO_ALG_ASYNC);
+	if (IS_ERR(tfm))
+		return ERR_CAST(tfm);
+
+	ialg = crypto_aead_alg(tfm);
 
 	salg = kzalloc(sizeof(*salg), GFP_KERNEL);
 	if (!salg) {
 		salg = ERR_PTR(-ENOMEM);
-		goto out;
+		goto out_put_tfm;
 	}
 
 	salg->ialg_name = basename;
@@ -412,20 +442,36 @@ static struct simd_aead_alg *simd_aead_create_compat(struct aead_alg *ialg,
 	if (err)
 		goto out_free_salg;
 
-out:
+out_put_tfm:
+	crypto_free_aead(tfm);
 	return salg;
 
 out_free_salg:
 	kfree(salg);
 	salg = ERR_PTR(err);
-	goto out;
+	goto out_put_tfm;
 }
+EXPORT_SYMBOL_GPL(simd_aead_create_compat);
 
-static void simd_aead_free(struct simd_aead_alg *salg)
+struct simd_aead_alg *simd_aead_create(const char *algname,
+				       const char *basename)
+{
+	char drvname[CRYPTO_MAX_ALG_NAME];
+
+	if (snprintf(drvname, CRYPTO_MAX_ALG_NAME, "simd-%s", basename) >=
+	    CRYPTO_MAX_ALG_NAME)
+		return ERR_PTR(-ENAMETOOLONG);
+
+	return simd_aead_create_compat(algname, drvname, basename);
+}
+EXPORT_SYMBOL_GPL(simd_aead_create);
+
+void simd_aead_free(struct simd_aead_alg *salg)
 {
 	crypto_unregister_aead(&salg->alg);
 	kfree(salg);
 }
+EXPORT_SYMBOL_GPL(simd_aead_free);
 
 int simd_register_aeads_compat(struct aead_alg *algs, int count,
 			       struct simd_aead_alg **simd_algs)
@@ -447,7 +493,7 @@ int simd_register_aeads_compat(struct aead_alg *algs, int count,
 		algname = algs[i].base.cra_name + 2;
 		drvname = algs[i].base.cra_driver_name + 2;
 		basename = algs[i].base.cra_driver_name;
-		simd = simd_aead_create_compat(algs + i, algname, drvname, basename);
+		simd = simd_aead_create_compat(algname, drvname, basename);
 		err = PTR_ERR(simd);
 		if (IS_ERR(simd))
 			goto err_unregister;

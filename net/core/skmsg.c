@@ -433,8 +433,7 @@ int sk_msg_recvmsg(struct sock *sk, struct sk_psock *psock, struct msghdr *msg,
 			page = sg_page(sge);
 			if (copied + copy > len)
 				copy = len - copied;
-			if (copy)
-				copy = copy_page_to_iter(page, sge->offset, copy, iter);
+			copy = copy_page_to_iter(page, sge->offset, copy, iter);
 			if (!copy) {
 				copied = copied ? copied : -EFAULT;
 				goto out;
@@ -444,10 +443,8 @@ int sk_msg_recvmsg(struct sock *sk, struct sk_psock *psock, struct msghdr *msg,
 			if (likely(!peek)) {
 				sge->offset += copy;
 				sge->length -= copy;
-				if (!msg_rx->skb) {
+				if (!msg_rx->skb)
 					sk_mem_uncharge(sk, copy);
-					atomic_sub(copy, &sk->sk_rmem_alloc);
-				}
 				msg_rx->sg.size -= copy;
 
 				if (!sge->length) {
@@ -547,9 +544,6 @@ static int sk_psock_skb_ingress_enqueue(struct sk_buff *skb,
 			return num_sge;
 	}
 
-#if IS_ENABLED(CONFIG_BPF_STREAM_PARSER)
-	psock->ingress_bytes += len;
-#endif
 	copied = len;
 	msg->sg.start = 0;
 	msg->sg.size = copied;
@@ -776,8 +770,6 @@ static void __sk_psock_purge_ingress_msg(struct sk_psock *psock)
 
 	list_for_each_entry_safe(msg, tmp, &psock->ingress_msg, list) {
 		list_del(&msg->list);
-		if (!msg->skb)
-			atomic_sub(msg->sg.size, &psock->sk->sk_rmem_alloc);
 		sk_msg_free(psock->sk, msg);
 		kfree(msg);
 	}
@@ -1119,9 +1111,9 @@ static void sk_psock_strp_data_ready(struct sock *sk)
 		if (tls_sw_has_ctx_rx(sk)) {
 			psock->saved_data_ready(sk);
 		} else {
-			read_lock_bh(&sk->sk_callback_lock);
+			write_lock_bh(&sk->sk_callback_lock);
 			strp_data_ready(&psock->strp);
-			read_unlock_bh(&sk->sk_callback_lock);
+			write_unlock_bh(&sk->sk_callback_lock);
 		}
 	}
 	rcu_read_unlock();
@@ -1141,10 +1133,6 @@ int sk_psock_init_strp(struct sock *sk, struct sk_psock *psock)
 	if (!ret)
 		sk_psock_set_state(psock, SK_PSOCK_RX_STRP_ENABLED);
 
-	if (sk_is_tcp(sk)) {
-		psock->strp.cb.read_sock = tcp_bpf_strp_read_sock;
-		psock->copied_seq = tcp_sk(sk)->copied_seq;
-	}
 	return ret;
 }
 
@@ -1227,8 +1215,11 @@ static void sk_psock_verdict_data_ready(struct sock *sk)
 
 		rcu_read_lock();
 		psock = sk_psock(sk);
-		if (psock)
+		if (psock) {
+			read_lock_bh(&sk->sk_callback_lock);
 			sk_psock_data_ready(sk, psock);
+			read_unlock_bh(&sk->sk_callback_lock);
+		}
 		rcu_read_unlock();
 	}
 }

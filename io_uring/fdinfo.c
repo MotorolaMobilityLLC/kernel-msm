@@ -141,8 +141,13 @@ static __cold void __io_uring_show_fdinfo(struct io_ring_ctx *ctx,
 	if (has_lock && (ctx->flags & IORING_SETUP_SQPOLL)) {
 		struct io_sq_data *sq = ctx->sq_data;
 
-		sq_pid = sq->task_pid;
-		sq_cpu = sq->sq_cpu;
+		if (mutex_trylock(&sq->lock)) {
+			if (sq->thread) {
+				sq_pid = task_pid_nr(sq->thread);
+				sq_cpu = task_cpu(sq->thread);
+			}
+			mutex_unlock(&sq->lock);
+		}
 	}
 
 	seq_printf(m, "SqThread:\t%d\n", sq_pid);

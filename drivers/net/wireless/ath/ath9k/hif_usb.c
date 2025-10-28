@@ -718,7 +718,8 @@ static void ath9k_hif_usb_rx_cb(struct urb *urb)
 	}
 
 resubmit:
-	__skb_set_length(skb, 0);
+	skb_reset_tail_pointer(skb);
+	skb_trim(skb, 0);
 
 	usb_anchor_urb(urb, &hif_dev->rx_submitted);
 	ret = usb_submit_urb(urb, GFP_ATOMIC);
@@ -755,7 +756,8 @@ static void ath9k_hif_usb_reg_in_cb(struct urb *urb)
 	case -ESHUTDOWN:
 		goto free_skb;
 	default:
-		__skb_set_length(skb, 0);
+		skb_reset_tail_pointer(skb);
+		skb_trim(skb, 0);
 
 		goto resubmit;
 	}

@@ -94,6 +94,7 @@ static bool ceph_dirty_folio(struct address_space *mapping, struct folio *folio)
 
 	/* dirty the head */
 	spin_lock(&ci->i_ceph_lock);
+	BUG_ON(ci->i_wr_ref == 0); // caller should hold Fw reference
 	if (__ceph_have_pending_cap_snap(ci)) {
 		struct ceph_cap_snap *capsnap =
 				list_last_entry(&ci->i_cap_snaps,
@@ -435,11 +436,8 @@ static int ceph_init_request(struct netfs_io_request *rreq, struct file *file)
 	rreq->netfs_priv = priv;
 
 out:
-	if (ret < 0) {
-		if (got)
-			ceph_put_cap_refs(ceph_inode(inode), got);
+	if (ret < 0)
 		kfree(priv);
-	}
 
 	return ret;
 }

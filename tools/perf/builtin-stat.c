@@ -756,19 +756,15 @@ static int __run_perf_stat(int argc, const char **argv, int run_idx)
 		evlist__set_leader(evsel_list);
 
 	if (!cpu_map__is_dummy(evsel_list->core.user_requested_cpus)) {
-		if (affinity__setup(&saved_affinity) < 0) {
-			err = -1;
-			goto err_out;
-		}
+		if (affinity__setup(&saved_affinity) < 0)
+			return -1;
 		affinity = &saved_affinity;
 	}
 
 	evlist__for_each_entry(evsel_list, counter) {
 		counter->reset_group = false;
-		if (bpf_counter__load(counter, &target)) {
-			err = -1;
-			goto err_out;
-		}
+		if (bpf_counter__load(counter, &target))
+			return -1;
 		if (!(evsel__is_bperf(counter)))
 			all_counters_use_bpf = false;
 	}
@@ -809,8 +805,7 @@ try_again:
 
 			switch (stat_handle_error(counter)) {
 			case COUNTER_FATAL:
-				err = -1;
-				goto err_out;
+				return -1;
 			case COUNTER_RETRY:
 				goto try_again;
 			case COUNTER_SKIP:
@@ -851,8 +846,7 @@ try_again_reset:
 
 				switch (stat_handle_error(counter)) {
 				case COUNTER_FATAL:
-					err = -1;
-					goto err_out;
+					return -1;
 				case COUNTER_RETRY:
 					goto try_again_reset;
 				case COUNTER_SKIP:
@@ -865,7 +859,6 @@ try_again_reset:
 		}
 	}
 	affinity__cleanup(affinity);
-	affinity = NULL;
 
 	evlist__for_each_entry(evsel_list, counter) {
 		if (!counter->supported) {
@@ -878,10 +871,8 @@ try_again_reset:
 			stat_config.unit_width = l;
 
 		if (evsel__should_store_id(counter) &&
-		    evsel__store_ids(counter, evsel_list)) {
-			err = -1;
-			goto err_out;
-		}
+		    evsel__store_ids(counter, evsel_list))
+			return -1;
 	}
 
 	if (evlist__apply_filters(evsel_list, &counter)) {
@@ -902,23 +893,20 @@ try_again_reset:
 		}
 
 		if (err < 0)
-			goto err_out;
+			return err;
 
 		err = perf_event__synthesize_stat_events(&stat_config, NULL, evsel_list,
 							 process_synthesized_event, is_pipe);
 		if (err < 0)
-			goto err_out;
-
+			return err;
 	}
 
 	if (target.initial_delay) {
 		pr_info(EVLIST_DISABLED_MSG);
 	} else {
 		err = enable_counters();
-		if (err) {
-			err = -1;
-			goto err_out;
-		}
+		if (err)
+			return -1;
 	}
 
 	/* Exec the command, if any */
@@ -928,10 +916,8 @@ try_again_reset:
 	if (target.initial_delay > 0) {
 		usleep(target.initial_delay * USEC_PER_MSEC);
 		err = enable_counters();
-		if (err) {
-			err = -1;
-			goto err_out;
-		}
+		if (err)
+			return -1;
 
 		pr_info(EVLIST_ENABLED_MSG);
 	}
@@ -951,8 +937,7 @@ try_again_reset:
 		if (workload_exec_errno) {
 			const char *emsg = str_error_r(workload_exec_errno, msg, sizeof(msg));
 			pr_err("Workload failed: %s\n", emsg);
-			err = -1;
-			goto err_out;
+			return -1;
 		}
 
 		if (WIFSIGNALED(status))
@@ -1001,13 +986,6 @@ try_again_reset:
 		evlist__close(evsel_list);
 
 	return WEXITSTATUS(status);
-
-err_out:
-	if (forks)
-		evlist__cancel_workload(evsel_list);
-
-	affinity__cleanup(affinity);
-	return err;
 }
 
 static int run_perf_stat(int argc, const char **argv, int run_idx)

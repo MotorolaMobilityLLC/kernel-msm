@@ -120,7 +120,6 @@ static void mtk_plane_update_new_state(struct drm_plane_state *new_state,
 	struct mtk_drm_gem_obj *mtk_gem;
 	unsigned int pitch, format;
 	dma_addr_t addr;
-	int offset;
 
 	gem = fb->obj[0];
 	mtk_gem = to_mtk_gem_obj(gem);
@@ -128,16 +127,8 @@ static void mtk_plane_update_new_state(struct drm_plane_state *new_state,
 	pitch = fb->pitches[0];
 	format = fb->format->format;
 
-	/*
-	 * Using dma_addr_t variable to calculate with multiplier of different types,
-	 * for example: addr += (new_state->src.x1 >> 16) * fb->format->cpp[0];
-	 * may cause coverity issue with unintentional overflow.
-	 */
-	offset = (new_state->src.x1 >> 16) * fb->format->cpp[0];
-	addr += offset;
-	offset = (new_state->src.y1 >> 16) * pitch;
-	addr += offset;
-
+	addr += (new_state->src.x1 >> 16) * fb->format->cpp[0];
+	addr += (new_state->src.y1 >> 16) * pitch;
 
 	mtk_plane_state->pending.enable = true;
 	mtk_plane_state->pending.pitch = pitch;
@@ -166,8 +157,6 @@ static void mtk_plane_atomic_async_update(struct drm_plane *plane,
 	plane->state->src_y = new_state->src_y;
 	plane->state->src_h = new_state->src_h;
 	plane->state->src_w = new_state->src_w;
-	plane->state->dst.x1 = new_state->dst.x1;
-	plane->state->dst.y1 = new_state->dst.y1;
 
 	mtk_plane_update_new_state(new_state, new_plane_state);
 	swap(plane->state->fb, new_state->fb);

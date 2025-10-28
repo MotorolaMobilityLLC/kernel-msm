@@ -61,12 +61,9 @@ static inline void * __init xbc_alloc_mem(size_t size)
 	return memblock_alloc(size, SMP_CACHE_BYTES);
 }
 
-static inline void __init xbc_free_mem(void *addr, size_t size, bool early)
+static inline void __init xbc_free_mem(void *addr, size_t size)
 {
-	if (early)
-		memblock_free(addr, size);
-	else if (addr)
-		memblock_free_late(__pa(addr), size);
+	memblock_free(addr, size);
 }
 
 #else /* !__KERNEL__ */
@@ -76,7 +73,7 @@ static inline void *xbc_alloc_mem(size_t size)
 	return malloc(size);
 }
 
-static inline void xbc_free_mem(void *addr, size_t size, bool early)
+static inline void xbc_free_mem(void *addr, size_t size)
 {
 	free(addr);
 }
@@ -901,20 +898,19 @@ static int __init xbc_parse_tree(void)
 }
 
 /**
- * _xbc_exit() - Clean up all parsed bootconfig
- * @early: Set true if this is called before budy system is initialized.
+ * xbc_exit() - Clean up all parsed bootconfig
  *
  * This clears all data structures of parsed bootconfig on memory.
  * If you need to reuse xbc_init() with new boot config, you can
  * use this.
  */
-void __init _xbc_exit(bool early)
+void __init xbc_exit(void)
 {
-	xbc_free_mem(xbc_data, xbc_data_size, early);
+	xbc_free_mem(xbc_data, xbc_data_size);
 	xbc_data = NULL;
 	xbc_data_size = 0;
 	xbc_node_num = 0;
-	xbc_free_mem(xbc_nodes, sizeof(struct xbc_node) * XBC_NODE_MAX, early);
+	xbc_free_mem(xbc_nodes, sizeof(struct xbc_node) * XBC_NODE_MAX);
 	xbc_nodes = NULL;
 	brace_index = 0;
 }
@@ -967,7 +963,7 @@ int __init xbc_init(const char *data, size_t size, const char **emsg, int *epos)
 	if (!xbc_nodes) {
 		if (emsg)
 			*emsg = "Failed to allocate bootconfig nodes";
-		_xbc_exit(true);
+		xbc_exit();
 		return -ENOMEM;
 	}
 	memset(xbc_nodes, 0, sizeof(struct xbc_node) * XBC_NODE_MAX);
@@ -981,7 +977,7 @@ int __init xbc_init(const char *data, size_t size, const char **emsg, int *epos)
 			*epos = xbc_err_pos;
 		if (emsg)
 			*emsg = xbc_err_msg;
-		_xbc_exit(true);
+		xbc_exit();
 	} else
 		ret = xbc_node_num;
 

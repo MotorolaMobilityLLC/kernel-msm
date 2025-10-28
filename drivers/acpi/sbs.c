@@ -77,6 +77,7 @@ struct acpi_battery {
 	u16 spec;
 	u8 id;
 	u8 present:1;
+	u8 have_sysfs_alarm:1;
 };
 
 #define to_acpi_battery(x) power_supply_get_drvdata(x)
@@ -461,17 +462,11 @@ static ssize_t acpi_battery_alarm_store(struct device *dev,
 	return count;
 }
 
-static struct device_attribute alarm_attr = {
+static const struct device_attribute alarm_attr = {
 	.attr = {.name = "alarm", .mode = 0644},
 	.show = acpi_battery_alarm_show,
 	.store = acpi_battery_alarm_store,
 };
-
-static struct attribute *acpi_battery_attrs[] = {
-	&alarm_attr.attr,
-	NULL
-};
-ATTRIBUTE_GROUPS(acpi_battery);
 
 /* --------------------------------------------------------------------------
                                  Driver Interface
@@ -514,10 +509,7 @@ static int acpi_battery_read(struct acpi_battery *battery)
 static int acpi_battery_add(struct acpi_sbs *sbs, int id)
 {
 	struct acpi_battery *battery = &sbs->battery[id];
-	struct power_supply_config psy_cfg = {
-		.drv_data = battery,
-		.attr_grp = acpi_battery_groups,
-	};
+	struct power_supply_config psy_cfg = { .drv_data = battery, };
 	int result;
 
 	battery->id = id;
@@ -547,6 +539,10 @@ static int acpi_battery_add(struct acpi_sbs *sbs, int id)
 		goto end;
 	}
 
+	result = device_create_file(&battery->bat->dev, &alarm_attr);
+	if (result)
+		goto end;
+	battery->have_sysfs_alarm = 1;
       end:
 	pr_info("%s [%s]: Battery Slot [%s] (battery %s)\n",
 	       ACPI_SBS_DEVICE_NAME, acpi_device_bid(sbs->device),
@@ -558,8 +554,11 @@ static void acpi_battery_remove(struct acpi_sbs *sbs, int id)
 {
 	struct acpi_battery *battery = &sbs->battery[id];
 
-	if (battery->bat)
+	if (battery->bat) {
+		if (battery->have_sysfs_alarm)
+			device_remove_file(&battery->bat->dev, &alarm_attr);
 		power_supply_unregister(battery->bat);
+	}
 }
 
 static int acpi_charger_add(struct acpi_sbs *sbs)

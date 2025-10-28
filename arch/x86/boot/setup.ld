@@ -10,11 +10,10 @@ ENTRY(_start)
 SECTIONS
 {
 	. = 0;
-	.bstext	: {
-		*(.bstext)
-		. = 495;
-	} =0xffffffff
+	.bstext		: { *(.bstext) }
+	.bsdata		: { *(.bsdata) }
 
+	. = 495;
 	.header		: { *(.header) }
 	.entrytext	: { *(.entrytext) }
 	.inittext	: { *(.inittext) }
@@ -23,9 +22,6 @@ SECTIONS
 
 	.text		: { *(.text .text.*) }
 	.text32		: { *(.text32) }
-
-	.pecompat	: { *(.pecompat) }
-	PROVIDE(pecompat_fsize = setup_size - pecompat_fstart);
 
 	. = ALIGN(16);
 	.rodata		: { *(.rodata*) }
@@ -42,10 +38,8 @@ SECTIONS
 	.signature	: {
 		setup_sig = .;
 		LONG(0x5a5aaa55)
-
-		setup_size = ALIGN(ABSOLUTE(.), 4096);
-		setup_sects = ABSOLUTE(setup_size / 512);
 	}
+
 
 	. = ALIGN(16);
 	.bss		:

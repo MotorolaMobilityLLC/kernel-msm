@@ -179,11 +179,8 @@ static int stm32_fmc2_ebi_check_mux(struct stm32_fmc2_ebi *ebi,
 				    int cs)
 {
 	u32 bcr;
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 
 	if (bcr & FMC2_BCR_MTYP)
 		return 0;
@@ -196,11 +193,8 @@ static int stm32_fmc2_ebi_check_waitcfg(struct stm32_fmc2_ebi *ebi,
 					int cs)
 {
 	u32 bcr, val = FIELD_PREP(FMC2_BCR_MTYP, FMC2_BCR_MTYP_NOR);
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 
 	if ((bcr & FMC2_BCR_MTYP) == val && bcr & FMC2_BCR_BURSTEN)
 		return 0;
@@ -213,11 +207,8 @@ static int stm32_fmc2_ebi_check_sync_trans(struct stm32_fmc2_ebi *ebi,
 					   int cs)
 {
 	u32 bcr;
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 
 	if (bcr & FMC2_BCR_BURSTEN)
 		return 0;
@@ -230,11 +221,8 @@ static int stm32_fmc2_ebi_check_async_trans(struct stm32_fmc2_ebi *ebi,
 					    int cs)
 {
 	u32 bcr;
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 
 	if (!(bcr & FMC2_BCR_BURSTEN) || !(bcr & FMC2_BCR_CBURSTRW))
 		return 0;
@@ -247,11 +235,8 @@ static int stm32_fmc2_ebi_check_cpsize(struct stm32_fmc2_ebi *ebi,
 				       int cs)
 {
 	u32 bcr, val = FIELD_PREP(FMC2_BCR_MTYP, FMC2_BCR_MTYP_PSRAM);
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 
 	if ((bcr & FMC2_BCR_MTYP) == val && bcr & FMC2_BCR_BURSTEN)
 		return 0;
@@ -264,18 +249,12 @@ static int stm32_fmc2_ebi_check_address_hold(struct stm32_fmc2_ebi *ebi,
 					     int cs)
 {
 	u32 bcr, bxtr, val = FIELD_PREP(FMC2_BXTR_ACCMOD, FMC2_BXTR_EXTMOD_D);
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
-
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 	if (prop->reg_type == FMC2_REG_BWTR)
-		ret = regmap_read(ebi->regmap, FMC2_BWTR(cs), &bxtr);
+		regmap_read(ebi->regmap, FMC2_BWTR(cs), &bxtr);
 	else
-		ret = regmap_read(ebi->regmap, FMC2_BTR(cs), &bxtr);
-	if (ret)
-		return ret;
+		regmap_read(ebi->regmap, FMC2_BTR(cs), &bxtr);
 
 	if ((!(bcr & FMC2_BCR_BURSTEN) || !(bcr & FMC2_BCR_CBURSTRW)) &&
 	    ((bxtr & FMC2_BXTR_ACCMOD) == val || bcr & FMC2_BCR_MUXEN))
@@ -289,19 +268,12 @@ static int stm32_fmc2_ebi_check_clk_period(struct stm32_fmc2_ebi *ebi,
 					   int cs)
 {
 	u32 bcr, bcr1;
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
-
-	if (cs) {
-		ret = regmap_read(ebi->regmap, FMC2_BCR1, &bcr1);
-		if (ret)
-			return ret;
-	} else {
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
+	if (cs)
+		regmap_read(ebi->regmap, FMC2_BCR1, &bcr1);
+	else
 		bcr1 = bcr;
-	}
 
 	if (bcr & FMC2_BCR_BURSTEN && (!cs || !(bcr1 & FMC2_BCR1_CCLKEN)))
 		return 0;
@@ -333,18 +305,12 @@ static u32 stm32_fmc2_ebi_ns_to_clk_period(struct stm32_fmc2_ebi *ebi,
 {
 	u32 nb_clk_cycles = stm32_fmc2_ebi_ns_to_clock_cycles(ebi, cs, setup);
 	u32 bcr, btr, clk_period;
-	int ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR1, &bcr);
-	if (ret)
-		return ret;
-
+	regmap_read(ebi->regmap, FMC2_BCR1, &bcr);
 	if (bcr & FMC2_BCR1_CCLKEN || !cs)
-		ret = regmap_read(ebi->regmap, FMC2_BTR1, &btr);
+		regmap_read(ebi->regmap, FMC2_BTR1, &btr);
 	else
-		ret = regmap_read(ebi->regmap, FMC2_BTR(cs), &btr);
-	if (ret)
-		return ret;
+		regmap_read(ebi->regmap, FMC2_BTR(cs), &btr);
 
 	clk_period = FIELD_GET(FMC2_BTR_CLKDIV, btr) + 1;
 
@@ -603,16 +569,11 @@ static int stm32_fmc2_ebi_set_address_setup(struct stm32_fmc2_ebi *ebi,
 	if (ret)
 		return ret;
 
-	ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-	if (ret)
-		return ret;
-
+	regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 	if (prop->reg_type == FMC2_REG_BWTR)
-		ret = regmap_read(ebi->regmap, FMC2_BWTR(cs), &bxtr);
+		regmap_read(ebi->regmap, FMC2_BWTR(cs), &bxtr);
 	else
-		ret = regmap_read(ebi->regmap, FMC2_BTR(cs), &bxtr);
-	if (ret)
-		return ret;
+		regmap_read(ebi->regmap, FMC2_BTR(cs), &bxtr);
 
 	if ((bxtr & FMC2_BXTR_ACCMOD) == val || bcr & FMC2_BCR_MUXEN)
 		val = clamp_val(setup, 1, FMC2_BXTR_ADDSET_MAX);
@@ -730,14 +691,11 @@ static int stm32_fmc2_ebi_set_max_low_pulse(struct stm32_fmc2_ebi *ebi,
 					    int cs, u32 setup)
 {
 	u32 old_val, new_val, pcscntr;
-	int ret;
 
 	if (setup < 1)
 		return 0;
 
-	ret = regmap_read(ebi->regmap, FMC2_PCSCNTR, &pcscntr);
-	if (ret)
-		return ret;
+	regmap_read(ebi->regmap, FMC2_PCSCNTR, &pcscntr);
 
 	/* Enable counter for the bank */
 	regmap_update_bits(ebi->regmap, FMC2_PCSCNTR,
@@ -984,20 +942,17 @@ static void stm32_fmc2_ebi_disable_bank(struct stm32_fmc2_ebi *ebi, int cs)
 	regmap_update_bits(ebi->regmap, FMC2_BCR(cs), FMC2_BCR_MBKEN, 0);
 }
 
-static int stm32_fmc2_ebi_save_setup(struct stm32_fmc2_ebi *ebi)
+static void stm32_fmc2_ebi_save_setup(struct stm32_fmc2_ebi *ebi)
 {
 	unsigned int cs;
-	int ret;
 
 	for (cs = 0; cs < FMC2_MAX_EBI_CE; cs++) {
-		ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &ebi->bcr[cs]);
-		ret |= regmap_read(ebi->regmap, FMC2_BTR(cs), &ebi->btr[cs]);
-		ret |= regmap_read(ebi->regmap, FMC2_BWTR(cs), &ebi->bwtr[cs]);
-		if (ret)
-			return ret;
+		regmap_read(ebi->regmap, FMC2_BCR(cs), &ebi->bcr[cs]);
+		regmap_read(ebi->regmap, FMC2_BTR(cs), &ebi->btr[cs]);
+		regmap_read(ebi->regmap, FMC2_BWTR(cs), &ebi->bwtr[cs]);
 	}
 
-	return regmap_read(ebi->regmap, FMC2_PCSCNTR, &ebi->pcscntr);
+	regmap_read(ebi->regmap, FMC2_PCSCNTR, &ebi->pcscntr);
 }
 
 static void stm32_fmc2_ebi_set_setup(struct stm32_fmc2_ebi *ebi)
@@ -1026,29 +981,22 @@ static void stm32_fmc2_ebi_disable_banks(struct stm32_fmc2_ebi *ebi)
 }
 
 /* NWAIT signal can not be connected to EBI controller and NAND controller */
-static int stm32_fmc2_ebi_nwait_used_by_ctrls(struct stm32_fmc2_ebi *ebi)
+static bool stm32_fmc2_ebi_nwait_used_by_ctrls(struct stm32_fmc2_ebi *ebi)
 {
-	struct device *dev = ebi->dev;
 	unsigned int cs;
 	u32 bcr;
-	int ret;
 
 	for (cs = 0; cs < FMC2_MAX_EBI_CE; cs++) {
 		if (!(ebi->bank_assigned & BIT(cs)))
 			continue;
 
-		ret = regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
-		if (ret)
-			return ret;
-
+		regmap_read(ebi->regmap, FMC2_BCR(cs), &bcr);
 		if ((bcr & FMC2_BCR_WAITEN || bcr & FMC2_BCR_ASYNCWAIT) &&
-		    ebi->bank_assigned & BIT(FMC2_NAND)) {
-			dev_err(dev, "NWAIT signal connected to EBI and NAND controllers\n");
-			return -EINVAL;
-		}
+		    ebi->bank_assigned & BIT(FMC2_NAND))
+			return true;
 	}
 
-	return 0;
+	return false;
 }
 
 static void stm32_fmc2_ebi_enable(struct stm32_fmc2_ebi *ebi)
@@ -1135,9 +1083,10 @@ static int stm32_fmc2_ebi_parse_dt(struct stm32_fmc2_ebi *ebi)
 		return -ENODEV;
 	}
 
-	ret = stm32_fmc2_ebi_nwait_used_by_ctrls(ebi);
-	if (ret)
-		return ret;
+	if (stm32_fmc2_ebi_nwait_used_by_ctrls(ebi)) {
+		dev_err(dev, "NWAIT signal connected to EBI and NAND controllers\n");
+		return -EINVAL;
+	}
 
 	stm32_fmc2_ebi_enable(ebi);
 
@@ -1182,10 +1131,7 @@ static int stm32_fmc2_ebi_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_release;
 
-	ret = stm32_fmc2_ebi_save_setup(ebi);
-	if (ret)
-		goto err_release;
-
+	stm32_fmc2_ebi_save_setup(ebi);
 	platform_set_drvdata(pdev, ebi);
 
 	return 0;

@@ -126,7 +126,7 @@ static int afs_compare_volume_slists(const struct afs_volume *vol_a,
 	lb = rcu_dereference(vol_b->servers);
 
 	for (i = 0; i < AFS_MAXTYPES; i++)
-		if (vol_a->vids[i] != vol_b->vids[i])
+		if (la->vids[i] != lb->vids[i])
 			return 0;
 
 	while (a < la->nr_servers && b < lb->nr_servers) {
@@ -302,7 +302,6 @@ static char *afs_vl_get_cell_name(struct afs_cell *cell, struct key *key)
 static int yfs_check_canonical_cell_name(struct afs_cell *cell, struct key *key)
 {
 	struct afs_cell *master;
-	size_t name_len;
 	char *cell_name;
 
 	cell_name = afs_vl_get_cell_name(cell, key);
@@ -314,11 +313,8 @@ static int yfs_check_canonical_cell_name(struct afs_cell *cell, struct key *key)
 		return 0;
 	}
 
-	name_len = strlen(cell_name);
-	if (!name_len || name_len > AFS_MAXCELLNAME)
-		master = ERR_PTR(-EOPNOTSUPP);
-	else
-		master = afs_lookup_cell(cell->net, cell_name, name_len, NULL, false);
+	master = afs_lookup_cell(cell->net, cell_name, strlen(cell_name),
+				 NULL, false);
 	kfree(cell_name);
 	if (IS_ERR(master))
 		return PTR_ERR(master);

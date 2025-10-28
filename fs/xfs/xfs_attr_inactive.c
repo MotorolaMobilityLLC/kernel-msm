@@ -333,6 +333,7 @@ xfs_attr_inactive(
 	int			error = 0;
 
 	mp = dp->i_mount;
+	ASSERT(! XFS_NOT_DQATTACHED(mp, dp));
 
 	xfs_ilock(dp, lock_mode);
 	if (!xfs_inode_has_attr_fork(dp))

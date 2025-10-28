@@ -209,19 +209,15 @@ static int mtk8250_startup(struct uart_port *port)
 
 static void mtk8250_shutdown(struct uart_port *port)
 {
+#ifdef CONFIG_SERIAL_8250_DMA
 	struct uart_8250_port *up = up_to_u8250p(port);
 	struct mtk8250_data *data = port->private_data;
-	int irq = data->rx_wakeup_irq;
 
-#ifdef CONFIG_SERIAL_8250_DMA
 	if (up->dma)
 		data->rx_status = DMA_RX_SHUTDOWN;
 #endif
 
-	serial8250_do_shutdown(port);
-
-	if (irq >= 0)
-		serial8250_do_set_mctrl(&up->port, TIOCM_RTS);
+	return serial8250_do_shutdown(port);
 }
 
 static void mtk8250_disable_intrs(struct uart_8250_port *up, int mask)

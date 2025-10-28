@@ -47,12 +47,11 @@ static bool nf_dup_ipv6_route(struct net *net, struct sk_buff *skb,
 void nf_dup_ipv6(struct net *net, struct sk_buff *skb, unsigned int hooknum,
 		 const struct in6_addr *gw, int oif)
 {
-	local_bh_disable();
 	if (this_cpu_read(nf_skb_duplicated))
-		goto out;
+		return;
 	skb = pskb_copy(skb, GFP_ATOMIC);
 	if (skb == NULL)
-		goto out;
+		return;
 
 #if IS_ENABLED(CONFIG_NF_CONNTRACK)
 	nf_reset_ct(skb);
@@ -70,8 +69,6 @@ void nf_dup_ipv6(struct net *net, struct sk_buff *skb, unsigned int hooknum,
 	} else {
 		kfree_skb(skb);
 	}
-out:
-	local_bh_enable();
 }
 EXPORT_SYMBOL_GPL(nf_dup_ipv6);
 

@@ -1471,7 +1471,9 @@ static int fimc_md_probe(struct platform_device *pdev)
 
 	pinctrl = devm_pinctrl_get(dev);
 	if (IS_ERR(pinctrl)) {
-		ret = dev_err_probe(dev, PTR_ERR(pinctrl), "Failed to get pinctrl\n");
+		ret = PTR_ERR(pinctrl);
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "Failed to get pinctrl: %d\n", ret);
 		goto err_clk;
 	}
 

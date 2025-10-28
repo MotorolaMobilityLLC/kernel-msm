@@ -27,17 +27,9 @@ static ssize_t name##_read(struct file *file, struct kobject *kobj,		\
 			   loff_t off, size_t count)				\
 {										\
 	struct device *dev = kobj_to_dev(kobj);                                 \
-	cpumask_var_t mask;							\
-	ssize_t n;								\
 										\
-	if (!alloc_cpumask_var(&mask, GFP_KERNEL))				\
-		return -ENOMEM;							\
-										\
-	cpumask_copy(mask, topology_##mask(dev->id));				\
-	n = cpumap_print_bitmask_to_buf(buf, mask, off, count);			\
-	free_cpumask_var(mask);							\
-										\
-	return n;								\
+	return cpumap_print_bitmask_to_buf(buf, topology_##mask(dev->id),	\
+					   off, count);                         \
 }										\
 										\
 static ssize_t name##_list_read(struct file *file, struct kobject *kobj,	\
@@ -45,17 +37,9 @@ static ssize_t name##_list_read(struct file *file, struct kobject *kobj,	\
 				loff_t off, size_t count)			\
 {										\
 	struct device *dev = kobj_to_dev(kobj);					\
-	cpumask_var_t mask;							\
-	ssize_t n;								\
 										\
-	if (!alloc_cpumask_var(&mask, GFP_KERNEL))				\
-		return -ENOMEM;							\
-										\
-	cpumask_copy(mask, topology_##mask(dev->id));				\
-	n = cpumap_print_list_to_buf(buf, mask, off, count);			\
-	free_cpumask_var(mask);							\
-										\
-	return n;								\
+	return cpumap_print_list_to_buf(buf, topology_##mask(dev->id),		\
+					off, count);				\
 }
 
 define_id_show_func(physical_package_id, "%d");

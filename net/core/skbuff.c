@@ -1720,17 +1720,11 @@ static inline int skb_alloc_rx_flag(const struct sk_buff *skb)
 
 struct sk_buff *skb_copy(const struct sk_buff *skb, gfp_t gfp_mask)
 {
-	struct sk_buff *n;
-	unsigned int size;
-	int headerlen;
+	int headerlen = skb_headroom(skb);
+	unsigned int size = skb_end_offset(skb) + skb->data_len;
+	struct sk_buff *n = __alloc_skb(size, gfp_mask,
+					skb_alloc_rx_flag(skb), NUMA_NO_NODE);
 
-	if (WARN_ON_ONCE(skb_shinfo(skb)->gso_type & SKB_GSO_FRAGLIST))
-		return NULL;
-
-	headerlen = skb_headroom(skb);
-	size = skb_end_offset(skb) + skb->data_len;
-	n = __alloc_skb(size, gfp_mask,
-			skb_alloc_rx_flag(skb), NUMA_NO_NODE);
 	if (!n)
 		return NULL;
 
@@ -2043,17 +2037,12 @@ struct sk_buff *skb_copy_expand(const struct sk_buff *skb,
 	/*
 	 *	Allocate the copy buffer
 	 */
+	struct sk_buff *n = __alloc_skb(newheadroom + skb->len + newtailroom,
+					gfp_mask, skb_alloc_rx_flag(skb),
+					NUMA_NO_NODE);
+	int oldheadroom = skb_headroom(skb);
 	int head_copy_len, head_copy_off;
-	struct sk_buff *n;
-	int oldheadroom;
 
-	if (WARN_ON_ONCE(skb_shinfo(skb)->gso_type & SKB_GSO_FRAGLIST))
-		return NULL;
-
-	oldheadroom = skb_headroom(skb);
-	n = __alloc_skb(newheadroom + skb->len + newtailroom,
-			gfp_mask, skb_alloc_rx_flag(skb),
-			NUMA_NO_NODE);
 	if (!n)
 		return NULL;
 
@@ -5556,11 +5545,11 @@ void skb_scrub_packet(struct sk_buff *skb, bool xnet)
 	skb->offload_fwd_mark = 0;
 	skb->offload_l3_fwd_mark = 0;
 #endif
-	ipvs_reset(skb);
 
 	if (!xnet)
 		return;
 
+	ipvs_reset(skb);
 	skb->mark = 0;
 	skb_clear_tstamp(skb);
 }
@@ -5791,6 +5780,7 @@ EXPORT_SYMBOL(skb_ensure_writable);
  */
 int __skb_vlan_pop(struct sk_buff *skb, u16 *vlan_tci)
 {
+	struct vlan_hdr *vhdr;
 	int offset = skb->data - skb_mac_header(skb);
 	int err;
 
@@ -5806,8 +5796,13 @@ int __skb_vlan_pop(struct sk_buff *skb, u16 *vlan_tci)
 
 	skb_postpull_rcsum(skb, skb->data + (2 * ETH_ALEN), VLAN_HLEN);
 
-	vlan_remove_tag(skb, vlan_tci);
+	vhdr = (struct vlan_hdr *)(skb->data + ETH_HLEN);
+	*vlan_tci = ntohs(vhdr->h_vlan_TCI);
 
+	memmove(skb->data + VLAN_HLEN, skb->data, 2 * ETH_ALEN);
+	__skb_pull(skb, VLAN_HLEN);
+
+	vlan_set_encap_proto(skb, vhdr);
 	skb->mac_header += VLAN_HLEN;
 
 	if (skb_network_offset(skb) < ETH_HLEN)

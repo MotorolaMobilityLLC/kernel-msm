@@ -5,7 +5,6 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
-#include <linux/nospec.h>
 #include <linux/spinlock.h>
 #include <linux/list.h>
 #include <linux/device.h>
@@ -147,7 +146,7 @@ struct gpio_desc *gpiochip_get_desc(struct gpio_chip *gc,
 	if (hwnum >= gdev->ngpio)
 		return ERR_PTR(-EINVAL);
 
-	return &gdev->descs[array_index_nospec(hwnum, gdev->ngpio)];
+	return &gdev->descs[hwnum];
 }
 EXPORT_SYMBOL_GPL(gpiochip_get_desc);
 

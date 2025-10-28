@@ -86,7 +86,7 @@ static int hw_device_state(struct ci_hdrc *ci, u32 dma)
 		hw_write(ci, OP_ENDPTLISTADDR, ~0, dma);
 		/* interrupt, error, port change, reset, sleep/suspend */
 		hw_write(ci, OP_USBINTR, ~0,
-			     USBi_UI|USBi_UEI|USBi_PCI|USBi_URI);
+			     USBi_UI|USBi_UEI|USBi_PCI|USBi_URI|USBi_SLI);
 	} else {
 		hw_write(ci, OP_USBINTR, ~0, 0);
 	}
@@ -876,7 +876,6 @@ __releases(ci->lock)
 __acquires(ci->lock)
 {
 	int retval;
-	u32 intr;
 
 	spin_unlock(&ci->lock);
 	if (ci->gadget.speed != USB_SPEED_UNKNOWN)
@@ -889,11 +888,6 @@ __acquires(ci->lock)
 	retval = hw_usb_reset(ci);
 	if (retval)
 		goto done;
-
-	/* clear SLI */
-	hw_write(ci, OP_USBSTS, USBi_SLI, USBi_SLI);
-	intr = hw_read(ci, OP_USBINTR, ~0);
-	hw_write(ci, OP_USBINTR, ~0, intr | USBi_SLI);
 
 	ci->status = usb_ep_alloc_request(&ci->ep0in->ep, GFP_ATOMIC);
 	if (ci->status == NULL)
@@ -2052,7 +2046,7 @@ static irqreturn_t udc_irq(struct ci_hdrc *ci)
 			}
 		}
 
-		if ((USBi_UI | USBi_UEI) & intr)
+		if (USBi_UI  & intr)
 			isr_tr_complete_handler(ci);
 
 		if ((USBi_SLI & intr) && !(ci->suspended)) {

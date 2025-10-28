@@ -116,10 +116,7 @@ static inline bool amd_gart_present(void)
 
 #define amd_nb_num(x)		0
 #define amd_nb_has_feature(x)	false
-static inline struct amd_northbridge *node_to_amd_nb(int node)
-{
-	return NULL;
-}
+#define node_to_amd_nb(x)	NULL
 #define amd_gart_present(x)	false
 
 #endif

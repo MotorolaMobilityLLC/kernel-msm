@@ -577,8 +577,6 @@ static int dp_hpd_plug_handle(struct dp_display_private *dp, u32 data)
 	if (!hpd)
 		return 0;
 
-	dp_aux_enable_xfers(dp->aux, true);
-
 	mutex_lock(&dp->event_mutex);
 
 	state =  dp->hpd_state;
@@ -642,8 +640,6 @@ static int dp_hpd_unplug_handle(struct dp_display_private *dp, u32 data)
 
 	if (!hpd)
 		return 0;
-
-	dp_aux_enable_xfers(dp->aux, false);
 
 	mutex_lock(&dp->event_mutex);
 
@@ -1197,7 +1193,7 @@ static int dp_hpd_event_thread_start(struct dp_display_private *dp_priv)
 static irqreturn_t dp_display_irq_handler(int irq, void *dev_id)
 {
 	struct dp_display_private *dp = dev_id;
-	irqreturn_t ret = IRQ_NONE;
+	irqreturn_t ret = IRQ_HANDLED;
 	u32 hpd_isr_status;
 
 	if (!dp) {
@@ -1225,15 +1221,13 @@ static irqreturn_t dp_display_irq_handler(int irq, void *dev_id)
 
 		if (hpd_isr_status & DP_DP_HPD_UNPLUG_INT_MASK)
 			dp_add_event(dp, EV_HPD_UNPLUG_INT, 0, 0);
-
-		ret = IRQ_HANDLED;
 	}
 
 	/* DP controller isr */
-	ret |= dp_ctrl_isr(dp->ctrl);
+	dp_ctrl_isr(dp->ctrl);
 
 	/* DP aux isr */
-	ret |= dp_aux_isr(dp->aux);
+	dp_aux_isr(dp->aux);
 
 	return ret;
 }

@@ -2119,7 +2119,7 @@ static int safexcel_xcbcmac_cra_init(struct crypto_tfm *tfm)
 
 	safexcel_ahash_cra_init(tfm);
 	ctx->aes = kmalloc(sizeof(*ctx->aes), GFP_KERNEL);
-	return ctx->aes == NULL ? -ENOMEM : 0;
+	return PTR_ERR_OR_ZERO(ctx->aes);
 }
 
 static void safexcel_xcbcmac_cra_exit(struct crypto_tfm *tfm)

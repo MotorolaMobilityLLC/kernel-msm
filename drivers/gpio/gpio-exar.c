@@ -99,13 +99,11 @@ static void exar_set_value(struct gpio_chip *chip, unsigned int offset,
 	struct exar_gpio_chip *exar_gpio = gpiochip_get_data(chip);
 	unsigned int addr = exar_offset_to_lvl_addr(exar_gpio, offset);
 	unsigned int bit = exar_offset_to_bit(exar_gpio, offset);
-	unsigned int bit_value = value ? BIT(bit) : 0;
 
-	/*
-	 * regmap_write_bits() forces value to be written when an external
-	 * pull up/down might otherwise indicate value was already set.
-	 */
-	regmap_write_bits(exar_gpio->regmap, addr, BIT(bit), bit_value);
+	if (value)
+		regmap_set_bits(exar_gpio->regmap, addr, BIT(bit));
+	else
+		regmap_clear_bits(exar_gpio->regmap, addr, BIT(bit));
 }
 
 static int exar_direction_output(struct gpio_chip *chip, unsigned int offset,

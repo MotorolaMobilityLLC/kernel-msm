@@ -323,11 +323,7 @@ static struct pc87360_data *pc87360_update_device(struct device *dev)
 		}
 
 		/* Voltages */
-		/*
-		 * The min() below does not have any practical meaning and is
-		 * only needed to silence a warning observed with gcc 12+.
-		 */
-		for (i = 0; i < min(data->innr, ARRAY_SIZE(data->in)); i++) {
+		for (i = 0; i < data->innr; i++) {
 			data->in_status[i] = pc87360_read_value(data, LD_IN, i,
 					     PC87365_REG_IN_STATUS);
 			/* Clear bits */

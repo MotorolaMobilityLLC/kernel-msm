@@ -30,8 +30,7 @@ find_dot_func() {
 	fi
 
 	grep " [tT] .*\.isra\..*" /proc/kallsyms | cut -f 3 -d " " | while read f; do
-		cnt=`grep -s $f available_filter_functions | wc -l`;
-		if [ $cnt -eq 1 ]; then
+		if grep -s $f available_filter_functions; then
 			echo $f
 			break
 		fi

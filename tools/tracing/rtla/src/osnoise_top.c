@@ -520,10 +520,8 @@ struct osnoise_tool *osnoise_init_top(struct osnoise_top_params *params)
 		return NULL;
 
 	tool->data = osnoise_alloc_top(nr_cpus);
-	if (!tool->data) {
-		osnoise_destroy_tool(tool);
-		return NULL;
-	}
+	if (!tool->data)
+		goto out_err;
 
 	tool->params = params;
 
@@ -531,6 +529,11 @@ struct osnoise_tool *osnoise_init_top(struct osnoise_top_params *params)
 				   osnoise_top_handler, NULL);
 
 	return tool;
+
+out_err:
+	osnoise_free_top(tool->data);
+	osnoise_destroy_tool(tool);
+	return NULL;
 }
 
 static int stop_tracing;

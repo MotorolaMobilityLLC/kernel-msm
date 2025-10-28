@@ -290,9 +290,6 @@ static int __maybe_unused lcdif_suspend(struct device *dev)
 	if (ret)
 		return ret;
 
-	if (pm_runtime_suspended(dev))
-		return 0;
-
 	return lcdif_rpm_suspend(dev);
 }
 
@@ -300,8 +297,7 @@ static int __maybe_unused lcdif_resume(struct device *dev)
 {
 	struct drm_device *drm = dev_get_drvdata(dev);
 
-	if (!pm_runtime_suspended(dev))
-		lcdif_rpm_resume(dev);
+	lcdif_rpm_resume(dev);
 
 	return drm_mode_config_helper_resume(drm);
 }

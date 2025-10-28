@@ -667,17 +667,11 @@ static ssize_t acpi_battery_alarm_store(struct device *dev,
 	return count;
 }
 
-static struct device_attribute alarm_attr = {
+static const struct device_attribute alarm_attr = {
 	.attr = {.name = "alarm", .mode = 0644},
 	.show = acpi_battery_alarm_show,
 	.store = acpi_battery_alarm_store,
 };
-
-static struct attribute *acpi_battery_attrs[] = {
-	&alarm_attr.attr,
-	NULL
-};
-ATTRIBUTE_GROUPS(acpi_battery);
 
 /*
  * The Battery Hooking API
@@ -692,34 +686,27 @@ static LIST_HEAD(acpi_battery_list);
 static LIST_HEAD(battery_hook_list);
 static DEFINE_MUTEX(hook_mutex);
 
-static void battery_hook_unregister_unlocked(struct acpi_battery_hook *hook)
+static void __battery_hook_unregister(struct acpi_battery_hook *hook, int lock)
 {
 	struct acpi_battery *battery;
-
 	/*
 	 * In order to remove a hook, we first need to
 	 * de-register all the batteries that are registered.
 	 */
+	if (lock)
+		mutex_lock(&hook_mutex);
 	list_for_each_entry(battery, &acpi_battery_list, list) {
 		hook->remove_battery(battery->bat);
 	}
-	list_del_init(&hook->list);
-
+	list_del(&hook->list);
+	if (lock)
+		mutex_unlock(&hook_mutex);
 	pr_info("extension unregistered: %s\n", hook->name);
 }
 
 void battery_hook_unregister(struct acpi_battery_hook *hook)
 {
-	mutex_lock(&hook_mutex);
-	/*
-	 * Ignore already unregistered battery hooks. This might happen
-	 * if a battery hook was previously unloaded due to an error when
-	 * adding a new battery.
-	 */
-	if (!list_empty(&hook->list))
-		battery_hook_unregister_unlocked(hook);
-
-	mutex_unlock(&hook_mutex);
+	__battery_hook_unregister(hook, 1);
 }
 EXPORT_SYMBOL_GPL(battery_hook_unregister);
 
@@ -728,6 +715,7 @@ void battery_hook_register(struct acpi_battery_hook *hook)
 	struct acpi_battery *battery;
 
 	mutex_lock(&hook_mutex);
+	INIT_LIST_HEAD(&hook->list);
 	list_add(&hook->list, &battery_hook_list);
 	/*
 	 * Now that the driver is registered, we need
@@ -744,7 +732,7 @@ void battery_hook_register(struct acpi_battery_hook *hook)
 			 * hooks.
 			 */
 			pr_err("extension failed to load: %s", hook->name);
-			battery_hook_unregister_unlocked(hook);
+			__battery_hook_unregister(hook, 0);
 			goto end;
 		}
 	}
@@ -781,7 +769,7 @@ static void battery_hook_add_battery(struct acpi_battery *battery)
 			 */
 			pr_err("error in extension, unloading: %s",
 					hook_node->name);
-			battery_hook_unregister_unlocked(hook_node);
+			__battery_hook_unregister(hook_node, 0);
 		}
 	}
 	mutex_unlock(&hook_mutex);
@@ -814,17 +802,14 @@ static void __exit battery_hook_exit(void)
 	 * need to remove the hooks.
 	 */
 	list_for_each_entry_safe(hook, ptr, &battery_hook_list, list) {
-		battery_hook_unregister(hook);
+		__battery_hook_unregister(hook, 1);
 	}
 	mutex_destroy(&hook_mutex);
 }
 
 static int sysfs_add_battery(struct acpi_battery *battery)
 {
-	struct power_supply_config psy_cfg = {
-		.drv_data = battery,
-		.attr_grp = acpi_battery_groups,
-	};
+	struct power_supply_config psy_cfg = { .drv_data = battery, };
 	bool full_cap_broken = false;
 
 	if (!ACPI_BATTERY_CAPACITY_VALID(battery->full_charge_capacity) &&
@@ -869,7 +854,7 @@ static int sysfs_add_battery(struct acpi_battery *battery)
 		return result;
 	}
 	battery_hook_add_battery(battery);
-	return 0;
+	return device_create_file(&battery->bat->dev, &alarm_attr);
 }
 
 static void sysfs_remove_battery(struct acpi_battery *battery)
@@ -880,6 +865,7 @@ static void sysfs_remove_battery(struct acpi_battery *battery)
 		return;
 	}
 	battery_hook_remove_battery(battery);
+	device_remove_file(&battery->bat->dev, &alarm_attr);
 	power_supply_unregister(battery->bat);
 	battery->bat = NULL;
 	mutex_unlock(&battery->sysfs_lock);

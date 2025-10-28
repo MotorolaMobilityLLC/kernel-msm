@@ -214,11 +214,9 @@ int __init efi_memblock_x86_reserve_range(void)
 	data.desc_size		= e->efi_memdesc_size;
 	data.desc_version	= e->efi_memdesc_version;
 
-	if (!efi_enabled(EFI_PARAVIRT)) {
-		rv = efi_memmap_init_early(&data);
-		if (rv)
-			return rv;
-	}
+	rv = efi_memmap_init_early(&data);
+	if (rv)
+		return rv;
 
 	if (add_efi_memmap || do_efi_soft_reserve())
 		do_add_efi_memmap();

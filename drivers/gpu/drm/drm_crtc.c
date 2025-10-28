@@ -904,7 +904,6 @@ out:
 	connector_set = NULL;
 	fb = NULL;
 	mode = NULL;
-	num_connectors = 0;
 
 	DRM_MODESET_LOCK_ALL_END(dev, ctx, ret);
 

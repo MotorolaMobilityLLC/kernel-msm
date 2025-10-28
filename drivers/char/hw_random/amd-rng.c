@@ -142,10 +142,8 @@ static int __init amd_rng_mod_init(void)
 
 found:
 	err = pci_read_config_dword(pdev, 0x58, &pmbase);
-	if (err) {
-		err = pcibios_err_to_errno(err);
+	if (err)
 		goto put_dev;
-	}
 
 	pmbase &= 0x0000FF00;
 	if (pmbase == 0) {

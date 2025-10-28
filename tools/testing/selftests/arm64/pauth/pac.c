@@ -182,9 +182,6 @@ int exec_sign_all(struct signatures *signed_vals, size_t val)
 		return -1;
 	}
 
-	close(new_stdin[1]);
-	close(new_stdout[0]);
-
 	return 0;
 }
 

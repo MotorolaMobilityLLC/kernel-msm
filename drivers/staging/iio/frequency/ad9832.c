@@ -129,15 +129,12 @@ static unsigned long ad9832_calc_freqreg(unsigned long mclk, unsigned long fout)
 static int ad9832_write_frequency(struct ad9832_state *st,
 				  unsigned int addr, unsigned long fout)
 {
-	unsigned long clk_freq;
 	unsigned long regval;
 
-	clk_freq = clk_get_rate(st->mclk);
-
-	if (!clk_freq || fout > (clk_freq / 2))
+	if (fout > (clk_get_rate(st->mclk) / 2))
 		return -EINVAL;
 
-	regval = ad9832_calc_freqreg(clk_freq, fout);
+	regval = ad9832_calc_freqreg(clk_get_rate(st->mclk), fout);
 
 	st->freq_data[0] = cpu_to_be16((AD9832_CMD_FRE8BITSW << CMD_SHIFT) |
 					(addr << ADD_SHIFT) |
@@ -158,7 +155,7 @@ static int ad9832_write_frequency(struct ad9832_state *st,
 static int ad9832_write_phase(struct ad9832_state *st,
 			      unsigned long addr, unsigned long phase)
 {
-	if (phase >= BIT(AD9832_PHASE_BITS))
+	if (phase > BIT(AD9832_PHASE_BITS))
 		return -EINVAL;
 
 	st->phase_data[0] = cpu_to_be16((AD9832_CMD_PHA8BITSW << CMD_SHIFT) |

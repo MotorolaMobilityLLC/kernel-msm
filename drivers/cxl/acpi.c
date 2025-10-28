@@ -509,8 +509,7 @@ static int cxl_acpi_probe(struct platform_device *pdev)
 		return rc;
 
 	/* In case PCI is scanned before ACPI re-trigger memdev attach */
-	cxl_bus_rescan();
-	return 0;
+	return cxl_bus_rescan();
 }
 
 static const struct acpi_device_id cxl_acpi_ids[] = {
@@ -534,19 +533,7 @@ static struct platform_driver cxl_acpi_driver = {
 	.id_table = cxl_test_ids,
 };
 
-static int __init cxl_acpi_init(void)
-{
-	return platform_driver_register(&cxl_acpi_driver);
-}
-
-static void __exit cxl_acpi_exit(void)
-{
-	platform_driver_unregister(&cxl_acpi_driver);
-	cxl_bus_drain();
-}
-
-module_init(cxl_acpi_init);
-module_exit(cxl_acpi_exit);
+module_platform_driver(cxl_acpi_driver);
 MODULE_LICENSE("GPL v2");
 MODULE_IMPORT_NS(CXL);
 MODULE_IMPORT_NS(ACPI);

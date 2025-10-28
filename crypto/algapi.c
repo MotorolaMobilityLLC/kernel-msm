@@ -385,7 +385,7 @@ found:
 	q->cra_flags |= CRYPTO_ALG_DEAD;
 	alg = test->adult;
 
-	if (crypto_is_dead(alg))
+	if (list_empty(&alg->cra_list))
 		goto complete;
 
 	if (err == -ECANCELED)

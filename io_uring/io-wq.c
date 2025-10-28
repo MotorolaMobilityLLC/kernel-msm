@@ -13,7 +13,6 @@
 #include <linux/slab.h>
 #include <linux/rculist_nulls.h>
 #include <linux/cpu.h>
-#include <linux/cpuset.h>
 #include <linux/task_work.h>
 #include <linux/audit.h>
 #include <uapi/linux/io_uring.h>
@@ -23,7 +22,6 @@
 #include "io_uring.h"
 
 #define WORKER_IDLE_TIMEOUT	(5 * HZ)
-#define WORKER_INIT_LIMIT	3
 
 enum {
 	IO_WORKER_F_UP		= 1,	/* up and active */
@@ -60,7 +58,6 @@ struct io_worker {
 	unsigned long create_state;
 	struct callback_head create_work;
 	int create_index;
-	int init_retries;
 
 	union {
 		struct rcu_head rcu;
@@ -629,7 +626,7 @@ static int io_wqe_worker(void *data)
 	struct io_wqe_acct *acct = io_wqe_get_acct(worker);
 	struct io_wqe *wqe = worker->wqe;
 	struct io_wq *wq = wqe->wq;
-	bool exit_mask = false, last_timeout = false;
+	bool last_timeout = false;
 	char buf[TASK_COMM_LEN];
 
 	worker->flags |= (IO_WORKER_F_UP | IO_WORKER_F_RUNNING);
@@ -645,11 +642,8 @@ static int io_wqe_worker(void *data)
 			io_worker_handle_work(worker);
 
 		raw_spin_lock(&wqe->lock);
-		/*
-		 * Last sleep timed out. Exit if we're not the last worker,
-		 * or if someone modified our affinity.
-		 */
-		if (last_timeout && (exit_mask || acct->nr_workers > 1)) {
+		/* timed out, exit unless we're the last worker */
+		if (last_timeout && acct->nr_workers > 1) {
 			acct->nr_workers--;
 			raw_spin_unlock(&wqe->lock);
 			__set_current_state(TASK_RUNNING);
@@ -668,11 +662,7 @@ static int io_wqe_worker(void *data)
 				continue;
 			break;
 		}
-		if (!ret) {
-			last_timeout = true;
-			exit_mask = !cpumask_test_cpu(raw_smp_processor_id(),
-							wqe->cpu_mask);
-		}
+		last_timeout = !ret;
 	}
 
 	if (test_bit(IO_WQ_BIT_EXIT, &wq->state))
@@ -724,6 +714,7 @@ static void io_init_new_worker(struct io_wqe *wqe, struct io_worker *worker,
 	tsk->worker_private = worker;
 	worker->task = tsk;
 	set_cpus_allowed_ptr(tsk, wqe->cpu_mask);
+	tsk->flags |= PF_NO_SETAFFINITY;
 
 	raw_spin_lock(&wqe->lock);
 	hlist_nulls_add_head_rcu(&worker->nulls_node, &wqe->free_list);
@@ -738,15 +729,13 @@ static bool io_wq_work_match_all(struct io_wq_work *work, void *data)
 	return true;
 }
 
-static inline bool io_should_retry_thread(struct io_worker *worker, long err)
+static inline bool io_should_retry_thread(long err)
 {
 	/*
 	 * Prevent perpetual task_work retry, if the task (or its group) is
 	 * exiting.
 	 */
 	if (fatal_signal_pending(current))
-		return false;
-	if (worker->init_retries++ >= WORKER_INIT_LIMIT)
 		return false;
 
 	switch (err) {
@@ -774,7 +763,7 @@ static void create_worker_cont(struct callback_head *cb)
 		io_init_new_worker(wqe, worker, tsk);
 		io_worker_release(worker);
 		return;
-	} else if (!io_should_retry_thread(worker, PTR_ERR(tsk))) {
+	} else if (!io_should_retry_thread(PTR_ERR(tsk))) {
 		struct io_wqe_acct *acct = io_wqe_get_acct(worker);
 
 		atomic_dec(&acct->nr_running);
@@ -841,7 +830,7 @@ fail:
 	tsk = create_io_thread(io_wqe_worker, worker, wqe->node);
 	if (!IS_ERR(tsk)) {
 		io_init_new_worker(wqe, worker, tsk);
-	} else if (!io_should_retry_thread(worker, PTR_ERR(tsk))) {
+	} else if (!io_should_retry_thread(PTR_ERR(tsk))) {
 		kfree(worker);
 		goto fail;
 	} else {
@@ -1157,7 +1146,6 @@ struct io_wq *io_wq_create(unsigned bounded, struct io_wq_data *data)
 {
 	int ret, node, i;
 	struct io_wq *wq;
-	cpumask_var_t allowed_mask;
 
 	if (WARN_ON_ONCE(!data->free_work || !data->do_work))
 		return ERR_PTR(-EINVAL);
@@ -1177,9 +1165,6 @@ struct io_wq *io_wq_create(unsigned bounded, struct io_wq_data *data)
 	wq->do_work = data->do_work;
 
 	ret = -ENOMEM;
-	if (!alloc_cpumask_var(&allowed_mask, GFP_KERNEL))
-		goto err;
-	cpuset_cpus_allowed(current, allowed_mask);
 	for_each_node(node) {
 		struct io_wqe *wqe;
 		int alloc_node = node;
@@ -1192,8 +1177,7 @@ struct io_wq *io_wq_create(unsigned bounded, struct io_wq_data *data)
 		wq->wqes[node] = wqe;
 		if (!alloc_cpumask_var(&wqe->cpu_mask, GFP_KERNEL))
 			goto err;
-		if (!cpumask_and(wqe->cpu_mask, cpumask_of_node(node), allowed_mask))
-			cpumask_copy(wqe->cpu_mask, allowed_mask);
+		cpumask_copy(wqe->cpu_mask, cpumask_of_node(node));
 		wqe->node = alloc_node;
 		wqe->acct[IO_WQ_ACCT_BOUND].max_workers = bounded;
 		wqe->acct[IO_WQ_ACCT_UNBOUND].max_workers =
@@ -1227,7 +1211,6 @@ err:
 		free_cpumask_var(wq->wqes[node]->cpu_mask);
 		kfree(wq->wqes[node]);
 	}
-	free_cpumask_var(allowed_mask);
 err_wq:
 	kfree(wq);
 	return ERR_PTR(ret);
@@ -1369,34 +1352,22 @@ static int io_wq_cpu_offline(unsigned int cpu, struct hlist_node *node)
 
 int io_wq_cpu_affinity(struct io_uring_task *tctx, cpumask_var_t mask)
 {
-	cpumask_var_t allowed_mask;
-	int ret = 0;
 	int i;
 
 	if (!tctx || !tctx->io_wq)
 		return -EINVAL;
 
-	if (!alloc_cpumask_var(&allowed_mask, GFP_KERNEL))
-		return -ENOMEM;
-	cpuset_cpus_allowed(tctx->io_wq->task, allowed_mask);
-
 	rcu_read_lock();
 	for_each_node(i) {
 		struct io_wqe *wqe = tctx->io_wq->wqes[i];
-		if (mask) {
-			if (cpumask_subset(mask, allowed_mask))
-				cpumask_copy(wqe->cpu_mask, mask);
-			else
-				ret = -EINVAL;
-		} else {
-			if (!cpumask_and(wqe->cpu_mask, cpumask_of_node(i), allowed_mask))
-				cpumask_copy(wqe->cpu_mask, allowed_mask);
-		}
+
+		if (mask)
+			cpumask_copy(wqe->cpu_mask, mask);
+		else
+			cpumask_copy(wqe->cpu_mask, cpumask_of_node(i));
 	}
 	rcu_read_unlock();
-
-	free_cpumask_var(allowed_mask);
-	return ret;
+	return 0;
 }
 
 /*

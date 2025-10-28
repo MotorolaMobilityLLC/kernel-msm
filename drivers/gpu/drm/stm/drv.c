@@ -24,7 +24,6 @@
 #include <drm/drm_module.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_vblank.h>
-#include <drm/drm_managed.h>
 
 #include "ltdc.h"
 
@@ -75,7 +74,7 @@ static int drv_load(struct drm_device *ddev)
 
 	DRM_DEBUG("%s\n", __func__);
 
-	ldev = drmm_kzalloc(ddev, sizeof(*ldev), GFP_KERNEL);
+	ldev = devm_kzalloc(ddev->dev, sizeof(*ldev), GFP_KERNEL);
 	if (!ldev)
 		return -ENOMEM;
 
@@ -202,14 +201,12 @@ static int stm_drm_platform_probe(struct platform_device *pdev)
 
 	ret = drm_dev_register(ddev, 0);
 	if (ret)
-		goto err_unload;
+		goto err_put;
 
 	drm_fbdev_generic_setup(ddev, 16);
 
 	return 0;
 
-err_unload:
-	drv_unload(ddev);
 err_put:
 	drm_dev_put(ddev);
 

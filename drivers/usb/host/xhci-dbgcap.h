@@ -81,6 +81,7 @@ enum dbc_state {
 	DS_ENABLED,
 	DS_CONNECTED,
 	DS_CONFIGURED,
+	DS_STALLED,
 };
 
 struct dbc_ep {
@@ -88,7 +89,6 @@ struct dbc_ep {
 	struct list_head		list_pending;
 	struct xhci_ring		*ring;
 	unsigned int			direction:1;
-	unsigned int			halted:1;
 };
 
 #define DBC_QUEUE_SIZE			16
@@ -108,7 +108,7 @@ struct dbc_port {
 	struct tasklet_struct		push;
 
 	struct list_head		write_pool;
-	unsigned int			tx_boundary;
+	struct kfifo			write_fifo;
 
 	bool				registered;
 };

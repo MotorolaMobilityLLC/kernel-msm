@@ -2447,11 +2447,12 @@ retry:
 
 	if (pos < 0) {
 		/*
-		 * The path is longer than PATH_MAX and this function
-		 * cannot ever succeed.  Creating paths that long is
-		 * possible with Ceph, but Linux cannot use them.
+		 * A rename didn't occur, but somehow we didn't end up where
+		 * we thought we would. Throw a warning and try again.
 		 */
-		return ERR_PTR(-ENAMETOOLONG);
+		pr_warn("build_path did not end path lookup where "
+			"expected, pos is %d\n", pos);
+		goto retry;
 	}
 
 	*pbase = base;

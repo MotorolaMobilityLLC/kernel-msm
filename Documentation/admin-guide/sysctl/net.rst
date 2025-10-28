@@ -205,11 +205,6 @@ Will increase power usage.
 
 Default: 0 (off)
 
-mem_pcpu_rsv
-------------
-
-Per-cpu reserved forward alloc cache size in page units. Default 1MB per CPU.
-
 rmem_default
 ------------
 

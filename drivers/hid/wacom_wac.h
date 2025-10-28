@@ -324,7 +324,7 @@ struct hid_data {
 	int bat_connected;
 	int ps_connected;
 	bool pad_input_event_flag;
-	int sequence_number;
+	unsigned short sequence_number;
 	ktime_t time_delayed;
 };
 

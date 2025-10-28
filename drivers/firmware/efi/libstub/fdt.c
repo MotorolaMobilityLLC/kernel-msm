@@ -335,8 +335,8 @@ fail_free_new_fdt:
 
 fail:
 	efi_free(fdt_size, fdt_addr);
-	if (!efi_novamap)
-		efi_bs_call(free_pool, priv.runtime_map);
+
+	efi_bs_call(free_pool, priv.runtime_map);
 
 	return EFI_LOAD_ERROR;
 }

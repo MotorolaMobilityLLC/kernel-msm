@@ -154,9 +154,7 @@ static int __init cpufreq_init(void)
 
 	ret = cpufreq_register_driver(&loongson2_cpufreq_driver);
 
-	if (ret) {
-		platform_driver_unregister(&platform_driver);
-	} else if (!nowait) {
+	if (!ret && !nowait) {
 		saved_cpu_wait = cpu_wait;
 		cpu_wait = loongson2_cpu_wait;
 	}

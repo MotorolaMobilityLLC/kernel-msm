@@ -226,12 +226,7 @@ static bool qt1050_identify(struct qt1050_priv *ts)
 	int err;
 
 	/* Read Chip ID */
-	err = regmap_read(ts->regmap, QT1050_CHIP_ID, &val);
-	if (err) {
-		dev_err(&ts->client->dev, "Failed to read chip ID: %d\n", err);
-		return false;
-	}
-
+	regmap_read(ts->regmap, QT1050_CHIP_ID, &val);
 	if (val != QT1050_CHIP_ID_VER) {
 		dev_err(&ts->client->dev, "ID %d not supported\n", val);
 		return false;

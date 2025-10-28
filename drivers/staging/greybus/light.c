@@ -147,9 +147,6 @@ static int __gb_lights_flash_brightness_set(struct gb_channel *channel)
 		channel = get_channel_from_mode(channel->light,
 						GB_CHANNEL_MODE_TORCH);
 
-	if (!channel)
-		return -EINVAL;
-
 	/* For not flash we need to convert brightness to intensity */
 	intensity = channel->intensity_uA.min +
 			(channel->intensity_uA.step * channel->led->brightness);
@@ -552,10 +549,7 @@ static int gb_lights_light_v4l2_register(struct gb_light *light)
 	}
 
 	channel_flash = get_channel_from_mode(light, GB_CHANNEL_MODE_FLASH);
-	if (!channel_flash) {
-		dev_err(dev, "failed to get flash channel from mode\n");
-		return -EINVAL;
-	}
+	WARN_ON(!channel_flash);
 
 	fled = &channel_flash->fled;
 

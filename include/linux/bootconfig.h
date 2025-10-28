@@ -287,12 +287,7 @@ int __init xbc_init(const char *buf, size_t size, const char **emsg, int *epos);
 int __init xbc_get_info(int *node_size, size_t *data_size);
 
 /* XBC cleanup data structures */
-void __init _xbc_exit(bool early);
-
-static inline void xbc_exit(void)
-{
-	_xbc_exit(false);
-}
+void __init xbc_exit(void);
 
 /* XBC embedded bootconfig data in kernel */
 #ifdef CONFIG_BOOT_CONFIG_EMBED

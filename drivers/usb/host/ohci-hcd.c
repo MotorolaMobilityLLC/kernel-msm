@@ -888,7 +888,6 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 	/* Check for an all 1's result which is a typical consequence
 	 * of dead, unclocked, or unplugged (CardBus...) devices
 	 */
-again:
 	if (ints == ~(u32)0) {
 		ohci->rh_state = OHCI_RH_HALTED;
 		ohci_dbg (ohci, "device removed!\n");
@@ -982,13 +981,6 @@ again:
 		(void) ohci_readl (ohci, &ohci->regs->control);
 	}
 	spin_unlock(&ohci->lock);
-
-	/* repeat until all enabled interrupts are handled */
-	if (ohci->rh_state != OHCI_RH_HALTED) {
-		ints = ohci_readl(ohci, &regs->intrstatus);
-		if (ints && (ints & ohci_readl(ohci, &regs->intrenable)))
-			goto again;
-	}
 
 	return IRQ_HANDLED;
 }

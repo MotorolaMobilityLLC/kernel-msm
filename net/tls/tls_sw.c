@@ -458,7 +458,7 @@ int tls_tx_records(struct sock *sk, int flags)
 
 tx_err:
 	if (rc < 0 && rc != -EAGAIN)
-		tls_err_abort(sk, rc);
+		tls_err_abort(sk, -EBADMSG);
 
 	return rc;
 }
@@ -2061,10 +2061,10 @@ int tls_sw_recvmsg(struct sock *sk,
 	if (unlikely(flags & MSG_ERRQUEUE))
 		return sock_recv_errqueue(sk, msg, len, SOL_IP, IP_RECVERR);
 
+	psock = sk_psock_get(sk);
 	err = tls_rx_reader_lock(sk, ctx, flags & MSG_DONTWAIT);
 	if (err < 0)
 		return err;
-	psock = sk_psock_get(sk);
 	bpf_strp_enabled = sk_psock_strp_enabled(psock);
 
 	/* If crypto failed the connection is broken */
@@ -2237,15 +2237,12 @@ recv_end:
 		}
 
 		/* Drain records from the rx_list & copy if required */
-		if (is_peek)
+		if (is_peek || is_kvec)
 			err = process_rx_list(ctx, msg, &control, copied + peeked,
 					      decrypted - peeked, is_peek, NULL);
 		else
 			err = process_rx_list(ctx, msg, &control, 0,
 					      async_copy_bytes, is_peek, NULL);
-
-		/* we could have copied less than we wanted, and possibly nothing */
-		decrypted += max(err, 0) - async_copy_bytes;
 	}
 
 	copied += decrypted;
