@@ -641,13 +641,7 @@ static void mhi_pm_sys_error_transition(struct mhi_controller *mhi_cntrl)
 					!in_reset, timeout);
 		if (!ret || in_reset) {
 			MHI_ERR(dev, "Device failed to exit MHI Reset state\n");
-			write_lock_irq(&mhi_cntrl->pm_lock);
-			cur_state = mhi_tryset_pm_state(mhi_cntrl,
-							MHI_PM_SYS_ERR_FAIL);
-			write_unlock_irq(&mhi_cntrl->pm_lock);
-			/* Shutdown may have occurred, otherwise cleanup now */
-			if (cur_state != MHI_PM_SYS_ERR_FAIL)
-				goto exit_sys_error_transition;
+			goto exit_sys_error_transition;
 		}
 
 		/*
