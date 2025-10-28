@@ -19,13 +19,6 @@ DEFAULT_MSM_EXTENSIONS_SRC = "../msm-kernel/msm_kernel_extensions.bzl"
 DEFAULT_ABL_EXTENSIONS_SRC = "../bootable/bootloader/edk2/abl_extensions.bzl"
 DEFAULT_OUT_DIR = "{workspace}/out/msm-kernel-{target}-{variant}"
 
-CURR_DIR = os.getcwd()
-DEFAULT_CACHE_DIR = os.path.join(CURR_DIR, 'kernel_platform/out/bazel/output_user_root')
-if not os.path.exists(DEFAULT_CACHE_DIR):
-   os.makedirs(DEFAULT_CACHE_DIR)
-
-os.environ['TEST_TMPDIR'] = DEFAULT_CACHE_DIR
-
 class Target:
     def __init__(self, workspace, target, variant, bazel_label, out_dir=None):
         self.workspace = workspace
