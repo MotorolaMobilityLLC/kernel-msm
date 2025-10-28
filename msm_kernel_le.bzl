@@ -65,7 +65,7 @@ def _define_build_config(
             "BASE_ADDRESS=0x%X" % boot_image_opts.base_address,
             "PAGE_SIZE={}".format(boot_image_opts.page_size),
             "TARGET_HAS_SEPARATE_RD=1",
-            "PREFERRED_USERSPACE=le",
+            '[ $MSM_ARCH != "neo" ] && PREFERRED_USERSPACE=le',
             "BUILD_BOOT_IMG=1",
             "BUILD_INITRAMFS=1",
             '[ -z "$DT_OVERLAY_SUPPORT" ] && DT_OVERLAY_SUPPORT=1',
