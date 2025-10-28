@@ -415629,15 +415629,6 @@ elf_symbol {
   full_name: "vb2_streamon"
 }
 elf_symbol {
-  id: 0x366afdcc
-  name: "vb2_video_unregister_device"
-  is_defined: true
-  symbol_type: FUNCTION
-  crc: 0xf61ca8fa
-  type_id: 0x10e07da0
-  full_name: "vb2_video_unregister_device"
-}
-elf_symbol {
   id: 0x37026d37
   name: "vb2_vmalloc_memops"
   is_defined: true
@@ -426678,7 +426669,6 @@ interface {
   symbol_id: 0x39528cf5
   symbol_id: 0xcb922fd0
   symbol_id: 0x5c2cffc5
-  symbol_id: 0x366afdcc
   symbol_id: 0x37026d37
   symbol_id: 0x1b22201e
   symbol_id: 0x6dc0b5fd
