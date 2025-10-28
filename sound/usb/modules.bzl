@@ -6,6 +6,8 @@ def register_modules(registry):
         srcs = [
             # do not sort
             "sound/usb/usb_audio_qmi_svc.c",
+            "sound/usb/quirks.c",
+            "sound/usb/quirks.h",
             "sound/usb/usb_audio_qmi_v01.c",
             "sound/usb/usb_audio_qmi_v01.h",
         ],
