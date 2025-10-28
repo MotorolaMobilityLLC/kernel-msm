@@ -35,6 +35,7 @@
 #include "sound/usb/pcm.h"
 #include "sound/usb/power.h"
 #include "usb_audio_qmi_v01.h"
+#include "quirks.h"
 
 #define BUS_INTERVAL_FULL_SPEED 1000 /* in us */
 #define BUS_INTERVAL_HIGHSPEED_AND_ABOVE 125 /* in us */
@@ -1025,6 +1026,7 @@ static void uaudio_connect(struct snd_usb_audio *chip)
 		return;
 	}
 
+	xhci_init_snd_quirk(chip);
 	intf = chip->intf[chip->num_interfaces - 1];
 	sb = xhci_sideband_register(intf, XHCI_SIDEBAND_VENDOR,
 						 uaudio_sb_notifier);
@@ -1093,6 +1095,7 @@ static void uaudio_disconnect(struct snd_usb_audio *chip)
 		return;
 	}
 
+	xhci_deinit_snd_quirk(chip);
 	card_num = chip->card->number;
 	if (card_num >= SNDRV_CARDS) {
 		uaudio_err("invalid card number\n");
