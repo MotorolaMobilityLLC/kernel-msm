@@ -112,6 +112,12 @@ config MOT_DRV_DONGWOON_OIS_AF_DRIFT
 	help
 	  This is enabling DONGWOON AF DRIFT for calidata in ois flash.
 
+config MOT_DRV_AON_CUSTOM_POWER_SUPPORT
+	default n
+	bool "enable aon custom power support"
+	help
+	  This is enabling aon custom power for aon by using gpio.
+
 config MOT_DRV_OIS_DEINIT
         default n
         bool "enable OIS deinit"
