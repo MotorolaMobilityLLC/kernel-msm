@@ -1124,6 +1124,15 @@ config QCOM_PANEL_EVENT_NOTIFIER
 	  can use these notifications for power saving or align its operations
 	  with display panel power state.
 
+config MOT_QCOM_PANEL_NOTIFIER
+	default n
+	depends on QCOM_PANEL_EVENT_NOTIFIER
+	bool "enable MOT extension for QCOM Panel Notifier"
+	help
+	  Enable this to allow Motorola-specific clients,
+          such as the fingerprint sensor driver, to receive display panel state notifications.
+          This is used for power management optimizations.
+
 config RENAME_DEVICES
 	tristate "Rename  block and network device names"
 	depends on VIRTIO_BLK
