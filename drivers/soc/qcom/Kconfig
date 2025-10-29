@@ -93,6 +93,12 @@ config CAM_SENSOR_PROBE_DEBUG
 	help
 	  This is enabling cam sensor probe debug.
 
+config QCOM_PATCH_CSID_ERROR_FIX
+	default n
+	bool "enable qcom patch to fix the CSID error"
+	help
+	  This is enabling qcom patch csid error fix.
+
 config AF_NOISE_ELIMINATION
 	default n
 	bool "enable af noise elimination"
