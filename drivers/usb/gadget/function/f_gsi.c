@@ -3502,6 +3502,9 @@ static int gsi_bind(struct usb_configuration *c, struct usb_function *f)
 	if (status)
 		goto dereg_rndis;
 
+	/* MMI_STOPSHIP <usb>: fix ramdump issue when usb rndis function*/
+	return 0;
+
 dereg_rndis:
 	rndis_deregister(gsi->params);
 fail:
