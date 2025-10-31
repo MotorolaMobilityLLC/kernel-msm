@@ -100,12 +100,6 @@ config MOT_SENSOR_PRE_POWERUP
 	help
 	  This is enabling camera sensor pre powerup feature.
 
-config MOT_DRV_OIS_AF_DRIFT
-	default n
-	bool "enable AF Drift"
-	help
-	  This is enabling AF DRIFT for calidata in eeprom.
-
 config MOT_DRV_DONGWOON_OIS_AF_DRIFT
 	default n
 	bool "enable DONGWOON AF Drift"
