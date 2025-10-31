@@ -200,6 +200,16 @@ static void hpool_put_page(void *addr)
 	hyp_put_page(&hpool, addr);
 }
 
+u64 hpool_get_free_pages(void)
+{
+	return hyp_pool_free_pages(&hpool);
+}
+
+u64 hpool_get_min_free_pages(void)
+{
+	return hyp_pool_min_free_pages(&hpool);
+}
+
 static int fix_host_ownership_walker(const struct kvm_pgtable_visit_ctx *ctx,
 				     enum kvm_pgtable_walk_flags visit)
 {

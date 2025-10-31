@@ -666,4 +666,9 @@ int pkvm_call_hyp_nvhe_ppage(struct kvm_pinned_page *ppage,
 
 int pkvm_guest_stage2_pa(pkvm_handle_t handle, u64 ipa, phys_addr_t *phys);
 
+#ifdef CONFIG_DEBUG_FS
+void kvm_hyp_s1_pool_debugfs(void);
+#else
+static inline void kvm_hyp_s1_pool_debugfs(void) { }
+#endif
 #endif	/* __ARM64_KVM_PKVM_H__ */

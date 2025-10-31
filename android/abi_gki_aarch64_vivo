@@ -142,6 +142,7 @@
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_f2fs_file_open
   __traceiter_android_vh_f2fs_ra_op_flags
+  __traceiter_android_vh_fas_gpu_qos_update_tracer
   __traceiter_android_vh_filemap_fault_folio_locked
   __traceiter_android_vh_filemap_read_end
   __traceiter_android_vh_filemap_update_page
@@ -292,6 +293,7 @@
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_f2fs_file_open
   __tracepoint_android_vh_f2fs_ra_op_flags
+  __tracepoint_android_vh_fas_gpu_qos_update_tracer
   __tracepoint_android_vh_filemap_fault_folio_locked
   __tracepoint_android_vh_filemap_read_end
   __tracepoint_android_vh_filemap_update_page
