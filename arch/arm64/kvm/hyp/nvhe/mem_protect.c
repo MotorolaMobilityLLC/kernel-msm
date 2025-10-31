@@ -1102,6 +1102,14 @@ static int __host_check_page_state_range(u64 addr, u64 size,
 static int __host_set_page_state_range(u64 addr, u64 size,
 				       enum pkvm_page_state state)
 {
+	u64 end;
+
+	if (check_add_overflow(addr, size, &end))
+		return -EINVAL;
+
+	if (!range_is_memory(addr, end))
+		return -EPERM;
+
 	if (hyp_phys_to_page(addr)->host_state & PKVM_NOPAGE) {
 		int ret = host_stage2_idmap_locked(addr, size, PKVM_HOST_MEM_PROT, true);
 
