@@ -287,6 +287,7 @@ struct battery_chg_dev {
 	struct work_struct		usb_type_work;
 	struct work_struct		battery_check_work;
 	int				fake_soc;
+	int				batt_typical_capacity;
 	bool				block_tx;
 	bool				ship_mode_en;
 	bool				ship_mode_immediate;
@@ -1535,6 +1536,74 @@ static int battery_psy_set_battery_fcc(struct battery_chg_dev *bcdev, int val)
 	return rc;
 }
 
+const char *mmi_get_battery_serialnumber(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *battsn_buf;
+	int retval;
+
+	battsn_buf = NULL;
+
+	if (np)
+		retval = of_property_read_string(np, "mmi,battid", &battsn_buf);
+	else
+		return NULL;
+
+	if ((retval == -EINVAL) || !battsn_buf) {
+		pr_info("Battsn unused\n");
+		of_node_put(np);
+		return NULL;
+	} else
+		pr_info("Battsn = %s\n", battsn_buf);
+
+	of_node_put(np);
+
+	return battsn_buf;
+}
+
+static int get_battery_typical_capacity(struct battery_chg_dev *bcdev)
+{
+	int i, rc, count;
+	int batt_capacity = -EINVAL;
+	const char *batt_sn = NULL;
+	const char **str_array;
+
+	if (bcdev == NULL)
+		return -EINVAL;
+
+	batt_sn = mmi_get_battery_serialnumber();
+	if (batt_sn == NULL)
+		return -EINVAL;
+
+	count = of_property_count_strings(bcdev->dev->of_node, "mmi,batt-sn-capacity-map");
+	if (count <= 0 || (count % 2)) {
+		pr_err("Invalid mmi,batt-sn-capacity-map in DT, rc=%d\n", count);
+		return -EINVAL;
+	}
+
+	str_array = devm_kcalloc(bcdev->dev, count, sizeof(char *), GFP_KERNEL);
+	if (!str_array)
+		return -ENOMEM;
+
+	rc = of_property_read_string_array(bcdev->dev->of_node, "mmi,batt-sn-capacity-map", str_array, count);
+	if (rc < 0) {
+		pr_err("Failed to get mmi,batt-sn-capacity-map, rc=%d\n", rc);
+		return rc;
+	}
+
+	for (i = 0; i < count; i += 2) {
+	//pr_info("battery: sn=%s, batt_capacity=%s\n", str_array[i], str_array[i+1]);
+		if ((str_array[i] != NULL) && (!strcmp(str_array[i], batt_sn))) {
+			rc = kstrtou32(str_array[i+1], 10, &batt_capacity);
+			if (rc == 0) {
+				bcdev->batt_typical_capacity = batt_capacity;
+				pr_info("find batt_sn %s, typical capacity is %d\n", str_array[i], bcdev->batt_typical_capacity);
+			}
+		}
+	}
+
+	return rc;
+}
 static int battery_psy_get_prop(struct power_supply *psy,
 		enum power_supply_property prop,
 		union power_supply_propval *pval)
@@ -1597,11 +1666,24 @@ static int battery_psy_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
 		pval->intval = bcdev->num_thermal_levels;
 		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		if (bcdev->batt_typical_capacity > 0) {
+			pval->intval = bcdev->batt_typical_capacity;
+			break;
+		}
+		if (bcdev->combo_batt_psy) {
+			pval->intval = pst->prop[prop_id];
+			power_supply_get_property(bcdev->combo_batt_psy,
+						prop, pval);
+			break;
+		} else {
+			pval->intval = pst->prop[prop_id];
+			break;
+		}
 	case POWER_SUPPLY_PROP_STATUS:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		if (bcdev->combo_batt_psy) {
 			pval->intval = pst->prop[prop_id];
 			power_supply_get_property(bcdev->combo_batt_psy,
@@ -2627,6 +2709,10 @@ static int battery_chg_parse_dt(struct battery_chg_dev *bcdev)
 	struct psy_state *pst = &bcdev->psy_list[PSY_TYPE_BATTERY];
 	int i, rc, len;
 	u32 prev, val;
+
+	rc = get_battery_typical_capacity(bcdev);
+	if (rc < 0)
+		pr_info("%s fail to get mmi batt typical capacity value\n", __func__);
 
 	bcdev->tbatt_filter_en = of_property_read_bool(node, "qcom,tbatt-filter-en");
 
