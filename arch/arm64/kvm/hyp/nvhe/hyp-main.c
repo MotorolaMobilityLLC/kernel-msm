@@ -1618,6 +1618,16 @@ static void handle___pkvm_stage2_snapshot(struct kvm_cpu_context *host_ctxt)
 #endif
 }
 
+static void handle___pkvm_hyp_pool_report_free_pages(struct kvm_cpu_context *host_ctxt)
+{
+	cpu_reg(host_ctxt, 1) = hpool_get_free_pages();
+}
+
+static void handle___pkvm_hyp_pool_report_min_free_pages(struct kvm_cpu_context *host_ctxt)
+{
+	cpu_reg(host_ctxt, 1) = hpool_get_min_free_pages();
+}
+
 typedef void (*hcall_t)(struct kvm_cpu_context *);
 
 #define HANDLE_FUNC(x)	[__KVM_HOST_SMCCC_FUNC_##x] = (hcall_t)handle_##x
@@ -1685,6 +1695,8 @@ static const hcall_t host_hcall[] = {
 	HANDLE_FUNC(__pkvm_host_hvc_pd),
 	HANDLE_FUNC(__pkvm_stage2_snapshot),
 	HANDLE_FUNC(__pkvm_host_iommu_iotlb_sync_map),
+	HANDLE_FUNC(__pkvm_hyp_pool_report_free_pages),
+	HANDLE_FUNC(__pkvm_hyp_pool_report_min_free_pages),
 };
 
 static void handle_host_hcall(struct kvm_cpu_context *host_ctxt)

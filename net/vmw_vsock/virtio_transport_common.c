@@ -75,7 +75,7 @@ virtio_transport_alloc_skb(struct virtio_vsock_pkt_info *info,
 
 	if (info->msg && len > 0) {
 		virtio_vsock_skb_put(skb, len);
-		err = skb_copy_datagram_from_iter(skb, 0, &info->msg->msg_iter, len);
+		err = skb_copy_datagram_from_iter_full(skb, 0, &info->msg->msg_iter, len);
 		if (err)
 			goto out;
 

@@ -547,6 +547,7 @@
   unregister_net_sysctl_table
   unregister_sysctl_table
   unregister_tcf_proto_ops
+  utf8_normalize
   v4l2_i2c_subdev_init
   vfs_create
   vfs_getattr
