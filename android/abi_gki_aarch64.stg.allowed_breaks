@@ -257,3 +257,12 @@ type 'struct io_ring_ctx' changed
     type changed from 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; }' to 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; struct llist_head retry_llist; }'
       member 'struct llist_head retry_llist' was added
 
+type 'enum bpf_reg_type' changed
+  enumerator '__BPF_REG_TYPE_LIMIT' value changed from 33554431 to 67108863
+
+type 'enum bpf_return_type' changed
+  enumerator '__BPF_RET_TYPE_LIMIT' value changed from 33554431 to 67108863
+
+type 'enum bpf_arg_type' changed
+  enumerator '__BPF_ARG_TYPE_LIMIT' value changed from 33554431 to 67108863
+
