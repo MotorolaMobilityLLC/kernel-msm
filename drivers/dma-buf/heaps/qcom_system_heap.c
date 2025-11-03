@@ -60,6 +60,9 @@
 #include "qcom_system_heap.h"
 #include "qcom_system_movable_heap.h"
 #include "mm/internal.h"
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+#include "llm_heap.h"
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 
 #if IS_ENABLED(CONFIG_QCOM_DMABUF_HEAPS_PAGE_POOL_REFILL)
 #define DYNAMIC_POOL_FILL_MARK (100 * SZ_1M)
@@ -360,6 +363,17 @@ static void system_heap_deferred_free(struct deferred_freelist_item *item,
 	int i, j;
 
 	buffer = container_of(item, struct qcom_sg_buffer, deferred_free);
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+	if (buffer->dbuf)
+	{
+		llm_cache_release(buffer);
+		buffer->dbuf = NULL;
+		table = &buffer->sg_table;
+		sg_free_table(table);
+		kfree(buffer);
+		return;
+	}
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 	sys_heap = dma_heap_get_drvdata(buffer->heap);
 	/* Zero the buffer pages before adding back to the pool */
 	if (reason == DF_NORMAL)
@@ -446,6 +460,22 @@ int system_qcom_sg_buffer_alloc(struct dma_heap *heap,
 	struct list_head pages;
 	struct page *page, *tmp_page;
 	int i, ret = -ENOMEM;
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+	void *dbuf;
+
+	if (len & LLM_HEAP_FLAG)
+	{
+		dbuf = find_or_create_llm_cache(&len);
+		if (IS_ERR(dbuf) || !dbuf)
+		{
+			return -1;
+		}
+		buffer->dbuf = dbuf;
+		size_remaining = len;
+
+		pr_debug("llmheap  len 0x%lx %p->%p\n",len, buffer, dbuf);
+	}
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 
 	sys_heap = dma_heap_get_drvdata(heap);
 
@@ -457,6 +487,21 @@ int system_qcom_sg_buffer_alloc(struct dma_heap *heap,
 
 	INIT_LIST_HEAD(&pages);
 	i = 0;
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+	len  = 0;
+	if (buffer->dbuf)
+	{
+		do {
+			page = get_page_from_llm_cache(dbuf, len);
+			if (!page)
+				break;
+			list_add_tail(&page->lru, &pages);
+			size_remaining -= page_size(page);
+			len += compound_nr(page);
+			i++;
+		}while( size_remaining > 0);
+	}
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 	while (size_remaining > 0) {
 		/*
 		 * Avoid trying to allocate memory if the process
@@ -476,6 +521,10 @@ int system_qcom_sg_buffer_alloc(struct dma_heap *heap,
 		size_remaining -= page_size(page);
 		max_order = compound_order(page);
 		i++;
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+		len += compound_nr(page);
+		llm_cache_add_pages(buffer->dbuf, page);
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 	}
 
 	table = &buffer->sg_table;
@@ -549,6 +598,9 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 		goto free_vmperm;
 	}
 
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+	llm_cache_init_dbuf(buffer->dbuf, dmabuf);
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 	return dmabuf;
 
 free_vmperm:
@@ -638,7 +690,9 @@ void qcom_system_heap_create(const char *name, const char *system_alias, bool un
 
 		pr_info("%s: DMA-BUF Heap: Created '%s'\n", __func__, system_alias);
 	}
-
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+	llmheap_init();
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 	return;
 
 stop_worker:

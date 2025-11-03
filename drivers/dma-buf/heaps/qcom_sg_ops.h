@@ -32,6 +32,9 @@ struct qcom_sg_buffer {
 	struct mem_buf_vmperm *vmperm;
 	struct deferred_freelist_item deferred_free;
 	void (*free)(struct qcom_sg_buffer *buffer);
+#if IS_ENABLED(CONFIG_DMABUF_LLM_HEAPS)
+	void *dbuf;
+#endif /* CONFIG_DMABUF_LLM_HEAPS */
 };
 
 struct dma_heap_attachment {

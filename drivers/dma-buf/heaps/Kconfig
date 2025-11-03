@@ -115,6 +115,12 @@ config QCOM_DMABUF_HEAPS_SYSTEM_MOVABLE
 	  works in tandem with the system-movable driver to be able to
 	  lend memory from the movable zone.
 	  If in doubt, say N here.
+config DMABUF_LLM_HEAPS
+	tristate "DMA-BUF llm Heap"
+	depends on QCOM_DMABUF_HEAPS_SYSTEM
+	help
+	  Choose this option to build QCOM DMA-BUF llm heap.
+
 
 config QCOM_DMABUF_HEAPS_DEFERRED_FREE
 	tristate "DMA-BUF heaps deferred-free library"
