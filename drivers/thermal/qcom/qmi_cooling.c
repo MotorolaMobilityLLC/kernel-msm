@@ -233,6 +233,9 @@ static int qmi_set_cur_state(struct thermal_cooling_device *cdev,
 	ret = qmi_tmd_send_state_request(qmi_cdev, (uint8_t)state);
 
 	qmi_cdev->mtgn_state = state;
+	/* MMI_STOPSHIP modem bcl: monitor thermal modem bcl issue*/
+	pr_info("#####[oem] qmi:%s, cdev %s, state:%lu\n", qmi_cdev->qmi_name,
+				qmi_cdev->cdev_name, state);
 
 	return ret;
 }
