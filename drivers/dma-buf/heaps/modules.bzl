@@ -63,6 +63,17 @@ def register_modules(registry):
                     "drivers/dma-buf/heaps/qcom_tvm_carveout_heap.c",
                 ],
             },
+            "CONFIG_DMABUF_LLM_HEAPS": {
+                True: [
+                    # do not sort
+                    "drivers/dma-buf/heaps/llm_sysfs.c",
+                    "drivers/dma-buf/heaps/llm_core.c",
+                    "drivers/dma-buf/heaps/llm_heap.c",
+                    "drivers/dma-buf/heaps/llm_heap.h",
+                    "drivers/dma-buf/heaps/llm.c",
+                    "drivers/dma-buf/heaps/llm.h",
+                ],
+            },
             "CONFIG_QCOM_DMABUF_HEAPS_SYSTEM_MOVABLE": {
                 True: [
                     # do not sort
