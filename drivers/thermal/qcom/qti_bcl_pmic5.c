@@ -365,7 +365,7 @@ static int bcl_set_ibat(struct thermal_zone_device *tz, int low, int high)
 	case BCL_IBAT_LVL0:
 	case BCL_2S_IBAT_LVL0:
 		addr = BCL_IBAT_HIGH;
-		pr_debug("ibat high threshold:%d mA ADC:0x%02x\n",
+		pr_err("ibat high threshold:%d mA ADC:0x%02x\n",
 				ibat_ua, val);
 		break;
 	case BCL_IBAT_LVL1:
@@ -381,7 +381,7 @@ static int bcl_set_ibat(struct thermal_zone_device *tz, int low, int high)
 			val = convert_ibat_to_ccm_val(ibat_ua,
 				BCL_IBAT_CCM_LANDO_MAX_VAL, BCL_IBAT_CCM_LANDO_OFFSET,
 				BCL_IBAT_CCM_LANDO_LSB);
-		pr_debug("ibat too high threshold:%d mA ADC:0x%02x\n",
+		pr_err("ibat too high threshold:%d mA ADC:0x%02x\n",
 				ibat_ua, val);
 		break;
 	default:
@@ -453,7 +453,7 @@ static int bcl_read_ibat(struct thermal_zone_device *tz, int *adc_value)
 					bat_data->dev->ibat_ext_range_factor);
 		bat_data->last_val = *adc_value;
 	}
-	pr_debug("ibat:%d mA ADC:0x%02x\n", bat_data->last_val, val);
+	pr_err("ibat:%d mA ADC:0x%02x\n", bat_data->last_val, val);
 	BCL_IPC(bat_data->dev, "ibat:%d mA ADC:0x%02x\n",
 		 bat_data->last_val, val);
 
@@ -496,7 +496,9 @@ static int bcl_read_vbat_tz(struct thermal_zone_device *tzd, int *adc_value)
 				BCL_VBAT_SCALING_REV5_NV);
 		bat_data->last_val = *adc_value;
 	}
-	pr_debug("vbat:%d mv\n", bat_data->last_val);
+
+	pr_err("vbat:%d mv ADC:0x%02x\n",
+			bat_data->last_val, val);
 	BCL_IPC(bat_data->dev, "vbat:%d mv ADC:0x%02x\n",
 			bat_data->last_val, val);
 
@@ -531,6 +533,7 @@ static int bcl_set_adc_value(struct bcl_device *bcl_perph,
 	}
 
 	ret = bcl_write_register(bcl_perph, addr, *val);
+	pr_err("threshold:%d mV ADC:0x%x\n", temp, *val);
 	BCL_IPC(bcl_perph, "threshold:%d mV ADC:0x%x\n", temp, *val);
 	return ret;
 }
@@ -548,7 +551,7 @@ static int bcl_config_vph_cb(struct notifier_block *nb,
 	if (ret < 0)
 		pr_err("Fail to set vph regs, err: %d\n", ret);
 
-	pr_debug("trip_id: %lu, vph:%d mV, ADC: 0x%x\n", val, *temp, reg_data);
+	pr_err("trip_id: %lu, vph:%d mV, ADC: 0x%x\n", val, *temp, reg_data);
 
 	return ret;
 }
@@ -572,7 +575,7 @@ static int bcl_write_vbat_tz(struct thermal_zone_device *tzd,
 	if (bat_data->dev->desc->vbat_zone_enabled)
 		blocking_notifier_call_chain(&bcl_pmic5_notifier, trip_id, (void *)&temp);
 
-	pr_debug("trip_id: %d, vbat:%d mV, ADC: 0x%x\n", trip_id, temp, val);
+	pr_err("trip_id: %d, vbat:%d mV, ADC: 0x%x\n", trip_id, temp, val);
 
 exit:
 	mutex_unlock(&bat_data->state_trans_lock);
@@ -622,7 +625,7 @@ static int bcl_set_lbat(struct thermal_zone_device *tz, int low, int high)
 		disable_irq_wake(bat_data->irq_num);
 		bat_data->irq_enabled = false;
 
-		pr_debug("lbat[%d]: disable irq:%d low: %d high: %d\n",
+		pr_err("lbat[%d]: disable irq:%d low: %d high: %d\n",
 				bat_data->type,
 				bat_data->irq_num,
 				low, high);
@@ -632,7 +635,7 @@ static int bcl_set_lbat(struct thermal_zone_device *tz, int low, int high)
 		enable_irq(bat_data->irq_num);
 		enable_irq_wake(bat_data->irq_num);
 		bat_data->irq_enabled = true;
-		pr_debug("lbat[%d]: enable irq:%d low: %d high: %d\n",
+		pr_err("lbat[%d]: enable irq:%d low: %d high: %d\n",
 				bat_data->type,
 				bat_data->irq_num,
 				low, high);
@@ -677,7 +680,7 @@ static int bcl_read_lbat(struct thermal_zone_device *tz, int *adc_value)
 		goto bcl_read_exit;
 	}
 	bat_data->last_val = *adc_value;
-	pr_debug("lbat:%d irq_status:%d lvl_val:%d\n", bat_data->type,
+	pr_err("lbat:%d irq_status:%d lvl_val:%d\n", bat_data->type,
 			val, bat_data->last_val);
 	if (bcl_perph->param[BCL_IBAT_LVL0].tz_dev)
 		bcl_read_ibat(bcl_perph->param[BCL_IBAT_LVL0].tz_dev, &ibat);
@@ -685,6 +688,8 @@ static int bcl_read_lbat(struct thermal_zone_device *tz, int *adc_value)
 		bcl_read_ibat(bcl_perph->param[BCL_2S_IBAT_LVL0].tz_dev, &ibat);
 	if (bcl_perph->param[BCL_VBAT_LVL0].tz_dev)
 		bcl_read_vbat_tz(bcl_perph->param[BCL_VBAT_LVL0].tz_dev, &vbat);
+        pr_err("LVLbat:%d val:%d\n", bat_data->type,
+                        bat_data->last_val);
 	BCL_IPC(bcl_perph, "LVLbat:%d irq_status:%d val:%d\n", bat_data->type,
 			val, bat_data->last_val);
 
