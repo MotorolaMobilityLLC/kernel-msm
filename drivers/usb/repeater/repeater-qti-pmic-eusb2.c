@@ -20,7 +20,7 @@
 #define EUSB2_3P0_HPM_LOAD			3500	/* uA */
 
 #define EUSB2_1P8_VOL_MIN			1800000 /* uV */
-#define EUSB2_1P8_VOL_MAX			1800000 /* uV */
+#define EUSB2_1P8_VOL_MAX			1860000 /* uV */
 #define EUSB2_1P8_HPM_LOAD			32000	/* uA */
 
 /* Repeater REVID registers */
