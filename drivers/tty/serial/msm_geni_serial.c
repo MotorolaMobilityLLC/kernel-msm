@@ -3529,8 +3529,9 @@ static int msm_geni_serial_handle_dma_rx(struct uart_port *uport, bool drop_rx)
 		goto exit_handle_dma_rx;
 	}
 
-	/* Check RX buffer data for faulty pattern*/
-	check_rx_buf((char *)msm_port->rx_buf, uport, rx_bytes);
+	if (msm_port->wakeup_byte)
+		/* Check RX buffer data for faulty pattern */
+		check_rx_buf((char *)msm_port->rx_buf, uport, rx_bytes);
 
 	if (drop_rx)
 		return 0;
