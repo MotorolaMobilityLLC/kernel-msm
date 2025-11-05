@@ -221,6 +221,13 @@ static inline bool walt_rt_task_fits_capacity(struct task_struct *p, int cpu)
 }
 #endif
 
+/* huangzq2: Check if the given task is the InputDispatcher RT task */
+static inline bool is_rt_input_dispatcher(struct task_struct *task)
+{
+    return task && task->mm && task_has_rt_policy(task)
+           && strncmp(task->comm, "InputDispatcher", TASK_COMM_LEN) == 0;
+}
+
 /*
  * walt specific should_honor_rt_sync (see rt.c).  this will honor
  * the sync flag regardless of whether the current waker is cfs or rt
@@ -228,6 +235,12 @@ static inline bool walt_rt_task_fits_capacity(struct task_struct *p, int cpu)
 static inline bool walt_should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 					     bool sync)
 {
+    /* huangzq2: don't honor sync flag if current is InputDispatcher.
+     * InputDispatcher usually still run 1~5ms after waking up input consumer,
+     * hence introduced 1~5ms latency if we honor sync flag.
+     */
+    if (is_rt_input_dispatcher(rq->curr)) return false;
+
 	return sync &&
 		p->prio <= rq->rt.highest_prio.next &&
 		rq->rt.rt_nr_running <= 2;
