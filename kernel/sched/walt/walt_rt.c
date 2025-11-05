@@ -221,6 +221,13 @@ static inline bool walt_rt_task_fits_capacity(struct task_struct *p, int cpu)
 }
 #endif
 
+/* huangzq2: Check if the given task is RT UX task */
+static inline bool is_rt_ux_task(struct task_struct *task)
+{
+    return task && task->mm && task_has_rt_policy(task) && task->prio == 98
+           && uclamp_eff_value(task, UCLAMP_MIN) > 0;
+}
+
 /*
  * walt specific should_honor_rt_sync (see rt.c).  this will honor
  * the sync flag regardless of whether the current waker is cfs or rt
@@ -228,6 +235,9 @@ static inline bool walt_rt_task_fits_capacity(struct task_struct *p, int cpu)
 static inline bool walt_should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 					     bool sync)
 {
+    /* huangzq2: RT UX task has its own core selection logic.*/
+    if (is_rt_ux_task(rq->curr) || is_rt_ux_task(p)) return false;
+
 	return sync &&
 		p->prio <= rq->rt.highest_prio.next &&
 		rq->rt.rt_nr_running <= 2;
