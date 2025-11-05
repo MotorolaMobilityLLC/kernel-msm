@@ -7,10 +7,12 @@
 #include <linux/cpufreq.h>
 #include <linux/pm_qos.h>
 #include <linux/of.h>
+#include <linux/delay.h>
+#include <linux/cpumask.h>
 
 #define NO_TIMEOUT -1U
 #define MIDPOINT_DEFAULT_QOS_TIMEOUT_MS 100000U
-static int midpoint_freq = 5000000;
+static int midpoint_freq = 0;
 static int qos_timeout_ms = MIDPOINT_DEFAULT_QOS_TIMEOUT_MS;
 
 module_param(midpoint_freq, int, 0400);
@@ -19,6 +21,8 @@ module_param(qos_timeout_ms, int, 0400);
 static DEFINE_PER_CPU(struct freq_qos_request, qos_max_req);
 static DEFINE_PER_CPU(struct freq_qos_request, qos_min_req);
 static struct delayed_work qos_remove_work;
+static void request_freq_qos(struct work_struct *w);
+static DECLARE_WORK(request_qos_work, request_freq_qos);
 
 static void midpoint_qos_remove(void) {
 	struct freq_qos_request *req;
@@ -39,24 +43,36 @@ static void midpoint_qos_remove_work(struct work_struct *work)
 	midpoint_qos_remove();
 }
 
-void midpoint_init(void)
+static void request_freq_qos(struct work_struct *w)
 {
 	struct cpufreq_policy *policy;
 	struct freq_qos_request *req;
 	int cpu, ret;
+	int wait_count = 3;
 
+	pr_info("Start init point\n");
 	for_each_possible_cpu(cpu) {
 		policy = cpufreq_cpu_get(cpu);
 
-		if (!policy) {
+		/*Add waiting time for initial setting of cluster (1.policy is not null 2.governor is not null)*/
+		while ((!policy || !policy->governor
+				|| !policy->governor->name[0]) && wait_count > 0) {
+			wait_count --;
+			msleep(50);
+			if (unlikely(!policy)) {
+				policy = cpufreq_cpu_get(cpu);
+			}
+		}
+
+		if (!policy || !policy->governor || !policy->governor->name[0]) {
 			pr_err("%s: cpufreq policy not found for cpu%d\n", __func__, cpu);
 			return;
 		}
 
 		/*Only allow setting if governor is powersave */
-		if (!policy->governor || (strcmp(policy->governor->name, "powersave"))) {
+		if (strcmp(policy->governor->name, "powersave")) {
 			pr_err("%s: exiting as governor is %s\n", __func__,
-					policy->governor ? "NULL" : policy->governor->name);
+					!policy->governor ? "NULL" : policy->governor->name);
 			return;
 		}
 
@@ -95,3 +111,11 @@ out:
 	}
 }
 
+void midpoint_init(void)
+{
+	if (!midpoint_freq) {
+		pr_info("No boot frequency\n");
+		return;
+	}
+	schedule_work(&request_qos_work);
+}
