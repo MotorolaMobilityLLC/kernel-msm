@@ -3205,10 +3205,13 @@ static int validate_branch(struct objtool_file *file, struct symbol *func,
 			break;
 
 		case INSN_CONTEXT_SWITCH:
-			if (func && (!next_insn || !next_insn->hint)) {
-				WARN_FUNC("unsupported instruction in callable function",
-					  sec, insn->offset);
-				return 1;
+			if (func) {
+				if (!next_insn || !next_insn->hint) {
+					WARN_FUNC("unsupported instruction in callable function",
+						  sec, insn->offset);
+					return 1;
+				}
+				break;
 			}
 			return 0;
 
@@ -3411,6 +3414,9 @@ static int validate_entry(struct objtool_file *file, struct instruction *insn)
 		default:
 			break;
 		}
+
+		if (insn->dead_end)
+			return 0;
 
 		if (!next) {
 			WARN_FUNC("teh end!", insn->sec, insn->offset);

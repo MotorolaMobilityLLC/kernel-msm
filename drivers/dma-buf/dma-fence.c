@@ -135,6 +135,10 @@ struct dma_fence *dma_fence_get_stub(void)
 			       &dma_fence_stub_ops,
 			       &dma_fence_stub_lock,
 			       0, 0);
+
+		set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
+			&dma_fence_stub.flags);
+
 		dma_fence_signal_locked(&dma_fence_stub);
 	}
 	spin_unlock(&dma_fence_stub_lock);
@@ -154,17 +158,49 @@ struct dma_fence *dma_fence_allocate_private_stub(void)
 
 	fence = kzalloc(sizeof(*fence), GFP_KERNEL);
 	if (fence == NULL)
-		return ERR_PTR(-ENOMEM);
+		return NULL;
 
 	dma_fence_init(fence,
 		       &dma_fence_stub_ops,
 		       &dma_fence_stub_lock,
 		       0, 0);
+
+	set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
+		&fence->flags);
+
 	dma_fence_signal(fence);
 
 	return fence;
 }
 EXPORT_SYMBOL(dma_fence_allocate_private_stub);
+
+/**
+ * dma_fence_allocate_private_stub_with_timestamp - return a private, signaled fence
+ * @timestamp: timestamp when the fence was signaled
+ *
+ * Return a newly allocated and signaled stub fence.
+ */
+struct dma_fence *dma_fence_allocate_private_stub_with_timestamp(ktime_t timestamp)
+{
+	struct dma_fence *fence;
+
+	fence = kzalloc(sizeof(*fence), GFP_KERNEL);
+	if (fence == NULL)
+		return NULL;
+
+	dma_fence_init(fence,
+		       &dma_fence_stub_ops,
+		       &dma_fence_stub_lock,
+		       0, 0);
+
+	set_bit(DMA_FENCE_FLAG_ENABLE_SIGNAL_BIT,
+		&dma_fence_stub.flags);
+
+	dma_fence_signal_timestamp(fence, timestamp);
+
+	return fence;
+}
+EXPORT_SYMBOL(dma_fence_allocate_private_stub_with_timestamp);
 
 /**
  * dma_fence_context_alloc - allocate an array of fence contexts

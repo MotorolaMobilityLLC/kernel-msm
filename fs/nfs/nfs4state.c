@@ -1597,7 +1597,7 @@ static void nfs42_complete_copies(struct nfs4_state_owner *sp, struct nfs4_state
 			complete(&copy->completion);
 		}
 	}
-	list_for_each_entry(copy, &sp->so_server->ss_copies, src_copies) {
+	list_for_each_entry(copy, &sp->so_server->ss_src_copies, src_copies) {
 		if ((test_bit(NFS_CLNT_SRC_SSC_COPY_STATE, &state->flags) &&
 				!nfs4_stateid_match_other(&state->stateid,
 				&copy->parent_src_state->stateid)))
@@ -1949,6 +1949,7 @@ restart:
 				set_bit(ops->owner_flag_bit, &sp->so_flags);
 				nfs4_put_state_owner(sp);
 				status = nfs4_recovery_handle_error(clp, status);
+				nfs4_free_state_owners(&freeme);
 				return (status != 0) ? status : -EAGAIN;
 			}
 
@@ -2725,7 +2726,15 @@ out_error:
 	pr_warn_ratelimited("NFS: state manager%s%s failed on NFSv4 server %s"
 			" with error %d\n", section_sep, section,
 			clp->cl_hostname, -status);
-	ssleep(1);
+	switch (status) {
+	case -ENETDOWN:
+	case -ENETUNREACH:
+		nfs_mark_client_ready(clp, -EIO);
+		break;
+	default:
+		ssleep(1);
+		break;
+	}
 out_drain:
 	memalloc_nofs_restore(memflags);
 	nfs4_end_drain_session(clp);

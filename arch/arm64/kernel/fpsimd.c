@@ -968,6 +968,7 @@ void do_sve_acc(unsigned int esr, struct pt_regs *regs)
 		fpsimd_bind_task_to_cpu();
 	} else {
 		fpsimd_to_sve(current);
+		fpsimd_flush_task_state(current);
 	}
 
 	put_cpu_fpsimd_context();

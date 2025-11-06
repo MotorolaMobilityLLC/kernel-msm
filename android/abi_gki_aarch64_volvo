@@ -1,0 +1,15 @@
+[abi_symbol_list]
+# required by CSD
+  serdev_device_write
+  schedule_hrtimeout_range
+  __serdev_device_driver_register
+  serdev_device_open
+  serdev_device_close
+  serdev_device_write_wakeup
+  serdev_device_set_baudrate
+  serdev_device_set_flow_control
+  serdev_device_set_parity
+# required by nxp - phy
+  skb_complete_tx_timestamp
+  genphy_c45_pma_resume
+  genphy_c45_pma_suspend

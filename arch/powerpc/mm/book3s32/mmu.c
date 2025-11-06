@@ -165,7 +165,7 @@ unsigned long __init mmu_mapin_ram(unsigned long base, unsigned long top)
 	size = roundup_pow_of_two((unsigned long)_einittext - PAGE_OFFSET);
 	setibat(0, PAGE_OFFSET, 0, size, PAGE_KERNEL_X);
 
-	if (debug_pagealloc_enabled_or_kfence() || __map_without_bats) {
+	if (debug_pagealloc_enabled_or_kfence()) {
 		pr_debug_once("Read-Write memory mapped without BATs\n");
 		if (base >= border)
 			return base;

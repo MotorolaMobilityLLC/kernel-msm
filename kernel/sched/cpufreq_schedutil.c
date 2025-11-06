@@ -106,10 +106,22 @@ static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 {
 	bool should_update = true;
 
-	if (sg_policy->need_freq_update)
-		sg_policy->need_freq_update = cpufreq_driver_test_flags(CPUFREQ_NEED_UPDATE_LIMITS);
-	else if (sg_policy->next_freq == next_freq)
+	if (sg_policy->need_freq_update) {
+		sg_policy->need_freq_update = false;
+		/*
+		 * The policy limits have changed, but if the return value of
+		 * cpufreq_driver_resolve_freq() after applying the new limits
+		 * is still equal to the previously selected frequency, the
+		 * driver callback need not be invoked unless the driver
+		 * specifically wants that to happen on every update of the
+		 * policy limits.
+		 */
+		if (sg_policy->next_freq == next_freq &&
+		    !cpufreq_driver_test_flags(CPUFREQ_NEED_UPDATE_LIMITS))
+			return false;
+	} else if (sg_policy->next_freq == next_freq) {
 		return false;
+	}
 
 	trace_android_rvh_set_sugov_update(sg_policy, next_freq, &should_update);
 	if (!should_update)

@@ -2077,9 +2077,6 @@ struct net_device {
 	struct iw_public_data	*wireless_data;
 #endif
 	const struct ethtool_ops *ethtool_ops;
-#ifdef CONFIG_NET_L3_MASTER_DEV
-	const struct l3mdev_ops	*l3mdev_ops;
-#endif
 #if IS_ENABLED(CONFIG_IPV6)
 	const struct ndisc_ops *ndisc_ops;
 #endif
@@ -2322,7 +2319,7 @@ struct net_device {
 	ANDROID_KABI_RESERVE(5);
 	ANDROID_KABI_RESERVE(6);
 	ANDROID_KABI_RESERVE(7);
-	ANDROID_KABI_RESERVE(8);
+	ANDROID_KABI_BACKPORT_USE(8, const struct l3mdev_ops *l3mdev_ops);
 };
 #define to_net_dev(d) container_of(d, struct net_device, dev)
 
@@ -2487,6 +2484,12 @@ static inline
 struct net *dev_net(const struct net_device *dev)
 {
 	return read_pnet(&dev->nd_net);
+}
+
+static inline
+struct net *dev_net_rcu(const struct net_device *dev)
+{
+	return read_pnet_rcu(&dev->nd_net);
 }
 
 static inline
@@ -3000,6 +3003,8 @@ static inline struct net_device *first_net_device_rcu(struct net *net)
 }
 
 int netdev_boot_setup_check(struct net_device *dev);
+struct net_device *dev_getbyhwaddr(struct net *net, unsigned short type,
+				   const char *hwaddr);
 struct net_device *dev_getbyhwaddr_rcu(struct net *net, unsigned short type,
 				       const char *hwaddr);
 struct net_device *dev_getfirstbyhwtype(struct net *net, unsigned short type);

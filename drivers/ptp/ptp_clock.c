@@ -136,7 +136,8 @@ static int ptp_clock_adjtime(struct posix_clock *pc, struct __kernel_timex *tx)
 			err = ops->adjfine(ops, tx->freq);
 		else
 			err = ops->adjfreq(ops, ppb);
-		ptp->dialed_frequency = tx->freq;
+		if (!err)
+			ptp->dialed_frequency = tx->freq;
 	} else if (tx->modes & ADJ_OFFSET) {
 		if (ops->adjphase) {
 			s32 offset = tx->offset;
@@ -177,6 +178,11 @@ static void ptp_clock_release(struct device *dev)
 	mutex_destroy(&ptp->n_vclocks_mux);
 	ida_simple_remove(&ptp_clocks_map, ptp->index);
 	kfree(ptp);
+}
+
+static int ptp_enable(struct ptp_clock_info *ptp, struct ptp_clock_request *request, int on)
+{
+	return -EOPNOTSUPP;
 }
 
 static void ptp_aux_kworker(struct kthread_work *work)
@@ -225,6 +231,9 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 	mutex_init(&ptp->pincfg_mux);
 	mutex_init(&ptp->n_vclocks_mux);
 	init_waitqueue_head(&ptp->tsev_wq);
+
+	if (!ptp->info->enable)
+		ptp->info->enable = ptp_enable;
 
 	if (ptp->info->do_aux_work) {
 		kthread_init_delayed_work(&ptp->aux_work, ptp_aux_kworker);

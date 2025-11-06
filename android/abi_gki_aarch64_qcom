@@ -116,6 +116,7 @@
   blk_mq_init_queue
   blk_mq_map_queues
   blk_mq_pci_map_queues
+  blk_mq_quiesce_queue_nowait
   blk_mq_requeue_request
   blk_mq_rq_cpu
   blk_mq_tagset_busy_iter

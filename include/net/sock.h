@@ -860,6 +860,8 @@ static inline void sk_add_bind_node(struct sock *sk,
 	hlist_for_each_entry_safe(__sk, tmp, list, sk_node)
 #define sk_for_each_bound(__sk, list) \
 	hlist_for_each_entry(__sk, list, sk_bind_node)
+#define sk_for_each_bound_safe(__sk, tmp, list) \
+	hlist_for_each_entry_safe(__sk, tmp, list, sk_bind_node)
 
 /**
  * sk_for_each_entry_offset_rcu - iterate over a list at a given struct offset
@@ -1470,11 +1472,21 @@ proto_memory_pressure(struct proto *prot)
 #ifdef CONFIG_PROC_FS
 /* Called with local bh disabled */
 void sock_prot_inuse_add(struct net *net, struct proto *prot, int inc);
+
+static inline void sock_inuse_add(const struct net *net, int val)
+{
+	this_cpu_add(*net->core.sock_inuse, val);
+}
+
 int sock_prot_inuse_get(struct net *net, struct proto *proto);
 int sock_inuse_get(struct net *net);
 #else
 static inline void sock_prot_inuse_add(struct net *net, struct proto *prot,
 		int inc)
+{
+}
+
+static inline void sock_inuse_add(const struct net *net, int val)
 {
 }
 #endif
@@ -1568,7 +1580,7 @@ static inline bool sk_wmem_schedule(struct sock *sk, int size)
 }
 
 static inline bool
-sk_rmem_schedule(struct sock *sk, struct sk_buff *skb, int size)
+__sk_rmem_schedule(struct sock *sk, int size, bool pfmemalloc)
 {
 	int delta;
 
@@ -1576,7 +1588,13 @@ sk_rmem_schedule(struct sock *sk, struct sk_buff *skb, int size)
 		return true;
 	delta = size - sk->sk_forward_alloc;
 	return delta <= 0 || __sk_mem_schedule(sk, delta, SK_MEM_RECV) ||
-		skb_pfmemalloc(skb);
+	       pfmemalloc;
+}
+
+static inline bool
+sk_rmem_schedule(struct sock *sk, struct sk_buff *skb, int size)
+{
+	return __sk_rmem_schedule(sk, size, skb_pfmemalloc(skb));
 }
 
 static inline void sk_mem_reclaim(struct sock *sk)

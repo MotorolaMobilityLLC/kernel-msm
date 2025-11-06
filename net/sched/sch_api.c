@@ -781,7 +781,7 @@ void qdisc_tree_reduce_backlog(struct Qdisc *sch, int n, int len)
 	drops = max_t(int, n, 0);
 	rcu_read_lock();
 	while ((parentid = sch->parent)) {
-		if (TC_H_MAJ(parentid) == TC_H_MAJ(TC_H_INGRESS))
+		if (parentid == TC_H_ROOT)
 			break;
 
 		if (sch->flags & TCQ_F_NOPARENT)
@@ -1119,6 +1119,12 @@ skip:
 			return -EINVAL;
 		}
 
+		if (new &&
+		    !(parent->flags & TCQ_F_MQROOT) &&
+		    rcu_access_pointer(new->stab)) {
+			NL_SET_ERR_MSG(extack, "STAB not supported on a non root");
+			return -EINVAL;
+		}
 		err = cops->graft(parent, cl, new, &old, extack);
 		if (err)
 			return err;
@@ -1598,6 +1604,10 @@ replay:
 				q = qdisc_lookup(dev, tcm->tcm_handle);
 				if (!q)
 					goto create_n_graft;
+				if (q->parent != tcm->tcm_parent) {
+					NL_SET_ERR_MSG(extack, "Cannot move an existing qdisc to a different parent");
+					return -EINVAL;
+				}
 				if (n->nlmsg_flags & NLM_F_EXCL) {
 					NL_SET_ERR_MSG(extack, "Exclusivity flag on, cannot override");
 					return -EEXIST;
@@ -2153,6 +2163,12 @@ static int tc_ctl_tclass(struct sk_buff *skb, struct nlmsghdr *n,
 	if (tca[TCA_INGRESS_BLOCK] || tca[TCA_EGRESS_BLOCK]) {
 		NL_SET_ERR_MSG(extack, "Shared blocks are not supported for classes");
 		return -EOPNOTSUPP;
+	}
+
+	/* Prevent creation of traffic classes with classid TC_H_ROOT */
+	if (clid == TC_H_ROOT) {
+		NL_SET_ERR_MSG(extack, "Cannot create traffic class with classid TC_H_ROOT");
+		return -EINVAL;
 	}
 
 	new_cl = cl;
