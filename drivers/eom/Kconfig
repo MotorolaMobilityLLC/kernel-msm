@@ -23,3 +23,5 @@ config USB_MSM_EOM
 
 	  Enable this option if your MSM-based system uses USB PHYs that support
 	  EOM and you need to collect signal integrity data for diagnostics or tuning
+
+source "drivers/eom/pcie/Kconfig"
