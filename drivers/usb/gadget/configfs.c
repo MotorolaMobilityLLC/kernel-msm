@@ -19,6 +19,10 @@
 extern int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
 				const struct usb_ctrlrequest *ctrl);
 void acc_disconnect(void);
+
+static bool kernel_aoa_enabled = true;
+module_param(kernel_aoa_enabled, bool, 0644);
+MODULE_PARM_DESC(kernel_aoa_enabled, "Enable in-kernel AOA driver support (1=enabled, 0=disabled)");
 #endif
 static struct class *android_class;
 static struct device *android_device;
@@ -1562,7 +1566,7 @@ static int android_setup(struct usb_gadget *gadget,
 	}
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
-	if (value < 0)
+	if (value < 0 && kernel_aoa_enabled)
 		value = acc_ctrlrequest_composite(cdev, c);
 #endif
 

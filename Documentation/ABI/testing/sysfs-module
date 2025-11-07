@@ -71,3 +71,21 @@ Description:	Read and write number of grant entries to attempt to free per itera
 		interface for controlling the rate of deferred grant reclaim
 		or may not need it at all.
 Users:		Qubes OS (https://www.qubes-os.org)
+
+What:		/sys/module/libcomposite/parameters/kernel_aoa_enabled
+Date:		November 2025
+Contact:	Neill Kapron <nkapron@google.com>
+Description:	This toggle controls whether the in-kernel Android Open Accessory (AOA)
+		driver support is enabled within the gadget configfs driver. This is
+		primarily used to allow a userspace AOA implementation to handle the
+		AOA handshake without interference from the in-kernel driver.
+
+		- 1 (Default): The in-kernel AOA driver is enabled. The configfs
+		  gadget driver will attempt to pass AOA-specific vendor requests
+		  to the in-kernel AOA function as a fallback. This is the
+		  legacy behavior.
+
+		- 0: The in-kernel AOA driver is disabled. The configfs gadget
+		  driver will not forward AOA requests to the in-kernel AOA
+		  function. This should be set at boot time if a userspace AOA
+		  implementation (e.g., using functionfs) is active.
