@@ -65,7 +65,9 @@ do {									\
 		       __func__, __LINE__, ##__VA_ARGS__);		\
 	pr_err("[%s]: WARN at line %d: "x,				\
 		       __func__, __LINE__, ##__VA_ARGS__);		\
+	BUG();								\
 } while (0)
+//MMI_STOPSHIP <PMIC>: make kernel panic on user version for glink debug
 #endif
 
 #define GLINK_NAME_SIZE		32
