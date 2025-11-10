@@ -2871,7 +2871,11 @@ static const struct adsp_data alor_mpss_resource = {
 	.sysmon_name = "modem",
 	.ssctl_id = 0x12,
 	.region_assign_idx = 3,
+#ifdef CONFIG_VANTAGE_DTB
+	.region_assign_count = 1,
+#else
 	.region_assign_count = 2,
+#endif
 	.region_assign_vmid = QCOM_SCM_VMID_MSS_MSA,
 	.dma_phys_below_32b = true,
 	.both_dumps = true,
