@@ -2179,6 +2179,18 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 		llcc_priv->clock = NULL;
 	}
 
+	/* Enable legacy mode for LLCC_VER_5_1*/
+	if (llcc_priv->drv_ver == LLCC_VER5_1) {
+		offset = LLCC_COMMON_PROF_FILTERS_FEATURE_CFG;
+		result = regmap_write(llcc_priv->llcc_bcast_map, offset,
+			LLCC_PROF_FILTERS_LEGACY_MODE);
+		if (result) {
+			pr_err("Failed to enable legacy mode for LLCC_VER5_1: %d\n", result);
+			return result;
+		}
+		pr_debug("Legacy mode enabled for LLCC_VER5_1\n");
+	}
+
 	result = sysfs_create_group(&pdev->dev.kobj, &llcc_perfmon_group);
 	if (result) {
 		pr_err("Unable to create sysfs group\n");
