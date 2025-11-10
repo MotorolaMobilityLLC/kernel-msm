@@ -1986,6 +1986,13 @@ static void loop_process_work(struct loop_worker *worker,
 	current->flags = orig_flags;
 }
 
+void loop_process_cmd_list(struct list_head *cmd_list, struct gendisk *disk)
+{
+	struct loop_device *lo = disk->private_data;
+	loop_process_work(NULL, cmd_list, lo);
+}
+EXPORT_SYMBOL_GPL(loop_process_cmd_list);
+
 static void loop_workfn(struct work_struct *work)
 {
 	struct loop_worker *worker =
