@@ -2206,6 +2206,31 @@ static ssize_t charge_control_en_show(struct class *c,
 }
 static CLASS_ATTR_RW(charge_control_en);
 
+static ssize_t fake_batt_temp_store(struct class *c,
+				struct class_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct battery_chg_dev *bcdev = container_of(c, struct battery_chg_dev,
+						battery_class);
+	int rc = 0;
+	int val = 0;
+
+	if (kstrtoint(buf, 0, &val))
+		return -EINVAL;
+
+	if (IS_ENABLED(CONFIG_QTI_PMIC_GLINK_CLIENT_DEBUG))
+		rc = write_property_id(bcdev, &bcdev->psy_list[PSY_TYPE_BATTERY],
+				BATT_TEMP, val);
+	if (rc < 0) {
+		pr_err("Failed to set fake battery temp, rc=%d\n", rc);
+		return rc;
+	}
+
+	return count;
+}
+
+static CLASS_ATTR_WO(fake_batt_temp);
+
 QTI_CHARGER_RO_SHOW(usb_typec_compliant, PSY_TYPE_USB, USB_TYPEC_COMPLIANT);
 
 QTI_CHARGER_RO_SHOW(usb_num_ports, PSY_TYPE_USB, USB_NUM_PORTS);
@@ -2393,6 +2418,7 @@ static struct attribute *battery_class_attrs[] = {
 	&class_attr_usb_real_type.attr,
 	&class_attr_usb_typec_compliant.attr,
 	&class_attr_charge_control_en.attr,
+	&class_attr_fake_batt_temp.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(battery_class);
@@ -2421,6 +2447,7 @@ static struct attribute *battery_class_usb_2_attrs[] = {
 	&class_attr_usb_typec_compliant.attr,
 	&class_attr_usb_2_typec_compliant.attr,
 	&class_attr_charge_control_en.attr,
+	&class_attr_fake_batt_temp.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(battery_class_usb_2);
@@ -2438,6 +2465,7 @@ static struct attribute *battery_class_no_wls_attrs[] = {
 	&class_attr_usb_typec_compliant.attr,
 	&class_attr_usb_num_ports.attr,
 	&class_attr_charge_control_en.attr,
+	&class_attr_fake_batt_temp.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(battery_class_no_wls);
@@ -2459,6 +2487,7 @@ static struct attribute *battery_class_usb_2_no_wls_attrs[] = {
 	&class_attr_usb_num_ports.attr,
 	&class_attr_usb_2_typec_compliant.attr,
 	&class_attr_charge_control_en.attr,
+	&class_attr_fake_batt_temp.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(battery_class_usb_2_no_wls);
