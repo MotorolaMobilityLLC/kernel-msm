@@ -658,6 +658,11 @@ DECLARE_HOOK(android_vh_pcp_alloc_factor_adjust,
 		struct per_cpu_pages *pcp, struct page *page, int migratetype,
 		unsigned int order),
 	TP_ARGS(zone, pad, pcp, page, migratetype, order));
+DECLARE_RESTRICTED_HOOK(android_rvh_gup_longterm_locked,
+	TP_PROTO(long rc, long nr_pinned_pages,
+		unsigned long start, unsigned long nr_pages,
+		struct page **pages),
+	TP_ARGS(rc, nr_pinned_pages, start, nr_pages, pages), 5);
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
