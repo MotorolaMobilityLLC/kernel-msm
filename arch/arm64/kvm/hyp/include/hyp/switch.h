@@ -135,6 +135,9 @@ static inline void ___activate_traps(struct kvm_vcpu *vcpu)
 	if (cpus_have_final_cap(ARM64_WORKAROUND_CAVIUM_TX2_219_TVM))
 		hcr |= HCR_TVM;
 
+	if (!system_supports_mte())
+		hcr &= ~(HCR_DCT | HCR_ATA);
+
 	write_sysreg(hcr, hcr_el2);
 
 	if (cpus_have_final_cap(ARM64_HAS_RAS_EXTN) && (hcr & HCR_VSE))
