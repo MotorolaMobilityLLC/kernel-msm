@@ -146,6 +146,12 @@ config CAM_SENSOR_CTLE_FOR_URUS
 	help
 	  This is enabling camera sensor ctle for urus feature.
 
+config MOT_ATT_PD_WORKAROUND
+	default n
+	bool "enable imx09a ATT PD workaround"
+	help
+	  This is enabling imx09a ATT PD workaround.
+
 config MOT_PON_LOG
 	default n
 	bool "enable saving pon log"
