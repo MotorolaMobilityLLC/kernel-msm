@@ -16,6 +16,11 @@
 #if defined(CONFIG_UFSFEATURE)
 #include "vendor/ufsfeature.h"
 #endif
+
+#if defined(CONFIG_UFS31_FEATURE)
+#include "./HID_UFS31/ufsfeature.h"
+#endif
+
 #if defined(CONFIG_SCSI_SKHID)
 #include "ufs-manual-gc.h"
 #endif
@@ -666,7 +671,7 @@ struct ufs_qcom_host {
 	/* manual_gc */
 	struct ufs_manual_gc manual_gc;
 #endif
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS31_FEATURE)
 	struct ufsf_feature ufsf;
 #endif
 };
@@ -832,7 +837,7 @@ static inline void ufs_qcom_msi_unlock_descs(struct ufs_hba *hba)
 	mutex_unlock(&hba->dev->msi.data->mutex);
 }
 
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS31_FEATURE)
 static inline struct ufsf_feature *ufs_qcom_get_ufsf(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);

@@ -1899,6 +1899,15 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 #endif
 
 #endif
+
+#if defined(CONFIG_UFS31_FEATURE)
+	if (!IS_SKHYNIX_UFS(storage_mfrid)) {
+		err = ufsf_suspend(ufs_qcom_get_ufsf(hba), pm_op == UFS_SYSTEM_PM);
+		if (err)
+			return err;
+	}
+#endif
+
 		return 0;
 	}
 
@@ -1938,7 +1947,7 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	unsigned long flags;
 	int err;
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS31_FEATURE)
 	struct ufsf_feature *ufsf = ufs_qcom_get_ufsf(hba);
 #if defined(CONFIG_SCSI_SKHID)
 	if (!IS_SKHYNIX_UFS(storage_mfrid))
@@ -4826,6 +4835,9 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 	struct phy *phy = host->generic_phy;
 	bool ber_th_exceeded = false;
 
+#if defined(CONFIG_UFS31_FEATURE)
+	ufsf_event_notify(hba, evt, *(u32 *)data);
+#endif
 	switch (evt) {
 	case UFS_EVT_PA_ERR:
 		ber_th_exceeded = ufs_qcom_update_ber_event(host, *(u32 *)data,
@@ -5430,7 +5442,7 @@ static int ufs_qcom_device_reset(struct ufs_hba *hba)
 		dev_warn(hba->dev, "%s: host reset returned %d\n",
 				 __func__, ret);
 
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS31_FEATURE)
 #if defined(CONFIG_SCSI_SKHID)
 	if (!IS_SKHYNIX_UFS(storage_mfrid))
 		ufsf_reset_host(ufs_qcom_get_ufsf(hba));
@@ -5509,6 +5521,11 @@ static void ufs_qcom_fixup_dev_quirks(struct ufs_hba *hba)
 	ufsf_set_init_state(hba);
 #endif
 
+#endif
+
+#if defined(CONFIG_UFS31_FEATURE)
+	if (!IS_SKHYNIX_UFS(storage_mfrid))
+		ufsf_set_init(hba);
 #endif
 }
 
@@ -6487,9 +6504,12 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, err, "ufshcd_pltfrm_init() failed\n");
 
 	ufs_qcom_register_hooks();
-#if defined(CONFIG_UFSFEATURE)
+#if defined(CONFIG_UFSFEATURE) || defined(CONFIG_UFS31_FEATURE)
 	/* Register hook for Samsung feature */
 	ufs_samsung_register_hooks();
+#if defined(CONFIG_UFS31_FEATURE)
+	ufs_host_exception_event_hook(platform_get_drvdata(pdev));
+#endif
 #endif
 	return err;
 }
@@ -6525,7 +6545,9 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 	if (msm_minidump_enabled())
 		atomic_notifier_chain_unregister(&panic_notifier_list,
 				&host->ufs_qcom_panic_nb);
-
+#if defined(CONFIG_UFS31_FEATURE)
+	ufsf_remove(ufs_qcom_get_ufsf(hba));
+#endif
 	ufshcd_remove(hba);
 	platform_msi_domain_free_irqs(hba->dev);
 	return 0;

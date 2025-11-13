@@ -24,3 +24,6 @@ obj-$(CONFIG_SCSI_UFS_RENESAS) += ufs-renesas.o
 obj-$(CONFIG_SCSI_UFS_SPRD) += ufs-sprd.o
 obj-$(CONFIG_SCSI_UFS_TI_J721E) += ti-j721e-ufs.o
 obj-$(CONFIG_SCSI_UFS_CRYPTO_QTI) += ufshcd-crypto-qti.o
+
+include $(srctree)/drivers/ufs/host/HID_UFS31/Makefile.features
+ufs_qcom-y += $(addprefix HID_UFS31/, $(UFSF_OBJS))

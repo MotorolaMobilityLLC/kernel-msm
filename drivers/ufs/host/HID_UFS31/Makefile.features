@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0
+
+UFSF-y :=
+
+UFSF-$(CONFIG_UFS31_FEATURE) += ufsfeature.o ufsfeature-mimic.o
+UFSF-$(CONFIG_UFS31_HID) += ufshid.o
+
+UFSF_OBJS := $(UFSF-y)

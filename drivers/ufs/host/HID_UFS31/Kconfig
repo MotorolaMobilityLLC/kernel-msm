@@ -1,0 +1,21 @@
+config UFS31_FEATURE
+	bool "UFS feature activate"
+	depends on SCSI_UFSHCD
+	help
+	  UFS feature activate such as hid, tw and etc.
+
+config UFS31_HID
+	bool "UFS Host Initiated Defrag support"
+	depends on SCSI_UFSHCD && UFS31_FEATURE
+	help
+	  UFS HID Feature Enable
+
+config UFS31_HID_POC
+	bool "UFSHID_POC test"
+	depends on SCSI_UFSHCD && UFS31_FEATURE && UFS31_HID
+	help
+	  UFS HID POC test
+	  1. block to enter suspend state
+	  2. auto_hibern8 enable/disable (HCI)
+	  3. set flag bDefragOperation
+	  4. debug msg enable (default : disable)
