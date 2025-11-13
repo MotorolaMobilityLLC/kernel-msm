@@ -2164,6 +2164,7 @@
   pinconf_generic_parse_dt_config
   pinctrl_force_default
   pinctrl_force_sleep
+  pinctrl_register_mappings
   pin_get_name
 
 # required by pl330.ko

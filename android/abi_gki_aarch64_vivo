@@ -407,12 +407,15 @@
   __traceiter_android_vh_do_wake_up_sync
   __traceiter_android_vh_do_wp_page
   __traceiter_android_vh_dump_throttled_rt_tasks
+  __traceiter_android_vh_fas_gpu_qos_update_tracer
   __traceiter_android_vh_free_task
   __traceiter_android_vh_ftrace_dump_buffer
   __traceiter_android_vh_ftrace_format_check
   __traceiter_android_vh_ftrace_oops_enter
   __traceiter_android_vh_ftrace_oops_exit
   __traceiter_android_vh_ftrace_size_check
+  __traceiter_android_vh_free_unref_page_list_bypass
+  __traceiter_android_rvh_try_alloc_pages_gfp
   __traceiter_android_vh_fuse_request_end
   __traceiter_android_vh_ignore_dmabuf_vmap_bounds
   __traceiter_android_vh_ipi_stop
@@ -448,6 +451,7 @@
   __traceiter_android_vh_swapmem_gather_finish
   __traceiter_android_vh_swapmem_gather_init
   __traceiter_android_vh_sysrq_crash
+  __traceiter_android_vh_throttle_direct_reclaim_bypass
   __traceiter_android_vh_timer_calc_index
   __traceiter_android_vh_try_to_freeze_todo
   __traceiter_android_vh_try_to_freeze_todo_unfrozen
@@ -466,6 +470,7 @@
   __traceiter_android_vh_update_topology_flags_workfn
   __traceiter_android_vh_uprobes_replace_page
   __traceiter_android_vh_watchdog_timer_softlockup
+  __traceiter_android_rvh_create_worker
   __traceiter_binder_transaction_received
   __traceiter_block_rq_insert
   __traceiter_clock_set_rate
@@ -618,12 +623,15 @@
   __tracepoint_android_vh_do_wake_up_sync
   __tracepoint_android_vh_do_wp_page
   __tracepoint_android_vh_dump_throttled_rt_tasks
+  __tracepoint_android_vh_fas_gpu_qos_update_tracer
   __tracepoint_android_vh_free_task
   __tracepoint_android_vh_ftrace_dump_buffer
   __tracepoint_android_vh_ftrace_format_check
   __tracepoint_android_vh_ftrace_oops_enter
   __tracepoint_android_vh_ftrace_oops_exit
   __tracepoint_android_vh_ftrace_size_check
+  __tracepoint_android_vh_free_unref_page_list_bypass
+  __tracepoint_android_rvh_try_alloc_pages_gfp
   __tracepoint_android_vh_fuse_request_end
   __tracepoint_android_vh_ignore_dmabuf_vmap_bounds
   __tracepoint_android_vh_ipi_stop
@@ -654,6 +662,7 @@
   __tracepoint_android_vh_show_resume_epoch_val
   __tracepoint_android_vh_show_suspend_epoch_val
   __tracepoint_android_vh_sysrq_crash
+  __tracepoint_android_vh_throttle_direct_reclaim_bypass
   __tracepoint_android_vh_timer_calc_index
   __tracepoint_android_vh_try_to_unmap_one
   __tracepoint_android_vh_try_to_freeze_todo
@@ -672,6 +681,7 @@
   __tracepoint_android_vh_update_topology_flags_workfn
   __tracepoint_android_vh_uprobes_replace_page
   __tracepoint_android_vh_watchdog_timer_softlockup
+  __tracepoint_android_rvh_create_worker
   __tracepoint_binder_transaction_received
   __tracepoint_block_rq_insert
   __tracepoint_clock_set_rate

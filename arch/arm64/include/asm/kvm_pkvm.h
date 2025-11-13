@@ -344,11 +344,16 @@ static inline unsigned long __hyp_pgtable_moveable_regs_pages(void)
 
 #define __PKVM_PRIVATE_SZ SZ_1G
 
+extern u64 kvm_nvhe_sym(hyp_lm_size_mb);
+
 static inline unsigned long hyp_s1_pgtable_pages(void)
 {
 	unsigned long res;
 
-	res = __hyp_pgtable_moveable_regs_pages();
+	if (!kvm_nvhe_sym(hyp_lm_size_mb))
+		res = __hyp_pgtable_moveable_regs_pages();
+	else
+		res = __hyp_pgtable_max_pages(kvm_nvhe_sym(hyp_lm_size_mb) * SZ_1M / PAGE_SIZE);
 
 	res += __hyp_pgtable_max_pages(__PKVM_PRIVATE_SZ >> PAGE_SHIFT);
 

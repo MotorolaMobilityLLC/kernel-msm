@@ -438,7 +438,6 @@ static enum rq_end_io_ret nvme_uring_cmd_end_io(struct request *req,
 {
 	struct io_uring_cmd *ioucmd = req->end_io_data;
 	struct nvme_uring_cmd_pdu *pdu = nvme_uring_cmd_pdu(ioucmd);
-	void *cookie = READ_ONCE(ioucmd->cookie);
 
 	req->bio = pdu->bio;
 	if (nvme_req(req)->flags & NVME_REQ_CANCELLED) {
@@ -451,14 +450,14 @@ static enum rq_end_io_ret nvme_uring_cmd_end_io(struct request *req,
 	pdu->u.result = le64_to_cpu(nvme_req(req)->result.u64);
 
 	/*
-	 * For iopoll, complete it directly.
-	 * Otherwise, move the completion to task work.
+	 * IOPOLL could potentially complete this request directly, but
+	 * if multiple rings are polling on the same queue, then it's possible
+	 * for one ring to find completions for another ring. Punting the
+	 * completion via task_work will always direct it to the right
+	 * location, rather than potentially complete requests for ringA
+	 * under iopoll invocations from ringB.
 	 */
-	if (cookie != NULL && blk_rq_is_poll(req))
-		nvme_uring_task_cb(ioucmd, IO_URING_F_UNLOCKED);
-	else
-		io_uring_cmd_complete_in_task(ioucmd, nvme_uring_task_cb);
-
+	io_uring_cmd_complete_in_task(ioucmd, nvme_uring_task_cb);
 	return RQ_END_IO_FREE;
 }
 
