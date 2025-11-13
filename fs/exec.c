@@ -64,6 +64,7 @@
 #include <linux/io_uring.h>
 #include <linux/syscall_user_dispatch.h>
 #include <linux/coredump.h>
+#include <linux/dma-buf.h>
 
 #include <linux/uaccess.h>
 #include <asm/mmu_context.h>
@@ -1251,6 +1252,7 @@ void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec)
 int begin_new_exec(struct linux_binprm * bprm)
 {
 	struct task_struct *me = current;
+	struct files_struct *old_files;
 	int retval;
 
 	/* Once we are committed compute the creds */
@@ -1275,8 +1277,19 @@ int begin_new_exec(struct linux_binprm * bprm)
 	 */
 	io_uring_task_cancel();
 
+	/*
+	 * unshare_files() may not do anything, but we still need to account dmabufs against the
+	 * new_dmabuf_info even if it doesn't. We need to keep track of the original files_struct
+	 * to handle task_dma_buf_info refcounting.
+	 */
+	old_files = me->files;
+
 	/* Ensure the files table is not shared. */
 	retval = unshare_files();
+	if (retval)
+		goto out;
+
+	retval = dma_buf_begin_new_exec(old_files);
 	if (retval)
 		goto out;
 
@@ -1303,6 +1316,14 @@ int begin_new_exec(struct linux_binprm * bprm)
 		goto out;
 
 	bprm->mm = NULL;
+	/*
+	 * New MM has just been installed. Use the task's new dmabuf_info (from
+	 * dma_buf_begin_new_exec) for the new mm_struct.
+	 */
+	if (IS_ENABLED(CONFIG_DMA_SHARED_BUFFER)) {
+		refcount_inc(&current->dmabuf_info->refcnt);
+		me->mm->dmabuf_info = current->dmabuf_info;
+	}
 
 #ifdef CONFIG_POSIX_TIMERS
 	spin_lock_irq(&me->sighand->siglock);
