@@ -329,6 +329,7 @@ struct files_struct *dup_fd(struct files_struct *oldf, struct fd_range *punch_ho
 	new_fdt->open_fds = newf->open_fds_init;
 	new_fdt->full_fds_bits = newf->full_fds_bits_init;
 	new_fdt->fd = &newf->fd_array[0];
+	newf->dmabuf_info = NULL;
 
 	spin_lock(&oldf->file_lock);
 	old_fdt = files_fdtable(oldf);
@@ -417,6 +418,9 @@ static struct fdtable *close_files(struct files_struct * files)
 			if (set & 1) {
 				struct file * file = xchg(&fdt->fd[i], NULL);
 				if (file) {
+					if (is_dma_buf_file(file))
+						dma_buf_unaccount_task(file->private_data,
+								       files->dmabuf_info);
 					filp_close(file, files);
 					cond_resched();
 				}
@@ -437,6 +441,7 @@ void put_files_struct(struct files_struct *files)
 		/* free the arrays if they are not embedded */
 		if (fdt != &files->fdtab)
 			__free_fdtable(fdt);
+		put_dmabuf_info(files->dmabuf_info);
 		kmem_cache_free(files_cachep, files);
 	}
 }
@@ -593,7 +598,7 @@ void fd_install(unsigned int fd, struct file *file)
 	struct fdtable *fdt;
 
 	if (is_dma_buf_file(file)) {
-		int err = dma_buf_account_task(file->private_data, current);
+		int err = dma_buf_account_task(file->private_data, files->dmabuf_info);
 
 		if (err)
 			pr_err("dmabuf accounting failed during fd_install operation, err %d\n",
@@ -641,6 +646,8 @@ static struct file *pick_file(struct files_struct *files, unsigned fd)
 	fd = array_index_nospec(fd, fdt->max_fds);
 	file = rcu_dereference_raw(fdt->fd[fd]);
 	if (file) {
+		if (is_dma_buf_file(file))
+			dma_buf_unaccount_task(file->private_data, files->dmabuf_info);
 		rcu_assign_pointer(fdt->fd[fd], NULL);
 		__put_unused_fd(files, fd);
 	}
@@ -750,6 +757,15 @@ int __close_range(unsigned fd, unsigned max_fd, unsigned int flags)
 		fds = dup_fd(cur_fds, punch_hole);
 		if (IS_ERR(fds))
 			return PTR_ERR(fds);
+
+		/*
+		 * This is a new partial sharing relationship, since we have a new files_struct.
+		 * Since partial sharing is not supported for dmabuf accounting, we need to remove
+		 * the accounting info from the task. Leave the cur_fds->dmabuf_info so any existing
+		 * accounting can be unaccounted properly.
+		 */
+		put_dmabuf_info(current->dmabuf_info);
+		current->dmabuf_info = NULL;
 		/*
 		 * We used to share our file descriptor table, and have now
 		 * created a private one, make sure we're using it below.
@@ -828,6 +844,8 @@ void do_close_on_exec(struct files_struct *files)
 			rcu_assign_pointer(fdt->fd[fd], NULL);
 			__put_unused_fd(files, fd);
 			spin_unlock(&files->file_lock);
+			if (is_dma_buf_file(file))
+				dma_buf_unaccount_task(file->private_data, files->dmabuf_info);
 			filp_close(file, files);
 			cond_resched();
 			spin_lock(&files->file_lock);
@@ -1121,8 +1139,11 @@ __releases(&files->file_lock)
 		__clear_close_on_exec(fd, fdt);
 	spin_unlock(&files->file_lock);
 
-	if (tofree)
+	if (tofree) {
+		if (is_dma_buf_file(tofree))
+			dma_buf_unaccount_task(tofree->private_data, files->dmabuf_info);
 		filp_close(tofree, files);
+	}
 
 	return fd;
 
