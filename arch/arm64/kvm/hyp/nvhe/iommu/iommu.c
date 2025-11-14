@@ -221,15 +221,17 @@ void __repudiate_host_page(void *addr, unsigned long order,
 
 int kvm_iommu_refill(struct kvm_hyp_memcache *host_mc)
 {
+	struct kvm_hyp_memcache tmp = *host_mc;
+
 	if (!kvm_iommu_ops)
 		return -EINVAL;
 
 	/* Paired with smp_wmb() in kvm_iommu_init() */
 	smp_rmb();
 
-	while (host_mc->nr_pages) {
-		unsigned long order = FIELD_GET(~PAGE_MASK, host_mc->head);
-		phys_addr_t phys = host_mc->head & PAGE_MASK;
+	while (tmp.nr_pages) {
+		unsigned long order = FIELD_GET(~PAGE_MASK, tmp.head);
+		phys_addr_t phys = tmp.head & PAGE_MASK;
 		struct hyp_pool *pool = &iommu_system_pool;
 		u64 nr_pages;
 		void *addr;
@@ -238,16 +240,18 @@ int kvm_iommu_refill(struct kvm_hyp_memcache *host_mc)
 		    !IS_ALIGNED(phys, PAGE_SIZE << order))
 			return -EINVAL;
 
-		addr = admit_host_page(host_mc, order);
+		addr = admit_host_page(&tmp, order);
 		if (!addr)
 			return -EINVAL;
+		*host_mc = tmp;
 
 		if (kvm_iommu_donate_from_cma(phys, order)) {
 			hyp_spin_lock(&__block_pools_lock);
 			pool = __get_empty_block_pool(phys);
 			hyp_spin_unlock(&__block_pools_lock);
 			if (!pool) {
-				__repudiate_host_page(addr, order, host_mc);
+				__repudiate_host_page(addr, order, &tmp);
+				*host_mc = tmp;
 				return -EBUSY;
 			}
 		} else {
