@@ -19,3 +19,11 @@ config UFS31_HID_POC
 	  2. auto_hibern8 enable/disable (HCI)
 	  3. set flag bDefragOperation
 	  4. debug msg enable (default : disable)
+
+config MICRON_UFS31_HID
+       tristate "micron Host Initiated Defrag support"
+       depends on SCSI_UFSHCD && UFS31_FEATURE && UFS31_HID
+       help
+         Enable Micron HID feature
+
+

@@ -187,6 +187,20 @@ enum {
 	HID_REQUIRED		= 1
 };
 
+#if defined(CONFIG_MICRON_UFS31_HID)
+enum {
+	HID_LEV_GREEN_MICRON  = 0,
+	HID_LEV_RED_MICRON   = 1,
+};
+
+enum {
+	HID_PROG_IDLE		= 0,
+	HID_PROG_ONGOING	= 1,
+	HID_PROG_STOP	= 2, //stopped by Host
+	HID_PROG_COMPLETE	= 3,
+};
+#endif
+
 struct ufshid_blk_desc_2_0 {
 	__be64 lba;
 	__be32 blk_cnt;

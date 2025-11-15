@@ -81,6 +81,14 @@ enum {
 #define CCD_SENSE_DATA_LEN                      0x06
 #define CCD_DESC_TYPE                           0x81
 
+#if defined(CONFIG_UFS31_HID)
+#if defined(CONFIG_MICRON_UFS31_HID)
+#define QUERY_ATTR_IDN_HID_FRAG_STATUS_MICRON_UFSV4	0x81
+#define QUERY_ATTR_IDN_HID_PROGRESS_MICRON_UFSV4	0x82
+#define QUERY_FLAG_IDN_HID_EN_MICRON_UFSV4		0x83
+#endif
+#endif
+
 enum {
 	NON_SELECTOR	= 0,
 	SELECTOR,
