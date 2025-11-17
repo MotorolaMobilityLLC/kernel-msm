@@ -29,7 +29,7 @@
 #include <dt-bindings/interconnect/qcom,icc.h>
 
 #define CREATE_TRACE_POINTS
-#include <trace/events/qup_buses_trace.h>
+#include <trace/events/qup_serial_trace.h>
 
 void serial_trace_log(struct device *dev, const char *fmt, ...)
 {
@@ -41,7 +41,7 @@ void serial_trace_log(struct device *dev, const char *fmt, ...)
 
 	va_start(args, fmt);
 	vaf.va = &args;
-	trace_buses_log_info(dev_name(dev), &vaf);
+	trace_serial_log_info(dev_name(dev), &vaf);
 	va_end(args);
 }
 

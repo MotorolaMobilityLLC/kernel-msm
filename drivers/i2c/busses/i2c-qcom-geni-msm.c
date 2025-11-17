@@ -20,6 +20,23 @@
 #include <linux/spinlock.h>
 #include <linux/suspend.h>
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/qup_i2c_trace.h>
+
+void i2c_trace_log(struct device *dev, const char *fmt, ...)
+{
+	struct va_format vaf = {
+		.fmt = fmt,
+	};
+
+	va_list args;
+
+	va_start(args, fmt);
+	vaf.va = &args;
+	trace_i2c_log_info(dev_name(dev), &vaf);
+	va_end(args);
+}
+
 #define SE_I2C_TX_TRANS_LEN		0x26c
 #define SE_I2C_RX_TRANS_LEN		0x270
 #define SE_I2C_SCL_COUNTERS		0x278
@@ -203,10 +220,10 @@ static void geni_i2c_err_misc(struct geni_i2c_dev *gi2c)
 		rx_st = readl_relaxed(gi2c->se.base + SE_GENI_RX_FIFO_STATUS);
 		tx_st = readl_relaxed(gi2c->se.base + SE_GENI_TX_FIFO_STATUS);
 	}
-	dev_dbg(gi2c->se.dev, "DMA:%d tx_stat:0x%x, rx_stat:0x%x, irq-stat:0x%x\n",
-		dma, tx_st, rx_st, m_stat);
-	dev_dbg(gi2c->se.dev, "m_cmd:0x%x, geni_status:0x%x, geni_ios:0x%x\n",
-		m_cmd, geni_s, geni_ios);
+	i2c_trace_log(gi2c->se.dev, "DMA:%d tx_stat:0x%x, rx_stat:0x%x, irq-stat:0x%x\n",
+			dma, tx_st, rx_st, m_stat);
+	i2c_trace_log(gi2c->se.dev, "m_cmd:0x%x, geni_status:0x%x, geni_ios:0x%x\n",
+			m_cmd, geni_s, geni_ios);
 }
 
 static void geni_i2c_err(struct geni_i2c_dev *gi2c, int err)
@@ -214,8 +231,8 @@ static void geni_i2c_err(struct geni_i2c_dev *gi2c, int err)
 	if (!gi2c->err)
 		gi2c->err = gi2c_log[err].err;
 	if (gi2c->cur)
-		dev_dbg(gi2c->se.dev, "len:%d, slv-addr:0x%x, RD/WR:%d\n",
-			gi2c->cur->len, gi2c->cur->addr, gi2c->cur->flags);
+		i2c_trace_log(gi2c->se.dev, "len:%d, slv-addr:0x%x, RD/WR:%d\n",
+				gi2c->cur->len, gi2c->cur->addr, gi2c->cur->flags);
 
 	switch (err) {
 	case GENI_ABORT_DONE:
@@ -223,7 +240,7 @@ static void geni_i2c_err(struct geni_i2c_dev *gi2c, int err)
 		break;
 	case NACK:
 	case GENI_TIMEOUT:
-		dev_dbg(gi2c->se.dev, "%s\n", gi2c_log[err].msg);
+		i2c_trace_log(gi2c->se.dev, "%s\n", gi2c_log[err].msg);
 		break;
 	default:
 		dev_err(gi2c->se.dev, "%s\n", gi2c_log[err].msg);
