@@ -5987,7 +5987,8 @@ int dwc3_msm_set_dp_mode(struct device *dev, bool dp_connected, int lanes)
 		mdwc->refcnt_dp_usb--;
 		mdwc->dp_state = DP_NONE;
 		if (mdwc->drd_state == DRD_STATE_HOST) {
-			if (!mdwc->refcnt_dp_usb)
+			WARN_ON_ONCE(mdwc->refcnt_dp_usb < 0);
+			if (mdwc->refcnt_dp_usb <= 0)
 				dwc3_start_stop_host(mdwc, false);
 		} else {
 			dwc3_msm_clear_dp_only_params(mdwc);
