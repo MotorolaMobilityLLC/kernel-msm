@@ -205,6 +205,8 @@
   component_master_del
   component_match_add_release
   component_unbind_all
+  config_group_find_item
+  config_item_init_type_name
   console_printk
   __const_udelay
   consume_skb
@@ -1880,6 +1882,7 @@
   regmap_multi_reg_write
   regmap_raw_write
   regmap_read
+  regmap_test_bits
   regmap_update_bits_base
   regmap_write
   regulator_bulk_disable
@@ -1936,6 +1939,7 @@
   rps_cpu_mask
   rps_sock_flow_table
   rtc_add_group
+  rtc_read_alarm
   rtc_time64_to_tm
   rtc_tm_to_time64
   rtc_update_irq
@@ -2297,6 +2301,7 @@
   _totalram_pages
   touch_softlockup_watchdog
   trace_clock_local
+  trace_dump_stack
   trace_event_buffer_commit
   trace_event_buffer_reserve
   trace_event_ignore_this_pid
@@ -2325,6 +2330,8 @@
   __traceiter_android_vh_printk_caller
   __traceiter_android_vh_printk_caller_id
   __traceiter_android_vh_sched_show_task
+  __traceiter_android_vh_watchdog_timer_softlockup
+  __traceiter_android_vh_wq_lockup_pool
   __traceiter_gpu_mem_total
   __traceiter_irq_handler_entry
   __traceiter_irq_handler_exit
@@ -2361,6 +2368,8 @@
   __tracepoint_android_vh_printk_caller
   __tracepoint_android_vh_printk_caller_id
   __tracepoint_android_vh_sched_show_task
+  __tracepoint_android_vh_watchdog_timer_softlockup
+  __tracepoint_android_vh_wq_lockup_pool
   __tracepoint_gpu_mem_total
   __tracepoint_irq_handler_entry
   __tracepoint_irq_handler_exit
@@ -2471,6 +2480,9 @@
   usb_ep_type_string
   usb_find_interface
   usb_free_urb
+  usb_function_activate
+  usb_function_deactivate
+  usb_gadget_frame_number
   usb_gadget_giveback_request
   usb_gadget_map_request_by_dev
   usb_gadget_register_driver_owner
@@ -2505,6 +2517,8 @@
   usb_kill_anchored_urbs
   usb_kill_urb
   usb_lock_device_for_reset
+  usbnet_cdc_zte_rx_fixup
+  usbnet_generic_cdc_bind
   usb_phy_set_charger_current
   usb_put_dev
   usb_put_hcd
@@ -2537,6 +2551,7 @@
   utf16s_to_utf8s
   utf8_to_utf32
   uuid_null
+  uvc_format_by_guid
   v4l2_ctrl_add_handler
   v4l2_ctrl_find
   v4l2_ctrl_handler_free
@@ -2561,6 +2576,7 @@
   v4l2_fh_exit
   v4l2_fh_init
   v4l2_fh_open
+  v4l2_fill_pixfmt
   __v4l2_find_nearest_size
   v4l2_i2c_subdev_init
   v4l2_m2m_buf_queue
@@ -2583,6 +2599,7 @@
   v4l2_m2m_qbuf
   v4l2_m2m_release
   v4l2_m2m_try_schedule
+  v4l2_simplify_fraction
   v4l2_src_change_event_subscribe
   v4l2_subdev_link_validate
   v4l_bound_align_image
