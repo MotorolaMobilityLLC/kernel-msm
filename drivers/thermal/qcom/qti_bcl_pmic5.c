@@ -19,6 +19,7 @@
 #include <linux/ipc_logging.h>
 #include "thermal_zone_internal.h"
 #include "qti_bcl_common.h"
+#include <linux/of_platform.h>
 
 #define BCL_DRIVER_NAME       "bcl_pmic5"
 #define MAX_BCL_NAME_LENGTH   40
@@ -156,6 +157,18 @@ static uint32_t bcl_ibat_ext_ranges[BCL_IBAT_RANGE_MAX] = {
 static struct bcl_device *bcl_devices[MAX_PERPH_COUNT];
 static int bcl_device_ct;
 static BLOCKING_NOTIFIER_HEAD(bcl_pmic5_notifier);
+
+static unsigned int boot_seq = 0;
+static void mmi_get_boot_seq(void)
+{
+	struct device_node *n = of_find_node_by_path("/chosen");
+
+	if (n == NULL)
+		return;
+
+	of_property_read_u32(n, "mmi,boot_seq", &boot_seq);
+	of_node_put(n);
+}
 
 void bcl_pmic5_notifier_register(struct notifier_block *n)
 {
@@ -758,6 +771,8 @@ static irqreturn_t bcl_handle_irq(int irq, void *data)
 	unsigned int irq_status = 0;
 	int ibat = 0, vbat = 0, ret = 0;
 	uint32_t bcl_lvl = 0;
+	static unsigned long bcl_lvl0_cnt = 0, bcl_lvl1_cnt = 0, bcl_lvl2_cnt = 0;
+
 	struct bcl_device *bcl_perph;
 	unsigned long long start_ts = 0, end_ts = 0;
 
@@ -783,10 +798,25 @@ static irqreturn_t bcl_handle_irq(int irq, void *data)
 		thermal_zone_device_update(perph_data->tz_dev,
 				THERMAL_TRIP_VIOLATED);
 		end_ts = sched_clock();
-		pr_debug(
-		"Irq:%d triggered for bcl type:%s. status:%u ibat=%d vbat=%d\n",
+
+		switch (perph_data->type) {
+		case BCL_LVL0:
+			if (irq_status & BCL_IRQ_L0) bcl_lvl0_cnt++;
+			break;
+		case BCL_LVL1:
+			if (irq_status & BCL_IRQ_L1) bcl_lvl1_cnt++;
+			break;
+		case BCL_LVL2:
+			if (irq_status & BCL_IRQ_L2) bcl_lvl2_cnt++;
+			break;
+		default:
+			break;
+		}
+
+		pr_err(
+		"Irq:%d triggered for bcl type:%s. status:%u, LVL0_cnt %lu, LVL1_cnt %lu, LVL2_cnt %lu, boot_seq %u, ibat=%d vbat=%d\n",
 			irq, bcl_int_names[perph_data->type],
-			irq_status, ibat, vbat);
+			irq_status, bcl_lvl0_cnt, bcl_lvl1_cnt, bcl_lvl2_cnt, boot_seq, ibat, vbat);
 		BCL_IPC(bcl_perph,
 		"Irq:%d triggered for bcl type:%s. status:%u ibat=%d vbat=%d\n",
 			irq, bcl_int_names[perph_data->type],
@@ -1251,6 +1281,7 @@ static int bcl_probe(struct platform_device *pdev)
 					__func__, bcl_name);
 	bcl_stats_init(bcl_name, bcl_perph, MAX_BCL_LVL_COUNT);
 
+	mmi_get_boot_seq();
 	return 0;
 }
 
