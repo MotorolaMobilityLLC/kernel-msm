@@ -10,6 +10,7 @@
 
 static LIST_HEAD(phy_device_list);
 static DEFINE_MUTEX(phy_list_lock);
+
 /* Register a new PHY device */
 int register_phy_device(struct eom_phy_ops *ops, void *priv, u16 index,
 			u16 vendor_id, u16 device_id, u8 type, u8 lanes)
@@ -120,12 +121,18 @@ EXPORT_SYMBOL_GPL(phy_write);
 /* Get number of lanes for a PHY */
 int phy_get_num_lanes(struct eom_phy_device *phy)
 {
+	int ret = 0;
+
 	if (!phy || !phy->ops)
 		return -EINVAL;
 
-	/* if get_caps is not implemented return with initial number of lanes */
-	if (phy->ops->get_caps)
-		phy->ops->get_caps(phy->priv);
+	/* if get_caps is not implemented or get_caps fails return with initial number of lanes */
+	if (phy->ops->get_caps) {
+		ret = phy->ops->get_caps(phy->priv);
+
+		if (ret < 0)
+			pr_err("EOM PHY:Get Capability failed for phy index %d\n", phy->index);
+	}
 
 	return phy->lanes;
 }

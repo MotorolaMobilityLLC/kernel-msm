@@ -74,8 +74,8 @@ static int pcie_phy_write(void *priv, u32 offset, u32 value)
 	return 0;
 }
 
-/* Get current PCie link speed and width, then update the current number of lanes */
-static void pcie_phy_get_caps(void *priv)
+/* Get current PCIe link speed and width, then update the current number of lanes */
+static int pcie_phy_get_caps(void *priv)
 {
 	struct pcie_phy_dev *pcie_phy = (struct pcie_phy_dev *)priv;
 	int rc_index = pcie_phy->rc_index;
@@ -84,9 +84,14 @@ static void pcie_phy_get_caps(void *priv)
 	u16 lnksta16;
 
 	pcie_phy->pdev = pci_get_domain_bus_and_slot(rc_index, 0, 0);
+	if (!pcie_phy->pdev) {
+		pr_err("EOM PCIe PHY couldn't get pcie dev for RC%d\n", rc_index);
+		return -ENODEV;
+	}
+
 	pr_debug("PCIe dev vendor %x, device %x subsystem vendor %x class %x\n",
-		pcie_phy->pdev->vendor, pcie_phy->pdev->device,
-		pcie_phy->pdev->subsystem_vendor, pcie_phy->pdev->class);
+		  pcie_phy->pdev->vendor, pcie_phy->pdev->device,
+		  pcie_phy->pdev->subsystem_vendor, pcie_phy->pdev->class);
 
 	pcie_capability_read_word(pcie_phy->pdev, PCI_EXP_LNKSTA, &lnksta16);
 	speed = FIELD_GET(PCI_EXP_LNKSTA_CLS, lnksta16);
@@ -94,6 +99,8 @@ static void pcie_phy_get_caps(void *priv)
 	pcie_phy->nr_lanes = width;
 	pcie_phy->link_speed = pcie_link_speed[speed];
 	update_phy_device_nr_lanes(rc_index, 0, 0, TYPE_PCIE, pcie_phy->nr_lanes);
+
+	return 0;
 }
 
 /* Initialize all PCIe PHY instances */
@@ -106,6 +113,15 @@ static int __init pcie_phy_init(void)
 
 	/* Iterate through all PCIe RC nodes */
 	for_each_compatible_node(np, NULL, "qcom,pci-msm") {
+		/* Check if the PCIe node is enabled */
+		if (!of_device_is_available(np)) {
+			pr_debug("PCIe node %pOF status is not available, skip initialization\n",
+				np);
+			continue;
+		} else {
+			pr_debug("PCIe node %pOF status is available, proceed with initialization\n",
+				np);
+		}
 
 		/* Get the Root Complex (RC) index */
 		if (of_property_read_u32(np, "linux,pci-domain", &rc_index)) {
@@ -116,15 +132,13 @@ static int __init pcie_phy_init(void)
 		/* Find the index of "phy" in reg-names */
 		index = of_property_match_string(np, "reg-names", "phy");
 		if (index < 0) {
-			pr_err("PCIe RC %d: No 'phy' entry in reg-names\n",
-			       rc_index);
+			pr_err("PCIe RC %d: No 'phy' entry in reg-names\n", rc_index);
 			continue;
 		}
 
 		/* Get the PHY register base address */
 		if (of_address_to_resource(np, index, &res)) {
-			pr_err("PCIe RC %d: Failed to get PHY register address\n",
-			       rc_index);
+			pr_err("PCIe RC %d: Failed to get PHY register address\n", rc_index);
 			continue;
 		}
 
@@ -151,8 +165,7 @@ static int __init pcie_phy_init(void)
 		pcie_phy->phy_ops.phy_read = pcie_phy_read;
 		pcie_phy->phy_ops.phy_write = pcie_phy_write;
 		pcie_phy->phy_ops.get_caps = pcie_phy_get_caps;
-		ret = register_phy_device(&pcie_phy->phy_ops, pcie_phy,
-					  rc_index, 0, 0, TYPE_PCIE,
+		ret = register_phy_device(&pcie_phy->phy_ops, pcie_phy, rc_index, 0, 0, TYPE_PCIE,
 					  pcie_phy->nr_lanes);
 		if (ret) {
 			pr_err("PCIe PHY registration: for RC %d Failed\n", rc_index);
@@ -166,8 +179,8 @@ static int __init pcie_phy_init(void)
 		list_add_tail(&pcie_phy->list, &pcie_phy_list);
 		mutex_unlock(&pcie_phy_lock);
 		pr_debug("PCIe PHY registered (RC %d, base: 0x%llx, size: 0x%llx)\n",
-			rc_index, (unsigned long long)res.start,
-			(unsigned long long)resource_size(&res));
+			  rc_index, (unsigned long long)res.start,
+			  (unsigned long long)resource_size(&res));
 	}
 
 	return 0;

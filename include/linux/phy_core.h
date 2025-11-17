@@ -15,7 +15,7 @@
 struct eom_phy_ops {
 	int (*phy_read)(void *priv, u32 reg, u32 *val);
 	int (*phy_write)(void *priv, u32 reg, u32 val);
-	void (*get_caps)(void *priv);
+	int (*get_caps)(void *priv);
 };
 
 /* PHY Device Entry */
