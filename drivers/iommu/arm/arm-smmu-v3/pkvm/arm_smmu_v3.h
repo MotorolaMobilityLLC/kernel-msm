@@ -49,6 +49,8 @@ enum kvm_arm_smmu_domain_stage {
 	KVM_ARM_SMMU_DOMAIN_S1,
 	KVM_ARM_SMMU_DOMAIN_S2,
 };
+
+extern struct kvm_iommu_ops smmu_ops;
 #endif /* CONFIG_ARM_SMMU_V3_PKVM */
 
 #endif /* __KVM_ARM_SMMU_V3_H */

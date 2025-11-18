@@ -74,7 +74,7 @@ extern struct kvm_iommu_ops kvm_nvhe_sym(smmu_ops);
 static int atomic_pages;
 module_param(atomic_pages, int, 0);
 
-phys_addr_t __topup_virt_to_phys(void *virt)
+static phys_addr_t __topup_virt_to_phys(void *virt)
 {
 	return __pa(virt);
 }
@@ -990,7 +990,7 @@ static int kvm_arm_smmu_remove(struct platform_device *pdev)
 	return 0;
 }
 
-int kvm_arm_smmu_suspend(struct device *dev)
+static int kvm_arm_smmu_suspend(struct device *dev)
 {
 	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
 	struct host_arm_smmu_device *host_smmu = smmu_to_host(smmu);
@@ -1000,7 +1000,7 @@ int kvm_arm_smmu_suspend(struct device *dev)
 	return 0;
 }
 
-int kvm_arm_smmu_resume(struct device *dev)
+static int kvm_arm_smmu_resume(struct device *dev)
 {
 	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
 	struct host_arm_smmu_device *host_smmu = smmu_to_host(smmu);
@@ -1050,13 +1050,13 @@ static int kvm_arm_smmu_array_alloc(void)
 	return 0;
 }
 
-int smmu_put_device(struct device *dev, void *data)
+static int smmu_put_device(struct device *dev, void *data)
 {
 	pm_runtime_put_noidle(dev);
 	return 0;
 }
 
-int smmu_unregister_smmu(struct device *dev, void *data)
+static int smmu_unregister_smmu(struct device *dev, void *data)
 {
 	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
 
@@ -1185,7 +1185,7 @@ static void kvm_arm_smmu_v3_remove(void)
 	platform_driver_unregister(&kvm_arm_smmu_driver);
 }
 
-pkvm_handle_t kvm_arm_smmu_v3_id(struct device *dev)
+static pkvm_handle_t kvm_arm_smmu_v3_id(struct device *dev)
 {
 	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
 	struct host_arm_smmu_device *host_smmu = smmu_to_host(smmu);
@@ -1193,7 +1193,7 @@ pkvm_handle_t kvm_arm_smmu_v3_id(struct device *dev)
 	return host_smmu->id;
 }
 
-struct kvm_iommu_driver kvm_smmu_v3_ops = {
+static struct kvm_iommu_driver kvm_smmu_v3_ops = {
 	.init_driver = kvm_arm_smmu_v3_init,
 	.remove_driver = kvm_arm_smmu_v3_remove,
 	.get_iommu_id = kvm_arm_smmu_v3_id,
