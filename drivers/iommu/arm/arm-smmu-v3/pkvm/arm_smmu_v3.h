@@ -27,9 +27,9 @@ struct hyp_arm_smmu_v3_device {
 
 	void __iomem		*base;
 	u32			cmdq_prod;
-	u64			*cmdq_base;
+	__le64			*cmdq_base;
 	size_t			cmdq_log2size;
-	u64			*strtab_base;
+	__le64			*strtab_base;
 	size_t			strtab_num_entries;
 	size_t			strtab_num_l1_entries;
 	u8			strtab_split;
