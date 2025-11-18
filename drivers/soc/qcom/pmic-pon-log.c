@@ -12,6 +12,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/string.h>
+#include <linux/of_platform.h>
 #ifdef CONFIG_MOT_PON_LOG
 #include <linux/seq_file.h>
 #include <linux/proc_fs.h>
@@ -597,8 +598,22 @@ static int pmic_pon_log_parse(struct pmic_pon_log_dev *pon_dev)
 	return 0;
 }
 
+static unsigned int mmi_get_boot_seq(void)
+{
+	unsigned int boot_seq = 0;
+	struct device_node *n = of_find_node_by_path("/chosen");
+
+	if (n == NULL)
+		return 0;
+
+	of_property_read_u32(n, "mmi,boot_seq", &boot_seq);
+	of_node_put(n);
+	return boot_seq;
+}
+
 #define FAULT_REASON2_FAULT_N_MASK			BIT(3)
 #define FAULT_REASON2_RESTART_PON_MASK			BIT(6)
+#define PON_PBL_STATUS_XVDD_DVDD	0xC0 //bit6 and bit7 in pmic_pon_pon_pbl_status
 
 /* Trigger a kernel panic if the last power off was caused by a PMIC fault. */
 static void pmic_pon_log_fault_panic(struct pmic_pon_log_dev *pon_dev)
@@ -639,6 +654,9 @@ static void pmic_pon_log_fault_panic(struct pmic_pon_log_dev *pon_dev)
 	 * Check if a fault event occurred between the previous and last PON
 	 * success events.  Trigger a kernel panic if so.
 	 */
+	bool flag_xvdd_reset = false;
+	const char *label = NULL;
+	u16 data;
 	for (i = prev_pon_success; i <= last_pon_success; i++) {
 		switch (pon_dev->log[i].event) {
 		case PMIC_PON_EVENT_FAULT_REASON_1_2:
@@ -684,6 +702,24 @@ static void pmic_pon_log_fault_panic(struct pmic_pon_log_dev *pon_dev)
 					BUS_ID_IN_FAULT_EVENT(pon_dev->log[i].event),
 					SID_IN_FAULT_EVENT(pon_dev->log[i].event),
 					buf);
+			}
+			break;
+		case PMIC_PON_EVENT_FUNDAMENTAL_RESET:
+			if (pon_dev->log[i].data1 & PON_PBL_STATUS_XVDD_DVDD) {
+				flag_xvdd_reset = true;
+			}
+			break;
+		case PMIC_PON_EVENT_PON_TRIGGER_RECEIVED:
+			data = (pon_dev->log[i].data1 << 8) | pon_dev->log[i].data0;
+			for (int k = 0; k < ARRAY_SIZE(pmic_pon_pon_trigger_map); k++) {
+				if (pmic_pon_pon_trigger_map[k].code == data) {
+					label = pmic_pon_pon_trigger_map[k].label;
+					break;
+				}
+			}
+			// two events:fundatmental reset:xvdd,vdd, usb charger
+			if(label && strcmp(label,"USB_CHARGER") == 0 && flag_xvdd_reset) {
+				pr_warn("PMIC PON log: find xvdd drop with usb charger reason, boot_seq:%d", mmi_get_boot_seq());
 			}
 			break;
 		default:
