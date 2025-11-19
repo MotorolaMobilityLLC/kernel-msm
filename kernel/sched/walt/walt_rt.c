@@ -9,6 +9,8 @@
 #include "walt.h"
 #include "trace.h"
 
+#define UX_THREAD_PRIO	98     /* RT priority for UX critical threads like UI and RenderThread */
+
 static DEFINE_PER_CPU(cpumask_var_t, walt_local_cpu_mask);
 DEFINE_PER_CPU(u64, rt_task_arrival_time) = 0;
 static bool long_running_rt_task_trace_rgstrd;
@@ -92,6 +94,13 @@ int sched_long_running_rt_task_ms_handler(struct ctl_table *table, int write,
 	return ret;
 }
 
+/* huangzq2: Check if the given task is RT UX task */
+static inline bool is_rt_ux_task(struct task_struct *task)
+{
+	return task && task->mm && task_has_rt_policy(task) && task->prio == UX_THREAD_PRIO
+		&& uclamp_eff_value(task, UCLAMP_MIN) > 0;
+}
+
 static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpumask *lowest_mask,
 					  int ret, int *best_cpu)
 {
@@ -116,7 +125,9 @@ static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpuma
 
 	rcu_read_lock();
 
-	if (num_sched_clusters > 3 && order_index == 0)
+	if(is_rt_ux_task(task))
+		end_index = num_sched_clusters - 1;
+	else if (num_sched_clusters > 3 && order_index == 0)
 		end_index = 1;
 
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
@@ -197,6 +208,9 @@ static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpuma
 			break;
 	}
 
+	if(trace_sched_select_energy_order_rt_enabled())
+		trace_sched_select_energy_order_rt(order_index, end_index, cluster, *best_cpu);
+
 	rcu_read_unlock();
 }
 
@@ -220,13 +234,6 @@ static inline bool walt_rt_task_fits_capacity(struct task_struct *p, int cpu)
 	return true;
 }
 #endif
-
-/* huangzq2: Check if the given task is RT UX task */
-static inline bool is_rt_ux_task(struct task_struct *task)
-{
-    return task && task->mm && task_has_rt_policy(task) && task->prio == 98
-           && uclamp_eff_value(task, UCLAMP_MIN) > 0;
-}
 
 /*
  * walt specific should_honor_rt_sync (see rt.c).  this will honor
