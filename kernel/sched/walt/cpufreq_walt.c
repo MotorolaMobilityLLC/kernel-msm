@@ -1505,6 +1505,7 @@ static int waltgov_start(struct cpufreq_policy *policy)
 	}
 
 	waltgov_disabled = false;
+	midpoint_stop();
 	return 0;
 }
 

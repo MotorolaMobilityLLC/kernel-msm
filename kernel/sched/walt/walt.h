@@ -1947,7 +1947,9 @@ static inline void update_instruction_data(enum trace_type type) {}
 
 #if IS_ENABLED(CONFIG_SCHED_WALT_MIDPOINT)
 extern void midpoint_init(void);
+extern void midpoint_stop(void);
 #else
 static inline void midpoint_init(void) {}
+static inline void midpoint_stop(void) {}
 #endif
 #endif /* _WALT_H */
