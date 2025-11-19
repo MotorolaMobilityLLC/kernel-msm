@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -12,7 +12,7 @@
 #include <linux/mailbox_controller.h>
 
 /* CPUCP Register offsets */
-#define CPUCP_IPC_CHAN_SUPPORTED	2
+#define CPUCP_IPC_CHAN_SUPPORTED	3
 #define CPUCP_SEND_IRQ_OFFSET		0xC
 #define CPUCP_SEND_IRQ_VAL		BIT(28)
 #define CPUCP_CLEAR_IRQ_OFFSET		0x308
@@ -176,6 +176,7 @@ static int qcom_cpucp_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to ioremap cpucp rx irq addr\n");
 		return -ENOMEM;
 	}
+	cpucp_ipc->num_chan = resource_size(res)/CPUCP_CLOCK_DOMAIN_OFFSET;
 
 	cpucp_ipc->irq = platform_get_irq(pdev, 0);
 	if (cpucp_ipc->irq < 0) {
@@ -183,7 +184,6 @@ static int qcom_cpucp_probe(struct platform_device *pdev)
 		return cpucp_ipc->irq;
 	}
 
-	cpucp_ipc->num_chan = CPUCP_IPC_CHAN_SUPPORTED;
 	ret = qcom_cpucp_ipc_setup_mbox(cpucp_ipc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to create mailbox\n");
