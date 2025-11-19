@@ -2340,6 +2340,7 @@
   __traceiter_mmap_lock_start_locking
   __traceiter_mm_page_alloc
   __traceiter_mm_page_free
+  __traceiter_rcu_stall_warning
   __traceiter_rwmmio_post_read
   __traceiter_rwmmio_post_write
   __traceiter_rwmmio_read
@@ -2380,6 +2381,7 @@
   __tracepoint_mm_page_free
   tracepoint_probe_register
   tracepoint_probe_unregister
+  __tracepoint_rcu_stall_warning
   __tracepoint_rwmmio_post_read
   __tracepoint_rwmmio_post_write
   __tracepoint_rwmmio_read
