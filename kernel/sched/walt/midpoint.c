@@ -14,6 +14,7 @@
 #define MIDPOINT_DEFAULT_QOS_TIMEOUT_MS 100000U
 static int midpoint_freq = 0;
 static int qos_timeout_ms = MIDPOINT_DEFAULT_QOS_TIMEOUT_MS;
+static int midpoint_started = 0;
 
 module_param(midpoint_freq, int, 0400);
 module_param(qos_timeout_ms, int, 0400);
@@ -28,6 +29,7 @@ static void midpoint_qos_remove(void) {
 	struct freq_qos_request *req;
 	int cpu;
 
+	midpoint_started = 0;
 	for_each_possible_cpu(cpu) {
 		req = &per_cpu(qos_min_req, cpu);
 		freq_qos_remove_request(req);
@@ -93,11 +95,11 @@ static void request_freq_qos(struct work_struct *w)
 			goto out;
 	}
 
-	if (qos_timeout_ms != NO_TIMEOUT) {
+	if ((qos_timeout_ms != NO_TIMEOUT && (qos_timeout_ms != 0))) {
 		INIT_DELAYED_WORK(&qos_remove_work, midpoint_qos_remove_work);
 		schedule_delayed_work(&qos_remove_work, msecs_to_jiffies(qos_timeout_ms));
 	}
-
+	midpoint_started = 1;
 	pr_info("Added midpoint qos with freq=%d qos_timeout_ms=%d.\n", midpoint_freq, qos_timeout_ms);
 	return;
 
@@ -118,4 +120,17 @@ void midpoint_init(void)
 		return;
 	}
 	schedule_work(&request_qos_work);
+}
+
+void midpoint_stop(void)
+{
+	if (!midpoint_started) {
+		return;
+	}
+
+	pr_info("midpoint stop \n");
+	if ((qos_timeout_ms == NO_TIMEOUT) || (qos_timeout_ms == 0))
+	{
+		midpoint_qos_remove();
+	}
 }
