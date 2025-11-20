@@ -150,6 +150,9 @@ DECLARE_HOOK(android_vh_mm_customize_pgdat_balanced,
 DECLARE_HOOK(android_vh_mm_customize_file_is_tiny,
 	TP_PROTO(unsigned int may_swap, int order, int highest_zoneidx, bool *file_is_tiny),
 	TP_ARGS(may_swap, order, highest_zoneidx, file_is_tiny));
+DECLARE_HOOK(android_vh_mm_get_zone_mark,
+	TP_PROTO(struct zone *zone, unsigned long *mark),
+	TP_ARGS(zone, mark));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
