@@ -117,6 +117,7 @@ out_failed:
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_QCOM_SI_CORE)
 static int smci_get_root_obj(struct smci_object *root_obj)
 {
 	root_obj->context = ROOT_SI_OBJECT;
@@ -124,6 +125,7 @@ static int smci_get_root_obj(struct smci_object *root_obj)
 
 	return 0;
 }
+#endif
 
 /**
  * smci_get_client_env_object() - Get a client environment object.
@@ -134,6 +136,8 @@ static int smci_get_root_obj(struct smci_object *root_obj)
  *
  * Return: On success, returns 0; on failure, returns SMCI_OBJECT_ERROR*.
  */
+
+#if IS_ENABLED(CONFIG_QCOM_SI_CORE)
 int32_t smci_get_client_env_object(struct smci_object *client_env_obj)
 {
 	int ret;
@@ -152,3 +156,4 @@ int32_t smci_get_client_env_object(struct smci_object *client_env_obj)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(smci_get_client_env_object);
+#endif
