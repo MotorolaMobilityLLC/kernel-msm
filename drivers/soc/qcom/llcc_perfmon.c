@@ -1058,7 +1058,6 @@ static ssize_t perfmon_scid_status_show(struct device *dev, struct device_attrib
 
 	for (i = 0; i < SCID_MAX(llcc_priv->drv_ver); i++) {
 		total = 0;
-		offset = TRP_SCID_n_STATUS(i);
 
 		/* For LLCC_VER5_1 capacity field width is increased to 19 bits
 		 * to incorporate large capacity for any SCID
@@ -1079,6 +1078,7 @@ static ssize_t perfmon_scid_status_show(struct device *dev, struct device_attrib
 			total += val;
 		}
 
+		offset = TRP_SCID_n_STATUS(i);
 		llcc_bcast_read(llcc_priv, offset, &val);
 		if (val & TRP_SCID_STATUS_ACTIVE_MASK)
 			cnt += scnprintf(buf + cnt, PAGE_SIZE - cnt, "SCID %02d %10s", i, "ACTIVE");
