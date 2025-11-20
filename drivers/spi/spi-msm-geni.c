@@ -2375,10 +2375,17 @@ static irqreturn_t geni_spi_irq(int irq, void *data)
 			mas->tx_rem_bytes = 0;
 		if (dma_rx_status & RX_DMA_DONE)
 			mas->rx_rem_bytes = 0;
-		if (!mas->tx_rem_bytes && !mas->rx_rem_bytes)
+		if (!mas->tx_rem_bytes && !mas->rx_rem_bytes &&
+			(dma_tx_status & TX_DMA_DONE) &&
+			(dma_rx_status & RX_DMA_DONE))
 			mas->cmd_done = true;
 		if ((m_irq & M_CMD_CANCEL_EN) || (m_irq & M_CMD_ABORT_EN))
 			mas->cmd_done = true;
+
+		if (!mas->cmd_done)
+			SPI_LOG_DBG(mas->ipc, false, mas->dev,
+				    "Spurious IRQ!! DMA_TX:0x%x, DMA_RX:0x%x\n",
+				    dma_tx_status, dma_rx_status);
 	}
 exit_geni_spi_irq:
 	if (!mas->spi_ssr.is_ssr_down)
