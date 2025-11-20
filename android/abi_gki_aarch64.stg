@@ -395635,6 +395635,15 @@ elf_symbol {
   full_name: "free_workqueue_attrs"
 }
 elf_symbol {
+  id: 0x2da69553
+  name: "freelist_task"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x454f148d
+  type_id: 0x1d19a9d5
+  full_name: "freelist_task"
+}
+elf_symbol {
   id: 0x2ed5588c
   name: "freezer_active"
   is_defined: true
@@ -443548,6 +443557,7 @@ interface {
   symbol_id: 0x31dfc6e3
   symbol_id: 0x0f402ef5
   symbol_id: 0x7a974ed0
+  symbol_id: 0x2da69553
   symbol_id: 0x2ed5588c
   symbol_id: 0x3918f832
   symbol_id: 0x238d82fe
