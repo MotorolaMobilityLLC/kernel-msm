@@ -1045,6 +1045,7 @@
   free_pages_exact
   free_percpu
   free_percpu_irq
+  freelist_task
   freezer_active
   freezing_slow_path
   freq_qos_add_request
