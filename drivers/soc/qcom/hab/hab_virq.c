@@ -147,6 +147,12 @@ int hab_virq_register(struct virq_uhab_context *ctx, int32_t *virq_handle, unsig
 	struct hvirq_dbl *dbl = NULL;
 	int *fd = NULL;
 
+	if (vmid >= (unsigned int)HABCFG_VMID_MAX) {
+		pr_err("vmid %d is invalid max value is %d\n",
+				vmid, HABCFG_VMID_MAX - 1);
+		return -EINVAL;
+	}
+
 	dbl = hab_virtirq_freelabel_find(vmid, virq_num);
 	if (dbl == NULL) {
 		pr_err("find virtirq dbl failed vmid %d virq_num %d\n", vmid, virq_num);
