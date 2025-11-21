@@ -1209,7 +1209,7 @@ int f2fs_truncate_partial_cluster(struct inode *inode, u64 from, bool lock)
 		int i;
 
 		for (i = cluster_size - 1; i >= 0; i--) {
-			loff_t start = rpages[i]->index << PAGE_SHIFT;
+			loff_t start = (loff_t)rpages[i]->index << PAGE_SHIFT;
 
 			if (from <= start) {
 				zero_user_segment(rpages[i], 0, PAGE_SIZE);
