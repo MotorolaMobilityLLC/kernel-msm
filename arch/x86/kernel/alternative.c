@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define pr_fmt(fmt) "SMP alternatives: " fmt
 
+#include <linux/cfi.h>
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/perf_event.h>
@@ -1041,15 +1042,41 @@ void __init_or_module apply_seal_endbr(s32 *start, s32 *end) { }
 #endif /* CONFIG_X86_KERNEL_IBT */
 
 #ifdef CONFIG_FINEIBT
+#define __CFI_DEFAULT	CFI_DEFAULT
+#elif defined(CONFIG_CFI_CLANG)
+#define __CFI_DEFAULT	CFI_KCFI
+#else
+#define __CFI_DEFAULT	CFI_OFF
+#endif
 
-enum cfi_mode {
-	CFI_DEFAULT,
-	CFI_OFF,
-	CFI_KCFI,
-	CFI_FINEIBT,
-};
+enum cfi_mode cfi_mode __ro_after_init = __CFI_DEFAULT;
 
-static enum cfi_mode cfi_mode __ro_after_init = CFI_DEFAULT;
+#ifdef CONFIG_CFI_CLANG
+u32 cfi_get_func_hash(void *func)
+{
+	u32 hash;
+
+	func -= cfi_get_offset();
+	switch (cfi_mode) {
+	case CFI_FINEIBT:
+		func += 7;
+		break;
+	case CFI_KCFI:
+		func += 1;
+		break;
+	default:
+		return 0;
+	}
+
+	if (get_kernel_nofault(hash, func))
+		return 0;
+
+	return hash;
+}
+#endif
+
+#ifdef CONFIG_FINEIBT
+
 static bool cfi_rand __ro_after_init = true;
 static u32  cfi_seed __ro_after_init;
 
@@ -1358,8 +1385,11 @@ static void __apply_fineibt(s32 *start_retpoline, s32 *end_retpoline,
 		goto err;
 
 	if (cfi_rand) {
-		if (builtin)
+		if (builtin) {
 			cfi_seed = get_random_u32();
+			cfi_bpf_hash = cfi_rehash(cfi_bpf_hash);
+			cfi_bpf_subprog_hash = cfi_rehash(cfi_bpf_subprog_hash);
+		}
 
 		ret = cfi_rand_preamble(start_cfi, end_cfi);
 		if (ret)
