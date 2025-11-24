@@ -2721,11 +2721,13 @@
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_setscheduler_uclamp
   __traceiter_android_vh_set_task_comm
+  __traceiter_android_vh_show_mem
   __traceiter_android_vh_si_meminfo_adjust
   __traceiter_android_vh_swap_readpage_bdev_sync
   __traceiter_android_vh_swap_writepage
   __traceiter_android_vh_sysrq_crash
   __traceiter_android_vh_timerfd_create
+  __traceiter_android_vh_try_to_freeze_todo_logging
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_typec_store_partner_src_caps
   __traceiter_android_vh_typec_tcpm_log
@@ -2867,11 +2869,13 @@
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_setscheduler_uclamp
   __tracepoint_android_vh_set_task_comm
+  __tracepoint_android_vh_show_mem
   __tracepoint_android_vh_si_meminfo_adjust
   __tracepoint_android_vh_swap_readpage_bdev_sync
   __tracepoint_android_vh_swap_writepage
   __tracepoint_android_vh_sysrq_crash
   __tracepoint_android_vh_timerfd_create
+  __tracepoint_android_vh_try_to_freeze_todo_logging
   __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_typec_store_partner_src_caps
   __tracepoint_android_vh_typec_tcpm_log
