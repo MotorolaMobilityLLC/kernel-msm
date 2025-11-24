@@ -51,6 +51,11 @@ DECLARE_HOOK(android_vh_check_set_ioprio,
 	TP_PROTO(struct bio *bio),
 	TP_ARGS(bio));
 
+struct request;
+DECLARE_HOOK(android_vh_loop_skip_queue_work,
+        TP_PROTO(struct request *req, bool *skip),
+        TP_ARGS(req, skip));
+
 #endif /* _TRACE_HOOK_BLK_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

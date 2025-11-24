@@ -36,6 +36,7 @@
 #include <linux/blk-mq.h>
 #include <linux/spinlock.h>
 #include <uapi/linux/loop.h>
+#include <trace/hooks/blk.h>
 
 /* Possible states of device */
 enum {
@@ -830,8 +831,12 @@ static void loop_queue_work(struct loop_device *lo, struct loop_cmd *cmd)
 	struct loop_worker *cur_worker, *worker = NULL;
 	struct work_struct *work;
 	struct list_head *cmd_list;
+	bool skip = false;
 
 	spin_lock_irq(&lo->lo_work_lock);
+	trace_android_vh_loop_skip_queue_work(blk_mq_rq_from_pdu(cmd), &skip);
+        if (skip)
+                goto skip_queue_work;
 
 	if (queue_on_root_worker(cmd->blkcg_css))
 		goto queue_work;
@@ -891,6 +896,7 @@ queue_work:
 	}
 	list_add_tail(&cmd->list_entry, cmd_list);
 	queue_work(lo->workqueue, work);
+skip_queue_work:
 	spin_unlock_irq(&lo->lo_work_lock);
 }
 
@@ -1985,6 +1991,13 @@ static void loop_process_work(struct loop_worker *worker,
 	spin_unlock_irq(&lo->lo_work_lock);
 	current->flags = orig_flags;
 }
+
+void loop_process_cmd_list(struct list_head *cmd_list, struct gendisk *disk)
+{
+	struct loop_device *lo = disk->private_data;
+	loop_process_work(NULL, cmd_list, lo);
+}
+EXPORT_SYMBOL_GPL(loop_process_cmd_list);
 
 static void loop_workfn(struct work_struct *work)
 {
