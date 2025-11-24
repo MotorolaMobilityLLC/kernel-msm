@@ -642,6 +642,13 @@ static inline bool cpu_overutilized(int cpu)
 	return __cpu_overutilized(cpu, 0);
 }
 
+static inline long __cpu_overutilized_relvalue(int cpu, int delta)
+{
+	unsigned long cap = capacity_orig_of(cpu);
+
+	return cap ? ((cpu_util(cpu) + delta) - cap ) : LONG_MAX;
+}
+
 static inline int asym_cap_siblings(int cpu1, int cpu2)
 {
 	return (cpumask_test_cpu(cpu1, &asym_cap_sibling_cpus) &&
