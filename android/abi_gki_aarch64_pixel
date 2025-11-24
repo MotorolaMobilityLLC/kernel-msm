@@ -1492,6 +1492,7 @@
   noop_llseek
   nr_cpu_ids
   nr_irqs
+  nr_swap_pages
   ns_capable
   ns_capable_noaudit
   nsec_to_clock_t
@@ -1922,6 +1923,7 @@
   remap_vmalloc_range
   remove_cpu
   remove_proc_entry
+  remove_proc_subtree
   remove_wait_queue
   request_firmware
   request_firmware_direct
@@ -2422,6 +2424,7 @@
   __traceiter_android_vh_calculate_totalreserve_pages
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
+  __traceiter_android_vh_do_async_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
@@ -2564,6 +2567,7 @@
   __tracepoint_android_vh_calculate_totalreserve_pages
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
+  __tracepoint_android_vh_do_async_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
