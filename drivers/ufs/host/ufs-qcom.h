@@ -18,10 +18,6 @@
 #include <ufs/unipro.h>
 #include "drivers/ufs/host/ufshcd-pltfrm.h"
 
-#if IS_ENABLED(CONFIG_UFSFEATURE)
-#include "vendor/ufsfeature.h"
-#endif
-
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
 #define MPHY_TX_FSM_STATE       0x41
@@ -615,9 +611,6 @@ struct ufs_qcom_host {
 	unsigned int boost_monitor_timer;
 	u32 min_boost_thres;
 	u32 max_boost_thres;
-#if IS_ENABLED(CONFIG_UFSFEATURE)
-	struct ufsf_feature ufsf;
-#endif
 };
 
 static inline u32
@@ -628,15 +621,6 @@ ufs_qcom_get_debug_reg_offset(struct ufs_qcom_host *host, u32 reg)
 
 	return UFS_CNTLR_3_x_x_VEN_REGS_OFFSET(reg);
 };
-
-#if IS_ENABLED(CONFIG_UFSFEATURE)
-static inline struct ufsf_feature *ufs_host_get_ufsf(struct ufs_hba *hba)
-{
-	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
-
-	return &host->ufsf;
-}
-#endif
 
 #define ufs_qcom_is_link_off(hba) ufshcd_is_link_off(hba)
 #define ufs_qcom_is_link_active(hba) ufshcd_is_link_active(hba)

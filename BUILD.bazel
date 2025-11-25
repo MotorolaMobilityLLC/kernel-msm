@@ -192,8 +192,6 @@ hermetic_genrule(
 filegroup(
     name = "unsafe_headers_qcom_group",
     srcs = [
-        "//common:block/blk.h",
-        "//common:block/blk-crypto-internal.h",
         "//common:drivers/android/binder_alloc.h",
         "//common:drivers/android/binder_internal.h",
         "//common:drivers/android/binder_trace.h",
@@ -236,7 +234,6 @@ filegroup(
         "//common:drivers/thermal/thermal_netlink.h",
         "//common:drivers/thermal/thermal_thresholds.h",
         "//common:drivers/tty/hvc/hvc_console.h",
-        "//common:drivers/ufs/core/ufshcd-crypto.h",
         "//common:drivers/ufs/host/ufshcd-pltfrm.h",
         "//common:drivers/usb/dwc3/core.h",
         "//common:drivers/usb/dwc3/debug.h",
