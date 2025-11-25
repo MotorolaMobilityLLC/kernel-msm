@@ -52,6 +52,7 @@
   atomic_notifier_call_chain
   atomic_notifier_chain_register
   atomic_notifier_chain_unregister
+  __audit_inode_child
   autoremove_wake_function
   available_idle_cpu
   balance_push_callback
@@ -89,6 +90,7 @@
   __bitmap_xor
   bitmap_zalloc
   bit_wait
+  bit_wait_io
   bit_wait_timeout
   __blk_alloc_disk
   blkdev_get_by_dev
@@ -295,6 +297,7 @@
   crc8
   crc8_populate_msb
   crc_ccitt
+  cred_fscmp
   crypto_aead_decrypt
   crypto_aead_encrypt
   crypto_aead_setauthsize
@@ -332,10 +335,12 @@
   ct_idle_enter
   ct_idle_exit
   _ctype
+  d_alloc
   dapm_clock_event
   dapm_kcontrol_get_value
   dapm_regulator_event
   datagram_poll
+  d_delete
   deactivate_task
   debugfs_attr_read
   debugfs_attr_write
@@ -638,9 +643,11 @@
   dev_uc_sync
   dev_uc_unsync
   _dev_warn
+  dget_parent
   disable_irq
   disable_irq_nosync
   disable_percpu_irq
+  d_lookup
   dma_alloc_attrs
   dma_alloc_pages
   dma_async_device_register
@@ -724,6 +731,7 @@
   dma_unmap_resource
   dma_unmap_sg_attrs
   dma_vmap_noncontiguous
+  d_obtain_root
   do_trace_netlink_extack
   double_rq_lock
   do_wait_intr_irq
@@ -739,6 +747,7 @@
   down_write
   down_write_killable
   d_path
+  d_prune_aliases
   dput
   dql_completed
   dql_reset
@@ -940,6 +949,7 @@
   em_dev_register_perf_domain
   enable_irq
   enable_percpu_irq
+  errseq_sample
   ether_setup
   eth_header
   eth_header_cache
@@ -1000,17 +1010,23 @@
   __folio_lock
   __folio_put
   folio_wait_bit
+  folio_wait_bit_killable
+  folio_wait_private_2_killable
+  folio_wait_writeback
   follow_pfn
   font_vga_8x16
   for_each_kernel_tracepoint
+  forget_all_cached_acls
   fortify_panic
   fput
+  __fput_sync
   fqdir_exit
   fqdir_init
   frame_vector_create
   frame_vector_destroy
   frame_vector_to_pages
   frame_vector_to_pfns
+  free_anon_bdev
   free_contig_range
   free_io_pgtable_ops
   free_iova_fast
@@ -1029,11 +1045,13 @@
   freq_qos_remove_request
   freq_qos_update_request
   fs_bio_set
+  fs_context_for_submount
   fsg_common_create_luns
   fsg_common_set_cdev
   fsg_common_set_inquiry_string
   fsg_common_set_sysfs
   fsg_config_from_params
+  fs_param_is_enum
   fw_devlink_purge_absent_suppliers
   fwnode_device_is_available
   fwnode_get_name
@@ -1060,6 +1078,7 @@
   generic_handle_domain_irq
   generic_handle_irq
   generic_handle_irq_safe
+  generic_parse_monolithic
   genlmsg_multicast_allns
   genlmsg_put
   genl_register_family
@@ -1109,6 +1128,7 @@
   __get_task_comm
   get_task_cred
   get_task_mm
+  get_tree_keyed
   get_unused_fd_flags
   get_user_ifreq
   get_user_pages
@@ -1150,6 +1170,8 @@
   gpio_to_desc
   gre_add_protocol
   gre_del_protocol
+  groups_alloc
+  groups_sort
   handle_edge_irq
   handle_fasteoi_irq
   handle_level_irq
@@ -1329,6 +1351,7 @@
   ip_route_output_flow
   __ip_select_ident
   ip_send_check
+  ip_sock_set_pktinfo
   __ipv6_addr_type
   ipv6_dev_find
   ipv6_ext_hdr
@@ -1387,6 +1410,7 @@
   kernel_bind
   kernel_connect
   kernel_cpustat
+  kernel_getpeername
   kernel_kobj
   kernel_listen
   kernel_param_lock
@@ -1394,6 +1418,7 @@
   kernel_power_off
   kernel_restart
   kernel_sendmsg
+  kernel_sendpage
   kernel_sigaction
   kernel_sock_shutdown
   kernfs_find_and_get_ns
@@ -1469,6 +1494,7 @@
   kthread_cancel_work_sync
   kthread_create_on_node
   kthread_create_worker
+  kthread_data
   kthread_delayed_work_timer_fn
   kthread_destroy_worker
   kthread_flush_work
@@ -1497,6 +1523,7 @@
   kvfree
   kvfree_call_rcu
   kvmalloc_node
+  lcm
   led_classdev_flash_register_ext
   led_classdev_flash_unregister
   led_get_flash_fault
@@ -1522,12 +1549,19 @@
   list_sort
   __local_bh_enable_ip
   lock_sock_nested
+  locks_copy_lock
+  locks_delete_block
+  locks_init_lock
+  locks_release_private
   log_post_read_mmio
   log_post_write_mmio
   log_read_mmio
   log_threaded_irq_wakeup_reason
   log_write_mmio
+  lookup_constant
+  lookup_one_len
   loops_per_jiffy
+  mark_mounts_for_expiry
   mas_empty_area_rev
   mas_find
   match_hex
@@ -1585,6 +1619,8 @@
   memmove
   memory_read_from_buffer
   memparse
+  mempool_kfree
+  mempool_kmalloc
   memremap
   memscan
   mem_section
@@ -1643,6 +1679,8 @@
   mmc_wait_for_req
   __mmdrop
   mmput
+  mntget
+  mnt_set_expiry
   mod_delayed_work_on
   mod_node_page_state
   mod_timer
@@ -1687,6 +1725,7 @@
   netdev_pick_tx
   netdev_printk
   netdev_rss_key_fill
+  netdev_rx_csum_fault
   netdev_set_default_ethtool_ops
   netdev_update_features
   netdev_upper_dev_link
@@ -1879,6 +1918,7 @@
   page_pool_destroy
   page_pool_put_defragged_page
   page_pool_release_page
+  page_put_link
   panic
   panic_notifier_list
   param_array_ops
@@ -2125,6 +2165,7 @@
   pm_wakeup_dev_event
   pm_wakeup_ws_event
   pm_wq
+  posix_acl_create
   power_supply_changed
   power_supply_get_by_name
   power_supply_get_drvdata
@@ -2148,6 +2189,7 @@
   proc_create_net_single
   proc_create_seq_private
   proc_create_single_data
+  proc_dobool
   proc_dointvec_jiffies
   proc_dointvec_minmax
   proc_doulongvec_minmax
@@ -2176,6 +2218,7 @@
   __put_cred
   put_device
   put_disk
+  put_fs_context
   __put_net
   put_pid
   __put_task_struct
@@ -2331,6 +2374,7 @@
   remove_proc_entry
   remove_proc_subtree
   remove_wait_queue
+  rename_lock
   report_iommu_fault
   request_firmware
   request_firmware_direct
@@ -2453,7 +2497,11 @@
   sdio_writeb
   sdio_writel
   sdio_writesb
+  security_d_instantiate
   security_file_ioctl
+  security_sb_clone_mnt_opts
+  security_sb_mnt_opts_compat
+  security_sb_set_mnt_opts
   security_sk_classify_flow
   security_sk_clone
   security_sock_graft
@@ -2462,6 +2510,7 @@
   seq_hex_dump
   seq_hlist_next
   seq_hlist_start_head
+  seq_list_start_head
   seq_lseek
   seq_open
   seq_open_private
@@ -2493,6 +2542,7 @@
   serial8250_rpm_put
   serial8250_suspend_port
   serial8250_unregister_port
+  setattr_should_drop_sgid
   set_capacity
   set_capacity_and_notify
   set_cpus_allowed_ptr
@@ -2527,9 +2577,15 @@
   simple_attr_read
   simple_attr_release
   simple_attr_write
+  simple_dentry_operations
+  simple_nosetlease
   simple_open
   simple_read_from_buffer
+  simple_rmdir
   simple_strtoul
+  simple_transaction_get
+  simple_transaction_release
+  simple_unlink
   simple_write_to_buffer
   single_open
   single_open_size
@@ -2541,6 +2597,7 @@
   skb_clone_sk
   skb_complete_wifi_ack
   skb_copy
+  skb_copy_and_csum_bits
   skb_copy_bits
   skb_copy_datagram_iter
   skb_copy_expand
@@ -2560,6 +2617,7 @@
   skb_queue_tail
   skb_realloc_headroom
   skb_recv_datagram
+  __skb_recv_udp
   skb_scrub_packet
   skb_set_owner_w
   skb_split
@@ -2569,6 +2627,7 @@
   skb_tstamp_tx
   skb_unlink
   sk_capable
+  sk_clear_memalloc
   sk_common_release
   sk_error_report
   sk_filter_trim_cap
@@ -2645,6 +2704,7 @@
   snprintf
   soc_device_register
   soc_device_unregister
+  sock_alloc_file
   sock_alloc_send_pskb
   sock_cmsg_send
   sock_common_getsockopt
@@ -2668,6 +2728,7 @@
   sock_no_connect
   sock_no_getname
   sock_no_ioctl
+  sock_no_linger
   sock_no_listen
   sock_no_mmap
   sock_no_recvmsg
@@ -2685,6 +2746,8 @@
   sock_register
   sock_release
   sock_rfree
+  sock_set_keepalive
+  sock_set_reuseport
   __sock_tx_timestamp
   sock_unregister
   sock_wmalloc
@@ -2735,6 +2798,7 @@
   strcspn
   stream_open
   strim
+  string_escape_mem
   strlcat
   strlcpy
   strlen
@@ -2754,7 +2818,9 @@
   strstr
   submit_bio
   submit_bio_wait
+  super_setup_bdi_name
   suspend_set_ops
+  swapcache_mapping
   __sw_hweight16
   __sw_hweight32
   __sw_hweight64
@@ -2771,10 +2837,12 @@
   syscon_regmap_lookup_by_phandle
   syscon_regmap_lookup_by_phandle_optional
   sysctl_vals
+  sysctl_vfs_cache_pressure
   sysfs_create_bin_file
   sysfs_create_file_ns
   sysfs_create_group
   sysfs_create_link
+  sysfs_create_link_nowarn
   sysfs_emit
   __sysfs_match_string
   sysfs_merge_group
@@ -2807,6 +2875,10 @@
   __task_pid_nr_ns
   __task_rq_lock
   task_rq_lock
+  tcp_sock_set_keepcnt
+  tcp_sock_set_keepidle
+  tcp_sock_set_keepintvl
+  tcp_sock_set_user_timeout
   thermal_cooling_device_unregister
   thermal_of_cooling_device_register
   thermal_pressure
@@ -3463,7 +3535,12 @@
   vchan_tx_submit
   verify_pkcs7_signature
   vfree
+  vfs_cancel_lock
+  vfs_create_mount
+  vfs_get_tree
   vfs_llseek
+  vfs_lock_file
+  vfs_test_lock
   video_devdata
   video_device_alloc
   video_device_release
@@ -3554,6 +3631,7 @@
   woken_wake_function
   work_busy
   work_on_cpu
+  write_cache_pages
   __write_overflow_field
   ww_mutex_lock
   ww_mutex_trylock

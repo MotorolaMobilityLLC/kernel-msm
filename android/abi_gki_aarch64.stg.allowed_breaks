@@ -144,3 +144,24 @@ type 'struct io_ring_ctx' changed
   member 'struct page** ring_pages' was added
   member 'struct page** sqe_pages' was added
 
+type 'struct prefix_info' changed
+  member changed from 'union { __u8 flags; struct { __u8 reserved:6; __u8 autoconf:1; __u8 onlink:1; }; }' to 'union { __u8 flags; struct { __u8 reserved:4; __u8 preferpd:1; __u8 routeraddr:1; __u8 autoconf:1; __u8 onlink:1; }; }'
+    type changed from 'union { __u8 flags; struct { __u8 reserved:6; __u8 autoconf:1; __u8 onlink:1; }; }' to 'union { __u8 flags; struct { __u8 reserved:4; __u8 preferpd:1; __u8 routeraddr:1; __u8 autoconf:1; __u8 onlink:1; }; }'
+      member changed from 'struct { __u8 reserved:6; __u8 autoconf:1; __u8 onlink:1; }' to 'struct { __u8 reserved:4; __u8 preferpd:1; __u8 routeraddr:1; __u8 autoconf:1; __u8 onlink:1; }'
+        type changed from 'struct { __u8 reserved:6; __u8 autoconf:1; __u8 onlink:1; }' to 'struct { __u8 reserved:4; __u8 preferpd:1; __u8 routeraddr:1; __u8 autoconf:1; __u8 onlink:1; }'
+          member changed from '__u8 reserved:6' to '__u8 reserved:4'
+            bit-field size changed from 6 to 4
+          member '__u8 preferpd:1' was added
+          member '__u8 routeraddr:1' was added
+
+type 'struct ipv6_devconf' changed
+  member 'u64 android_kabi_reserved4' was removed
+  member 'union { struct { __u8 ra_honor_pio_pflag; __u8 padding4[7]; }; struct { u64 android_kabi_reserved4; }; union { }; }' was added
+
+type 'struct task_struct' changed
+  member 'u64 android_kabi_reserved2' was removed
+  member 'union { struct task_dma_buf_info* dmabuf_info; struct { u64 android_kabi_reserved2; }; union { }; }' was added
+
+type 'struct dma_buf' changed
+  member 'u64 android_kabi_reserved1' was removed
+  member 'union { atomic64_t nr_task_refs; struct { u64 android_kabi_reserved1; }; union { }; }' was added

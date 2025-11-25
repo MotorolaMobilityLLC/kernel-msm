@@ -34,6 +34,7 @@
 #define _HNS_ROCE_HW_V2_H
 
 #include <linux/bitops.h>
+#include "hnae3.h"
 
 #define HNS_ROCE_V2_MAX_QP_NUM			0x1000
 #define HNS_ROCE_V2_MAX_WQE_NUM			0x8000

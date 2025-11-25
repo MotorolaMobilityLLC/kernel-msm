@@ -510,7 +510,7 @@ int io_register_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 		if (bl->buf_nr_pages || !list_empty(&bl->buf_list))
 			return -EEXIST;
 	} else {
-		free_bl = bl = kzalloc(sizeof(*bl), GFP_KERNEL);
+		free_bl = bl = kzalloc(sizeof(*bl), GFP_KERNEL_ACCOUNT);
 		if (!bl)
 			return -ENOMEM;
 	}

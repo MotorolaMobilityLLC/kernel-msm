@@ -241,8 +241,6 @@ struct vmbus_connection {
 	 * is child->parent notification
 	 */
 	struct hv_monitor_page *monitor_pages[2];
-	void *monitor_pages_original[2];
-	phys_addr_t monitor_pages_pa[2];
 	struct list_head chn_msg_list;
 	spinlock_t channelmsg_lock;
 
@@ -412,6 +410,11 @@ extern const struct vmbus_device vmbus_devs[];
 static inline bool hv_is_perf_channel(struct vmbus_channel *channel)
 {
 	return vmbus_devs[channel->device_id].perf_device;
+}
+
+static inline size_t hv_dev_ring_size(struct vmbus_channel *channel)
+{
+	return vmbus_devs[channel->device_id].pref_ring_size;
 }
 
 static inline bool hv_is_allocated_cpu(unsigned int cpu)
