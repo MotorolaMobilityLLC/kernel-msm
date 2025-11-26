@@ -887,6 +887,7 @@ void __mmdrop(struct mm_struct *mm)
 	check_mm(mm);
 	put_user_ns(mm->user_ns);
 	mm_pasid_drop(mm);
+	kfree(mm->abi_extend);
 	free_mm(mm);
 }
 EXPORT_SYMBOL_GPL(__mmdrop);
@@ -1286,6 +1287,14 @@ struct mm_struct *mm_alloc(void)
 		return NULL;
 
 	memset(mm, 0, sizeof(*mm));
+
+	mm->abi_extend = kmalloc(sizeof(*mm->abi_extend), GFP_KERNEL);
+	if (!mm->abi_extend) {
+		free_mm(mm);
+		return NULL;
+	}
+	memset(mm->abi_extend, 0, sizeof(*mm->abi_extend));
+
 	return mm_init(mm, current, current_user_ns());
 }
 
@@ -1300,7 +1309,7 @@ static inline void __mmput(struct mm_struct *mm)
 	exit_mmap(mm);
 	mm_put_huge_zero_page(mm);
 	set_mm_exe_file(mm, NULL);
-	put_dmabuf_info(mm->dmabuf_info);
+	put_dmabuf_info(mm->abi_extend->dmabuf_info);
 	if (!list_empty(&mm->mmlist)) {
 		spin_lock(&mmlist_lock);
 		list_del(&mm->mmlist);
@@ -1637,7 +1646,12 @@ static struct mm_struct *dup_mm(struct task_struct *tsk,
 		goto fail_nomem;
 
 	memcpy(mm, oldmm, sizeof(*mm));
-	mm->dmabuf_info = NULL;
+	mm->abi_extend = kmalloc(sizeof(*mm->abi_extend), GFP_KERNEL);
+	if (!mm->abi_extend) {
+		free_mm(mm);
+		goto fail_nomem;
+	}
+	mm->abi_extend->dmabuf_info = NULL;
 
 	if (!mm_init(mm, tsk, mm->user_ns))
 		goto fail_nomem;

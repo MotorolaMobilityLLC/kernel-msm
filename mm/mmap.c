@@ -145,7 +145,7 @@ static void remove_vma(struct vm_area_struct *vma, bool unreachable)
 	if (vma->vm_file) {
 		if (is_dma_buf_file(vma->vm_file))
 			dma_buf_unaccount_task(vma->vm_file->private_data,
-					       vma->vm_mm->dmabuf_info);
+					       vma->vm_mm->abi_extend->dmabuf_info);
 		fput(vma->vm_file);
 	}
 	mpol_put(vma_policy(vma));
@@ -2456,7 +2456,7 @@ int __split_vma(struct mm_struct *mm, struct vm_area_struct *vma,
 		get_file(new->vm_file);
 		if (is_dma_buf_file(new->vm_file)) {
 			int acct_err = dma_buf_account_task(new->vm_file->private_data,
-							    new->vm_mm->dmabuf_info);
+							    new->vm_mm->abi_extend->dmabuf_info);
 
 			if (acct_err)
 				pr_err("failed to account dmabuf, err %d\n", acct_err);
