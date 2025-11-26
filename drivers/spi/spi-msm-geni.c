@@ -2305,6 +2305,36 @@ static void geni_spi_handle_rx(struct spi_geni_master *mas)
 	mas->rx_rem_bytes -= rx_bytes;
 }
 
+/**
+ * spi_geni_is_dma_xfer_done() - Check if DMA transfer is complete
+ * @mas: SPI master structure
+ * @dma_tx_status: TX DMA status
+ * @dma_rx_status: RX DMA status
+ *
+ * Determines if the current DMA transfer is complete based on the transfer
+ * type (full-duplex, TX-only, or RX-only) and corresponding DMA done flags.
+ *
+ * Return: true if transfer is complete, false otherwise
+ */
+static bool spi_geni_is_dma_xfer_done(struct spi_geni_master *mas,
+				      u32 dma_tx_status, u32 dma_rx_status)
+{
+	if (!mas->cur_xfer)
+		return false;
+
+	if (mas->cur_xfer->tx_buf && mas->cur_xfer->rx_buf)
+		return (dma_tx_status & TX_DMA_DONE) && (dma_rx_status & RX_DMA_DONE) &&
+			!mas->tx_rem_bytes && !mas->rx_rem_bytes;
+
+	if (mas->cur_xfer->tx_buf)
+		return (dma_tx_status & TX_DMA_DONE) && !mas->tx_rem_bytes;
+
+	if (mas->cur_xfer->rx_buf)
+		return (dma_rx_status & RX_DMA_DONE) && !mas->rx_rem_bytes;
+
+	return false;
+}
+
 static irqreturn_t geni_spi_irq(int irq, void *data)
 {
 	struct spi_geni_master *mas = data;
@@ -2375,9 +2405,7 @@ static irqreturn_t geni_spi_irq(int irq, void *data)
 			mas->tx_rem_bytes = 0;
 		if (dma_rx_status & RX_DMA_DONE)
 			mas->rx_rem_bytes = 0;
-		if (!mas->tx_rem_bytes && !mas->rx_rem_bytes &&
-			(dma_tx_status & TX_DMA_DONE) &&
-			(dma_rx_status & RX_DMA_DONE))
+		if (spi_geni_is_dma_xfer_done(mas, dma_tx_status, dma_rx_status))
 			mas->cmd_done = true;
 		if ((m_irq & M_CMD_CANCEL_EN) || (m_irq & M_CMD_ABORT_EN))
 			mas->cmd_done = true;
