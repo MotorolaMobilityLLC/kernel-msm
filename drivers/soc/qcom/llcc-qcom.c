@@ -89,7 +89,6 @@
 #define SLC_SCT_FAIL                    (0x005343544641494c) /* SCT programming failed */
 #define SLC_SCT_NAME_LEN                (15)
 
-
 /**
  * llcc_slice_config - Data associated with the llcc slice
  * @usecase_id: Unique id for the client's use case
@@ -216,6 +215,28 @@ struct slc_sct_details {
 struct slc_tcm_mem_info {
 	uint32_t is_present;
 	uint32_t offset;
+};
+
+/**
+ * slc_tcm_region - TCM region descriptor
+ * @usecase_id: Usecase ID of TCM region
+ * @size: size of TCM region
+ * @start_address: start address of TCM
+ */
+struct slc_tcm_region {
+	uint32_t usecase_id;
+	uint32_t size;
+	uint64_t start_address;
+};
+
+/**
+ * slc_tcm_mem - Shared memory structure for TCM configs
+ * @num_tcm_regions: Number of TCM regions present
+ * @tcm_regions: Array of TCM region descriptors
+ */
+struct slc_tcm_mem {
+	uint64_t num_tcm_regions;
+	struct slc_tcm_region tcm_regions[];
 };
 
 /**
@@ -808,6 +829,7 @@ static const struct qcom_llcc_config neo_cfg[] = {
 };
 
 static struct llcc_drv_data *drv_data = (void *) -EPROBE_DEFER;
+static struct slc_tcm_mem *slc_tcm_shmem = (void *) -EPROBE_DEFER;
 static DEFINE_MUTEX(dev_avail);
 
 struct llcc_tcm_drv_data {
@@ -835,6 +857,7 @@ static int qcom_llcc_tcm_init(struct platform_device *pdev,
 		struct device_node *node, struct llcc_drv_data *drv_data)
 {
 	u32 i;
+	u64 idx;
 	int ret;
 	struct resource r;
 
@@ -881,16 +904,42 @@ static int qcom_llcc_tcm_init(struct platform_device *pdev,
 		}
 		tcm_drv_data->tcm_data->mem_size = tcm_drv_data->tcm_slice->slice_size * SZ_1K;
 	} else {
-		tcm_drv_data->tcm_slice = llcc_slice_getd(LLCC_TCM_WIFI);
-		if (IS_ERR_OR_NULL(tcm_drv_data->tcm_slice)) {
-			pr_err("Failed to get tcm slice from llcc driver\n");
+		if (IS_ERR_OR_NULL(slc_tcm_shmem)) {
+			pr_err("Failed to get slc tcm region\n");
 			ret = -ENODEV;
 			goto cfg_err;
 		}
-		tcm_drv_data->tcm_data->mem_size = resource_size(&r);
+
+		for (idx = 0; idx < slc_tcm_shmem->num_tcm_regions; ++idx) {
+			struct slc_tcm_region *r = &slc_tcm_shmem->tcm_regions[idx];
+
+			if (r->size != 0) {
+				tcm_drv_data->tcm_slice = llcc_slice_getd(r->usecase_id);
+				if (IS_ERR_OR_NULL(tcm_drv_data->tcm_slice)) {
+					pr_err("Failed to get tcm slice from llcc driver\n");
+					ret = -ENODEV;
+					goto cfg_err;
+				}
+
+				tcm_drv_data->tcm_data->mem_size = r->size * SZ_1K;
+				tcm_drv_data->tcm_data->phys_addr = r->start_address;
+
+				dev_dbg(&pdev->dev, "TCM ioremap: phys_addr = 0x%pa, size = %zu\n",
+					&tcm_drv_data->tcm_data->phys_addr,
+					(size_t)tcm_drv_data->tcm_data->mem_size);
+				break;
+			}
+		}
+
+		if (idx >= slc_tcm_shmem->num_tcm_regions) {
+			pr_err("No tcm region available\n");
+			ret = -ENODEV;
+			goto cfg_err;
+		}
 	}
 	tcm_drv_data->tcm_data->virt_addr = ioremap(tcm_drv_data->tcm_data->phys_addr,
 			tcm_drv_data->tcm_data->mem_size);
+
 	if (IS_ERR_OR_NULL(tcm_drv_data->tcm_data->virt_addr)) {
 		ret = -ENOMEM;
 		goto slice_cfg_err;
@@ -1680,6 +1729,28 @@ static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 				((struct slc_sct_mem_v1 *)slc_mem)->sct_details.revision);
 		dev_dbg(dev, "SCT Table name: %s\n",
 				((struct slc_sct_mem_v1 *)slc_mem)->sct_details.name);
+		if (((struct slc_sct_mem_v1 *)slc_mem)->tcm_mem_info.is_present) {
+			slc_tcm_shmem = (struct slc_tcm_mem *)(((char *)(slc_mem)) +
+					(((struct slc_sct_mem_v1 *)slc_mem)->tcm_mem_info.offset));
+
+			if (!IS_ERR_OR_NULL(slc_tcm_shmem)) {
+				dev_dbg(dev,
+					"TCM shared memory @ %p, num_tcm_regions = %llu\n",
+					slc_tcm_shmem,
+					slc_tcm_shmem->num_tcm_regions);
+
+				for (u64 idx = 0; idx < slc_tcm_shmem->num_tcm_regions; ++idx) {
+					struct slc_tcm_region *r = &slc_tcm_shmem->tcm_regions[idx];
+
+					dev_dbg(dev,
+						"  TCM[%llu]: usecase_id = 0x%08x, size = 0x%08x, start_address = 0x%016llx\n",
+						idx,
+						r->usecase_id,
+						r->size,
+						r->start_address);
+				}
+			}
+		}
 		break;
 	default:
 		dev_err(dev, "Invalid slc_sct_mem version\n");
