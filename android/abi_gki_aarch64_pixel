@@ -437,6 +437,7 @@
   devm_clk_bulk_get_optional
   devm_clk_get
   devm_clk_get_optional
+  devm_clk_get_optional_enabled
   devm_clk_hw_register
   devm_clk_put
   devm_devfreq_add_device
@@ -627,6 +628,7 @@
   dma_fence_context_alloc
   dma_fence_default_wait
   dma_fence_enable_sw_signaling
+  dma_fence_free
   dma_fence_get_status
   dma_fence_init
   dma_fence_release
@@ -715,6 +717,7 @@
   drm_atomic_get_plane_state
   drm_atomic_get_private_obj_state
   drm_atomic_helper_async_check
+  drm_atomic_helper_async_commit
   drm_atomic_helper_bridge_destroy_state
   __drm_atomic_helper_bridge_duplicate_state
   drm_atomic_helper_bridge_duplicate_state
@@ -731,6 +734,7 @@
   drm_atomic_helper_commit_cleanup_done
   drm_atomic_helper_commit_duplicated_state
   drm_atomic_helper_commit_hw_done
+  drm_atomic_helper_commit_modeset_disables
   drm_atomic_helper_commit_modeset_enables
   drm_atomic_helper_commit_planes
   drm_atomic_helper_commit_tail
@@ -766,7 +770,9 @@
   drm_atomic_helper_update_legacy_modeset_state
   drm_atomic_helper_update_plane
   drm_atomic_helper_wait_for_dependencies
+  drm_atomic_helper_wait_for_fences
   drm_atomic_helper_wait_for_flip_done
+  drm_atomic_helper_wait_for_vblanks
   drm_atomic_nonblocking_commit
   drm_atomic_normalize_zpos
   drm_atomic_private_obj_fini
@@ -927,6 +933,7 @@
   drm_prime_pages_to_sg
   drm_prime_sg_to_page_array
   drm_printf
+  __drm_printfn_coredump
   __drm_printfn_debug
   __drm_printfn_info
   __drm_printfn_seq_file
@@ -942,6 +949,7 @@
   drm_property_create_signed_range
   drm_property_lookup_blob
   drm_property_replace_blob
+  __drm_puts_coredump
   __drm_puts_seq_file
   drm_read
   drm_rect_clip_scaled
@@ -952,6 +960,7 @@
   drm_send_event
   drm_send_event_locked
   drm_simple_encoder_init
+  drm_state_dump
   drm_sysfs_connector_property_event
   drm_universal_plane_init
   drm_vblank_init
@@ -1182,6 +1191,7 @@
   i2c_find_adapter_by_fwnode
   i2c_find_device_by_fwnode
   i2c_for_each_dev
+  i2c_freq_mode_string
   i2c_generic_scl_recovery
   i2c_get_adapter
   i2c_match_id
@@ -1527,6 +1537,8 @@
   __list_add_valid_or_report
   __list_del_entry_valid_or_report
   list_sort
+  llist_add_batch
+  llist_reverse_order
   __local_bh_enable_ip
   lock_sock_nested
   log_abnormal_wakeup_reason
@@ -1541,6 +1553,7 @@
   mac_pton
   mas_empty_area_rev
   mas_find
+  mas_prev
   max_load_balance_interval
   mbox_chan_received_data
   mbox_chan_txdone
@@ -2949,6 +2962,7 @@
   tty_termios_baud_rate
   tty_termios_encode_baud_rate
   typec_mux_get_drvdata
+  typec_mux_put
   typec_mux_register
   typec_mux_set
   typec_mux_unregister
