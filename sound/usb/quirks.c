@@ -45,6 +45,8 @@ static const struct usb_audio_quirk_flags_table snd_quirk_flags_table[] = {
 		   QUIRK_FLAG_CTL_MSG_DELAY),
 		DEVICE_FLG(0x1532, 0x0504,
 		   QUIRK_FLAG_CTL_MSG_DELAY),
+		DEVICE_FLG(0xbe57, 0x0238,
+		   QUIRK_FLAG_CTL_MSG_DELAY_5M),
 		{} /* terminator */
 };
 
@@ -154,7 +156,7 @@ void xhci_init_snd_quirk(struct snd_usb_audio *chip)
 					  p->flags, USB_ID_VENDOR(chip->usb_id),
 					  USB_ID_PRODUCT(chip->usb_id));
 			chip->quirk_flags |= p->flags;
-			return;
+			break;
 		}
 	}
 
