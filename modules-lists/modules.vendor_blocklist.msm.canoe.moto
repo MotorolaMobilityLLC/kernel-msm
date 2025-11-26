@@ -6,3 +6,4 @@
 blocklist watchdogtest
 blocklist moto_pm_vh
 blocklist goodix_fod_mmi
+blocklist zram
