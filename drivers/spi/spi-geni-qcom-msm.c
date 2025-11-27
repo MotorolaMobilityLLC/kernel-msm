@@ -1511,7 +1511,11 @@ static int __maybe_unused spi_geni_resume(struct device *dev)
 	if (ret)
 		return ret;
 	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
-		mas->last_mode = 0;
+		/*
+		 * Initialize last_mode to 0xFF during system resume
+		 * to force hardware reconfiguration after DSQB.
+		 */
+		mas->last_mode = 0xFF;
 		mas->cur_xfer_mode = GENI_SE_INVALID;
 		ret = spi_geni_init(mas);
 		if (ret) {
