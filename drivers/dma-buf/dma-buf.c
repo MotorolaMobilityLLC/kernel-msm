@@ -29,12 +29,12 @@
 #include <linux/mm.h>
 #include <linux/mount.h>
 #include <linux/pseudo_fs.h>
-#include <linux/fdtable.h>
 
 #include <uapi/linux/dma-buf.h>
 #include <uapi/linux/magic.h>
 
 #ifndef __GENKSYMS__
+#include <linux/fdtable.h>
 #include <trace/events/kmem.h>
 #endif
 #include <trace/hooks/dmabuf.h>
