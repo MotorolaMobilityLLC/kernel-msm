@@ -43575,6 +43575,11 @@ member {
   offset: 96
 }
 member {
+  id: 0x355c8e01
+  type_id: 0x5a5c7df4
+  offset: 9344
+}
+member {
   id: 0x3568359b
   type_id: 0x5a8e8177
   offset: 128
@@ -50380,12 +50385,6 @@ member {
   name: "android_backport_reserved1"
   type_id: 0x92233392
   offset: 18176
-}
-member {
-  id: 0xb26b83b7
-  name: "android_backport_reserved1"
-  type_id: 0x92233392
-  offset: 9344
 }
 member {
   id: 0xb26b8cac
@@ -83445,6 +83444,12 @@ member {
   id: 0x32b44094
   name: "dmabuf_info"
   type_id: 0x12f234f7
+}
+member {
+  id: 0x32b4483a
+  name: "dmabuf_info"
+  type_id: 0x12f234f7
+  offset: 768
 }
 member {
   id: 0x810e204c
@@ -221924,7 +221929,7 @@ struct_union {
     member_id: 0x090040f7
     member_id: 0xca4d1cc3
     member_id: 0x2d0816df
-    member_id: 0xb26b83b7
+    member_id: 0x355c8e01
   }
 }
 struct_union {
@@ -226680,6 +226685,16 @@ struct_union {
   definition {
     bytesize: 8
     member_id: 0x32c16e78
+    member_id: 0x2ef635de
+    member_id: 0x36752b74
+  }
+}
+struct_union {
+  id: 0x5a5c7df4
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0x32b44094
     member_id: 0x2ef635de
     member_id: 0x36752b74
   }
@@ -243862,6 +243877,7 @@ struct_union {
     member_id: 0x3b07b402
     member_id: 0xf0dd114d
     member_id: 0x654043c9
+    member_id: 0x32b4483a
     member_id: 0xfca11463
     member_id: 0xa92fa8fd
     member_id: 0x1aac0c74
