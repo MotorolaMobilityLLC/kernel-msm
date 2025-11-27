@@ -1245,10 +1245,15 @@ static int geni_spi_power_state(struct device *dev, bool power_on)
 	struct device *pwr_dev = mas->pd_list->pd_devs[DOMAIN_IDX_POWER];
 	int ret;
 
-	if (power_on)
+	if (power_on) {
 		ret = pm_runtime_resume_and_get(pwr_dev);
-	else
+	} else {
+		ret = mas->dev_data->geni_spi_set_rate(mas->se.dev, 1000);
+		if (ret)
+			return ret;
+
 		ret = pm_runtime_put_sync(pwr_dev);
+	}
 
 	if (ret)
 		dev_err(mas->se.dev, "failed to switch power state(high=%d) ret=%d\n",
