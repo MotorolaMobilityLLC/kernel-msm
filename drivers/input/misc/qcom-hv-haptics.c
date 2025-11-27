@@ -3527,7 +3527,8 @@ static int haptics_upload_effect(struct input_dev *dev,
 		}
 
 #ifdef CONFIG_RICHTAP_FOR_PMIC_ENABLE
-		if (atomic_read(&chip->play.fifo_status.is_busy)) {
+		if (atomic_read(&chip->play.fifo_status.is_busy) ||
+			atomic_read(&chip->richtap_mode)) {
 			dev_err(chip->dev, "fifo play is on going\n");
 			rc = -EINVAL;
 			goto restore;
@@ -4722,7 +4723,11 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 			} while (num_rt > 0 && atomic_read(&chip->richtap_mode));
 
 			dev_dbg(chip->dev, "update fifo len %d\n", pos);
-			if (pos != 0) {
+			if (pos > RICHTAP_PRGM_RELOAD_SIZE) {
+				pos = RICHTAP_PRGM_RELOAD_SIZE;
+			}
+
+			if (pos > 0) {
 				rc = haptics_update_fifo_samples(chip, chip->rtp_ptr, (u32)pos, true);
 				if (rc < 0) {
 					dev_err(chip->dev,
