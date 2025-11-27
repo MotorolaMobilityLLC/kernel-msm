@@ -67,7 +67,10 @@
 #include <linux/time_namespace.h>
 #include <linux/user_events.h>
 #include <linux/page_size_compat.h>
+
+#ifndef __GENKSYMS__
 #include <linux/dma-buf.h>
+#endif
 
 #include <linux/uaccess.h>
 #include <asm/mmu_context.h>
