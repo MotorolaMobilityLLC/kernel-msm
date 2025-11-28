@@ -2007,6 +2007,7 @@
 # required by snd-soc-lpass-va-macro.ko
   clk_hw_get_clk
   dapm_regulator_event
+  devm_clk_hw_get_clk
   regcache_sync_region
 
 # required by snd-soc-lpass-wsa-macro.ko
