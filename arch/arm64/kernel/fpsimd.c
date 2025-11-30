@@ -1234,8 +1234,10 @@ void fpsimd_release_task(struct task_struct *dead_task)
  */
 void sme_alloc(struct task_struct *task, bool flush)
 {
-	if (task->thread.za_state && flush) {
-		memset(task->thread.za_state, 0, za_state_size(task));
+	if (task->thread.za_state) {
+		if (flush)
+			memset(task->thread.za_state, 0,
+			       za_state_size(task));
 		return;
 	}
 
@@ -1476,6 +1478,8 @@ void do_sme_acc(unsigned long esr, struct pt_regs *regs)
 		sme_set_vq(vq_minus_one);
 
 		fpsimd_bind_task_to_cpu();
+	} else {
+		fpsimd_flush_task_state(current);
 	}
 
 	put_cpu_fpsimd_context();

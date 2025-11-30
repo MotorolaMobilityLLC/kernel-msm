@@ -80,6 +80,8 @@
 #include <linux/user_namespace.h>
 #include <linux/indirect_call_wrapper.h>
 
+#include <trace/hooks/net.h>
+
 #include "dev.h"
 #include "sock_destructor.h"
 
@@ -294,6 +296,7 @@ static void __build_skb_around(struct sk_buff *skb, void *data,
 	atomic_set(&shinfo->dataref, 1);
 
 	skb_set_kcov_handle(skb, kcov_common_handle());
+	trace_android_vh_build_skb_around(skb);
 }
 
 /**

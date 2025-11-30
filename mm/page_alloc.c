@@ -256,6 +256,12 @@ EXPORT_PER_CPU_SYMBOL(_numa_mem_);
 
 static DEFINE_MUTEX(pcpu_drain_mutex);
 
+struct per_cpu_zone_extra_data {
+	unsigned long	__percpu *pad;
+};
+
+static struct per_cpu_zone_extra_data zones_extra_data[__MAX_NR_ZONES];
+
 #ifdef CONFIG_GCC_PLUGIN_LATENT_ENTROPY
 volatile unsigned long latent_entropy __latent_entropy;
 EXPORT_SYMBOL(latent_entropy);
@@ -3341,6 +3347,8 @@ static struct list_head *get_populated_pcp_list(struct zone *zone,
 		int batch = READ_ONCE(pcp->batch);
 		int alloced;
 
+		trace_android_vh_nr_pcp_alloc(pcp, zone, &(zones_extra_data[zone_idx(zone)].pad),
+			order, &batch);
 		trace_android_vh_rmqueue_bulk_bypass(order, pcp, migratetype, list);
 		if (!list_empty(list))
 			return list;
@@ -3641,6 +3649,8 @@ static void free_unref_page_commit(struct zone *zone, struct per_cpu_pages *pcp,
 	int pindex;
 	bool free_high;
 
+	trace_android_vh_pcp_alloc_factor_adjust(zone, zones_extra_data[zone_idx(zone)].pad,
+			pcp, page, migratetype, order);
 	__count_vm_events(PGFREE, 1 << order);
 	pindex = order_to_pindex(migratetype, order);
 	list_add(&page->pcp_list, &pcp->lists[pindex]);
@@ -3722,6 +3732,7 @@ void free_unref_page_list(struct list_head *list)
 	struct zone *locked_zone = NULL;
 	int batch_count = 0;
 	int migratetype;
+	bool skip_free = false;
 
 	/* Prepare pages for freeing */
 	list_for_each_entry_safe(page, next, list, lru) {
@@ -3742,6 +3753,10 @@ void free_unref_page_list(struct list_head *list)
 			continue;
 		}
 	}
+
+	trace_android_vh_free_unref_page_list_bypass(list, &skip_free);
+	if (skip_free)
+		return;
 
 	list_for_each_entry_safe(page, next, list, lru) {
 		struct zone *zone = page_zone(page);
@@ -5416,6 +5431,14 @@ restart:
 	}
 
 retry:
+	/*
+	 * Deal with possible cpuset update races or zonelist updates to avoid
+	 * infinite retries.
+	 */
+	if (check_retry_cpuset(cpuset_mems_cookie, ac) ||
+	    check_retry_zonelist(zonelist_iter_cookie))
+		goto restart;
+
 	/* Ensure kswapd doesn't accidentally go to sleep as long as we loop */
 	if (alloc_flags & ALLOC_KSWAPD)
 		wake_all_kswapds(order, gfp_mask, ac);
@@ -5806,7 +5829,7 @@ EXPORT_SYMBOL_GPL(__alloc_pages_bulk);
 struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
 							nodemask_t *nodemask)
 {
-	struct page *page;
+	struct page *page = NULL;
 	unsigned int alloc_flags = ALLOC_WMARK_LOW;
 	gfp_t alloc_gfp; /* The gfp_t that was actually used for allocation */
 	struct alloc_context ac = { };
@@ -5832,6 +5855,9 @@ struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
 			&alloc_gfp, &alloc_flags))
 		return NULL;
 
+	trace_android_rvh_try_alloc_pages_gfp(&page, order, gfp, gfp_zone(gfp));
+	if (page)
+		goto out;
 	/*
 	 * Forbid the first pass from falling back to types that fragment
 	 * memory until all local zones are considered.
@@ -7937,7 +7963,7 @@ static inline void setup_usemap(struct zone *zone) {}
 /* Initialise the number of pages represented by NR_PAGEBLOCK_BITS */
 void __init set_pageblock_order(void)
 {
-	unsigned int order = MAX_ORDER - 1;
+	unsigned int order = PAGE_BLOCK_ORDER - 1;
 
 	/* Check that pageblock_nr_pages has not already been setup */
 	if (pageblock_order)

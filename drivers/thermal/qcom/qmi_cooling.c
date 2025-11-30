@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) "%s:%s " fmt, KBUILD_MODNAME, __func__
@@ -118,6 +118,8 @@ static char  device_clients[][QMI_TMD_MITIGATION_DEV_ID_LENGTH_MAX_V01] = {
 	{"mmw3_sub1_dsc"},
 	{"mmw_ific_sub1_dsc"},
 	{"bcl"},
+	{"rfid_cycle_dsc"},
+	{"rfid_txpower_dsc"},
 };
 
 static int qmi_get_max_state(struct thermal_cooling_device *cdev,

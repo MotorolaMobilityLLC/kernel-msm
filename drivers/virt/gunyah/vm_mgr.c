@@ -272,6 +272,7 @@ static void gh_vm_clean_resources(struct gh_vm *ghvm)
 	}
 
 	list_for_each_entry_safe(ghrsc, riter, &ghvm->resources, list) {
+		list_del(&ghrsc->list);
 		gh_rm_free_resource(ghrsc);
 	}
 	mutex_unlock(&ghvm->resources_lock);

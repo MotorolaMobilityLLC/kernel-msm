@@ -37,6 +37,10 @@ DECLARE_HOOK(android_vh_hibernate_state,
 		TP_PROTO(int error),
 		TP_ARGS(error));
 
+DECLARE_HOOK(android_vh_fas_gpu_qos_update_tracer,
+		TP_PROTO(struct freq_qos_request *req, s32 *value),
+		TP_ARGS(req, value));
+
 #endif /* _TRACE_HOOK_POWER_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

@@ -364,6 +364,7 @@
   drm_connector_attach_encoder
   drm_connector_cleanup
   drm_connector_has_possible_encoder
+  drm_connector_helper_hpd_irq_event
   drm_connector_init
   drm_connector_init_with_ddc
   drm_connector_list_iter_begin
@@ -2163,6 +2164,7 @@
   pinconf_generic_parse_dt_config
   pinctrl_force_default
   pinctrl_force_sleep
+  pinctrl_register_mappings
   pin_get_name
 
 # required by pl330.ko
