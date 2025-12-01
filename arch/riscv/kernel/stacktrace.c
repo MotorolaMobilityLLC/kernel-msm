@@ -33,6 +33,7 @@
 })
 
 extern asmlinkage void handle_exception(void);
+extern unsigned long ret_from_exception_end;
 
 static inline int fp_is_valid(unsigned long fp, unsigned long sp)
 {
@@ -88,7 +89,8 @@ void notrace walk_stackframe(struct task_struct *task, struct pt_regs *regs,
 			pc = READ_ONCE_TASK_STACK(task, frame->ra);
 			pc = ftrace_graph_ret_addr(current, &graph_idx, pc,
 						   &frame->ra);
-			if (pc == (unsigned long)handle_exception) {
+			if (pc >= (unsigned long)handle_exception &&
+			    pc < (unsigned long)&ret_from_exception_end) {
 				if (unlikely(!__kernel_text_address(pc) || !fn(arg, pc)))
 					break;
 
