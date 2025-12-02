@@ -666,7 +666,7 @@ void put_dmabuf_info(struct task_dma_buf_info *dmabuf_info)
 */
 int dma_buf_begin_new_exec(struct files_struct *old_files)
 {
-	struct task_dma_buf_info *new_dmabuf_info = alloc_task_dma_buf_info();
+	struct task_dma_buf_info *new_dmabuf_info;
 	struct task_dma_buf_info *old_dmabuf_info = current->dmabuf_info;
 	struct files_struct *my_files = current->files;
 
