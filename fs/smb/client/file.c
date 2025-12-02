@@ -2747,8 +2747,10 @@ static void cifs_extend_writeback(struct address_space *mapping,
 				  loff_t start,
 				  int max_pages,
 				  loff_t max_len,
-				  size_t *_len)
+				  size_t *_len,
+				  unsigned long long i_size)
 {
+	struct inode *inode = mapping->host;
 	struct folio_batch batch;
 	struct folio *folio;
 	unsigned int nr_pages;
@@ -2779,7 +2781,7 @@ static void cifs_extend_writeback(struct address_space *mapping,
 
 			if (!folio_try_get(folio)) {
 				xas_reset(xas);
-				continue;
+				break;
 			}
 			nr_pages = folio_nr_pages(folio);
 			if (nr_pages > max_pages) {
@@ -2799,6 +2801,15 @@ static void cifs_extend_writeback(struct address_space *mapping,
 				xas_reset(xas);
 				break;
 			}
+
+			/* if file size is changing, stop extending */
+			if (i_size_read(inode) != i_size) {
+				folio_unlock(folio);
+				folio_put(folio);
+				xas_reset(xas);
+				break;
+			}
+
 			if (!folio_test_dirty(folio) ||
 			    folio_test_writeback(folio)) {
 				folio_unlock(folio);
@@ -2934,7 +2945,8 @@ static ssize_t cifs_write_back_from_locked_folio(struct address_space *mapping,
 
 			if (max_pages > 0)
 				cifs_extend_writeback(mapping, xas, &count, start,
-						      max_pages, max_len, &len);
+						      max_pages, max_len, &len,
+						      i_size);
 		}
 	}
 	len = min_t(unsigned long long, len, i_size - start);
