@@ -68,7 +68,9 @@
 #include <linux/gfp.h>
 #include <linux/migrate.h>
 #include <linux/string.h>
+#ifndef __GENKSYMS__
 #include <linux/shmem_fs.h>
+#endif
 #include <linux/memory-tiers.h>
 #include <linux/debugfs.h>
 #include <linux/userfaultfd_k.h>
