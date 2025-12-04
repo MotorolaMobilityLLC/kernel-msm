@@ -17,6 +17,7 @@
 #include <linux/seq_file.h>
 #include <linux/proc_fs.h>
 #endif
+#include <linux/moduleparam.h>
 
 /* SDAM NVMEM register offsets: */
 #define REG_SDAM_COUNT		0x45
@@ -243,6 +244,9 @@ static u16	pon_log_buf_idx = 0;
 static char	pon_log_buf[PON_LOG_BUF_SIZE];
 static struct proc_dir_entry *procfs_file;
 #endif
+
+static int enable_pmic_fault_panic = 0;
+module_param(enable_pmic_fault_panic, int, 0644);
 
 static bool pmic_pon_entry_is_important(const struct pmic_pon_log_entry *entry)
 {
@@ -818,7 +822,9 @@ static int pmic_pon_log_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "PMIC PON log parsing failed, ret=%d\n",
 			ret);
 
-	if (of_property_read_bool(pdev->dev.of_node, "qcom,pmic-fault-panic"))
+	pr_info("PMIC PON log: enable_pmic_fault_panic=%d",enable_pmic_fault_panic);
+	//if (of_property_read_bool(pdev->dev.of_node, "qcom,pmic-fault-panic"))
+	if (enable_pmic_fault_panic)
 		pmic_pon_log_fault_panic(pon_dev);
 
 #ifdef CONFIG_MOT_PON_LOG
