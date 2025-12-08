@@ -1227,6 +1227,29 @@ TRACE_EVENT(sched_select_task_rt,
 		__entry->reduce_mask, __entry->lowest_mask)
 );
 
+TRACE_EVENT(sched_select_energy_order_rt,
+
+	TP_PROTO(int order, int end, int cluster, int target),
+
+	TP_ARGS(order, end, cluster, target),
+
+	TP_STRUCT__entry(
+		__field(int,		order)
+		__field(int,		end)
+		__field(int,		cluster)
+		__field(int,		target)
+	),
+
+	TP_fast_assign(
+		__entry->order		= order;
+		__entry->end		= end;
+		__entry->cluster		= cluster;
+		__entry->target		= target;
+	),
+
+	TP_printk("order=%d end=%d cluster=%d target=%d", __entry->order, __entry->end, __entry->cluster, __entry->target)
+);
+
 TRACE_EVENT(sched_rt_find_lowest_rq,
 
 	TP_PROTO(struct task_struct *p, int fastpath, int best_cpu, struct cpumask *lowest_mask),
