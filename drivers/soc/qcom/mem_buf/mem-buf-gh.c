@@ -721,6 +721,7 @@ static void mem_buf_relinquish_work(struct work_struct *work)
 	kfree(rmt_msg);
 }
 
+#ifdef CONFIG_RECLAIM_LENT_MEMORY
 void mem_buf_relinquish_all_mem(gh_vmid_t vmid)
 {
 	struct mem_buf_xfer_mem *xfer_mem_iter, *tmp, *xfer_mem = NULL;
@@ -752,6 +753,7 @@ u64 mem_buf_account_all_mem(void)
 
 	return total_size;
 }
+#endif /*CONFIG_RECLAIM_LENT_MEMORY*/
 
 static int mem_buf_alloc_resp_hdlr(void *msgq, void *msg_buf, size_t size, void *out_buf)
 {
