@@ -1226,28 +1226,99 @@ TRACE_EVENT(sched_select_task_rt,
 		__entry->pid, __entry->comm, __entry->fastpath, __entry->new_cpu,
 		__entry->reduce_mask, __entry->lowest_mask)
 );
+TRACE_EVENT(sched_choose_backup_cpu_rt,
 
-TRACE_EVENT(sched_select_energy_order_rt,
+	TP_PROTO(int cpu, unsigned long cap, long  over, int nr, int bkcpu, long  bkover, int bknr, int cpu_normalized, int backupnormalized),
 
-	TP_PROTO(int order, int end, int cluster, int target),
-
-	TP_ARGS(order, end, cluster, target),
+	TP_ARGS(cpu, cap, over, nr, bkcpu, bkover, bknr, cpu_normalized, backupnormalized),
 
 	TP_STRUCT__entry(
-		__field(int,		order)
-		__field(int,		end)
-		__field(int,		cluster)
-		__field(int,		target)
+		__field(int,				cpu)
+		__field(unsigned long,		cap)
+		__field(long,				over)
+		__field(int,				nr)
+		__field(int,				bkcpu)
+		__field(long,				bkover)
+		__field(int,				bknr)
+		__field(int,				cpu_normalized)
+		__field(int,				backupnormalized)
 	),
 
 	TP_fast_assign(
-		__entry->order		= order;
-		__entry->end		= end;
-		__entry->cluster		= cluster;
-		__entry->target		= target;
+		__entry->cpu						= cpu;
+		__entry->cap						= cap;
+		__entry->over						= over;
+		__entry->nr							= nr;
+		__entry->bkcpu						= bkcpu;
+		__entry->bkover						= bkover;
+		__entry->bknr						= bknr;
+		__entry->cpu_normalized				= cpu_normalized;
+		__entry->backupnormalized			= backupnormalized;
 	),
 
-	TP_printk("order=%d end=%d cluster=%d target=%d", __entry->order, __entry->end, __entry->cluster, __entry->target)
+	TP_printk("cpu=%d cap=%lu over=%ld nr=%d backcpu=%d backover=%ld bknr=%d normalized=%d bnormalized=%d",
+			__entry->cpu, __entry->cap, __entry->over, __entry->nr,
+			__entry->bkcpu, __entry->bkover, __entry->bknr,
+			__entry->cpu_normalized, __entry->backupnormalized)
+);
+
+TRACE_EVENT(sched_select_energy_cpu_rt,
+
+	TP_PROTO(int order, int end, int cluster, int target, int backup, int strict_cpuover, unsigned long task_util),
+
+	TP_ARGS(order, end, cluster, target, backup, strict_cpuover, task_util),
+
+	TP_STRUCT__entry(
+		__field(int,				order)
+		__field(int,				end)
+		__field(int,				cluster)
+		__field(int,				target)
+		__field(int,				backup)
+		__field(int,				strict_cpuover)
+		__field(unsigned long,		task_util)
+	),
+
+	TP_fast_assign(
+		__entry->order				= order;
+		__entry->end				= end;
+		__entry->cluster			= cluster;
+		__entry->target				= target;
+		__entry->backup				= backup;
+		__entry->strict_cpuover		= strict_cpuover;
+		__entry->task_util			= task_util;
+	),
+
+	TP_printk("order=%d end=%d cluster=%d target=%d backup=%d strict_cpuover=%d tutil=%lu",
+			__entry->order, __entry->end, __entry->cluster, __entry->target,
+			__entry->backup, __entry->strict_cpuover, __entry->task_util)
+);
+
+TRACE_EVENT(sched_normalized_compare_rt,
+
+	TP_PROTO(int cpu, long overcurr, int normalizedcurr, int backup_cpu, long overback, int normalizedback),
+
+	TP_ARGS(cpu, overcurr, normalizedcurr, backup_cpu, overback, normalizedback),
+
+	TP_STRUCT__entry(
+		__field(int,				cpu)
+		__field(long,				overcurr)
+		__field(int,				normalizedcurr)
+		__field(int,				backup_cpu)
+		__field(long,				overback)
+		__field(int,				normalizedback)
+	),
+
+	TP_fast_assign(
+		__entry->cpu					= cpu;
+		__entry->overcurr				= overcurr;
+		__entry->normalizedcurr			= normalizedcurr;
+		__entry->backup_cpu				= backup_cpu;
+		__entry->overback				= overback;
+		__entry->normalizedback			= normalizedback;
+	),
+
+	TP_printk("cpu=%d overcurr=%ld normalizedcurr=%d backup_cpu=%d overback=%ld normalizedback=%d",
+			__entry->cpu, __entry->overcurr, __entry->normalizedcurr, __entry->backup_cpu, __entry->overback, __entry->normalizedback)
 );
 
 TRACE_EVENT(sched_rt_find_lowest_rq,
