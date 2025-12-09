@@ -10,10 +10,39 @@
 #include "trace.h"
 
 #define UX_THREAD_PRIO	98     /* RT priority for UX critical threads like UI and RenderThread */
+#define MAXCPUCAP_POINT_SHIFT 10				/*max cpu cap is 1024*/
+#define MAXCPUCAP_POINT_SCALE (1ULL << MAXCPUCAP_POINT_SHIFT)
+#define MAXCPUCAP_NORMALIZED_VALUE	(MAXCPUCAP_POINT_SCALE * MAXCPUCAP_POINT_SCALE)
 
 static DEFINE_PER_CPU(cpumask_var_t, walt_local_cpu_mask);
 DEFINE_PER_CPU(u64, rt_task_arrival_time) = 0;
 static bool long_running_rt_task_trace_rgstrd;
+
+static unsigned int cpu_reciprocal_table[WALT_NR_CPUS] = {0};
+
+static bool rt_reciprocal_cpu_table_set(int index, unsigned int cap) {
+
+	if(index < 0 || index >= WALT_NR_CPUS)
+		return false;
+
+	cpu_reciprocal_table[index] = MAXCPUCAP_NORMALIZED_VALUE / cap;
+
+	pr_info("walt_local_cpu_reciprocal cpu%d-cap:%u val:%u\n", index, cap, cpu_reciprocal_table[index]);
+
+	return true;
+}
+
+int rt_calculate_normalized_value(int overutil, int index) {
+	if(index < 0 || index >= WALT_NR_CPUS)
+		index = 0;
+
+	/* overutil / cap ≈ (overutil * cpu_reciprocal_table[index]) >> MAXCPUCAP_POINT_SHIFT
+		normalized_value = (overutil / cap) * MAXCPUCAP_POINT_SCALE
+	The temp max value is 1024(overutil max)*8738(cpu_reciprocal_table[index] max)=894712
+	894712 < 2147483647 														 */
+	int temp = (int)overutil * cpu_reciprocal_table[index];
+	return (int)(temp >> MAXCPUCAP_POINT_SHIFT);
+}
 
 static void rt_task_arrival_marker(void *unused, bool preempt,
 	struct task_struct *prev, struct task_struct *next,
@@ -101,6 +130,56 @@ static inline bool is_rt_ux_task(struct task_struct *task)
 		&& uclamp_eff_value(task, UCLAMP_MIN) > 0;
 }
 
+static void walt_rt_choose_overutil_backup_cpu(struct task_struct *task, int cpu, unsigned long tutil, int *backup_cpu,
+												unsigned long *backup_cpu_origcap, int *backup_cpu_overutil, unsigned int *backup_cpu_rtnr)
+{
+	unsigned int cpu_rtnr = UINT_MAX;
+	long cpu_overutil_val = LONG_MAX;
+	int cpu_normalized_value = -1;
+	int backup_normalized_value = -1;
+
+	if(unlikely(!task || !backup_cpu || !backup_cpu_origcap || !backup_cpu_overutil || !backup_cpu_rtnr))
+		return;
+
+	cpu_overutil_val = __cpu_overutilized_relvalue(cpu, tutil);
+	cpu_rtnr = cpu_rq(cpu)->rt.rt_nr_running;
+
+	if(capacity_orig_of(cpu) == *backup_cpu_origcap) {		/*If CPUs have the same capacity, they belong to the same cluster.*/
+		if(unlikely(cpu_rtnr > *backup_cpu_rtnr))
+			return;
+
+		if(cpu_rtnr == *backup_cpu_rtnr ) {
+			if(capacity_of(cpu) < capacity_of(*backup_cpu))
+				return;
+
+			if((capacity_of(cpu) == capacity_of(*backup_cpu)) && cpu != task_cpu(task))
+				return;
+		}
+	}
+	else {			/*If CPU original capacities are not equal, use a normalized calculation. */
+		cpu_normalized_value = rt_calculate_normalized_value(cpu_overutil_val, cpu);
+		backup_normalized_value = rt_calculate_normalized_value(*backup_cpu_overutil, *backup_cpu);
+
+		if(trace_sched_normalized_compare_rt_enabled())
+			trace_sched_normalized_compare_rt(cpu, cpu_overutil_val, cpu_normalized_value, *backup_cpu, *backup_cpu_overutil, backup_normalized_value);
+
+		if(cpu_normalized_value > backup_normalized_value)
+			return;
+
+		if(cpu_normalized_value == backup_normalized_value && capacity_orig_of(cpu) < *backup_cpu_origcap)
+			return;
+	}
+
+	if(trace_sched_choose_backup_cpu_rt_enabled())
+		trace_sched_choose_backup_cpu_rt(cpu, capacity_orig_of(cpu), cpu_overutil_val, cpu_rtnr, *backup_cpu, \
+										*backup_cpu_overutil, *backup_cpu_rtnr, cpu_normalized_value, backup_normalized_value);
+
+	*backup_cpu_origcap = capacity_orig_of(cpu);
+	*backup_cpu_overutil = cpu_overutil_val;
+	*backup_cpu_rtnr = cpu_rtnr;
+	*backup_cpu = cpu;
+}
+
 static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpumask *lowest_mask,
 					  int ret, int *best_cpu)
 {
@@ -116,6 +195,11 @@ static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpuma
 	int order_index = (boost_on_big && num_sched_clusters > 1) ? 1 : 0;
 	int end_index = 0;
 	bool best_cpu_lt = true;
+	bool strict_cpu_overutil = true;
+	int backup_cpu = -1;
+	unsigned long bp_cpu_orig = ULONG_MAX;
+	int bp_cpu_overutil = MAXCPUCAP_POINT_SCALE;
+	unsigned int bp_cpu_rtnr = UINT_MAX;
 
 	if (unlikely(walt_disabled))
 		return;
@@ -125,8 +209,10 @@ static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpuma
 
 	rcu_read_lock();
 
-	if(is_rt_ux_task(task))
+	if(is_rt_ux_task(task)) {
 		end_index = num_sched_clusters - 1;
+		strict_cpu_overutil = false;
+	}
 	else if (soc_feat(SOC_ENABLE_SILVER_RT_SPREAD_BIT) && order_index == 0)
 		end_index = 1;
 
@@ -145,8 +231,12 @@ static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpuma
 			if (sched_cpu_high_irqload(cpu))
 				continue;
 
-			if (__cpu_overutilized(cpu, tutil))
+			if (__cpu_overutilized(cpu, tutil)) {
+				if(!strict_cpu_overutil)
+					walt_rt_choose_overutil_backup_cpu(task, cpu, tutil, &backup_cpu, &bp_cpu_orig, &bp_cpu_overutil, &bp_cpu_rtnr);
+
 				continue;
+			}
 
 			util = cpu_util(cpu);
 
@@ -208,8 +298,11 @@ static void walt_rt_energy_aware_wake_cpu(struct task_struct *task, struct cpuma
 			break;
 	}
 
-	if(trace_sched_select_energy_order_rt_enabled())
-		trace_sched_select_energy_order_rt(order_index, end_index, cluster, *best_cpu);
+	if(*best_cpu == -1 && !strict_cpu_overutil)
+		*best_cpu = backup_cpu;
+
+	if(trace_sched_select_energy_cpu_rt_enabled())
+		trace_sched_select_energy_cpu_rt(order_index, end_index, cluster, *best_cpu, backup_cpu, strict_cpu_overutil, tutil);
 
 	rcu_read_unlock();
 }
@@ -441,6 +534,8 @@ void walt_rt_init(void)
 			pr_err("walt_local_cpu_mask alloc failed for cpu%d\n", i);
 			return;
 		}
+
+		rt_reciprocal_cpu_table_set(i, capacity_orig_of(i));
 	}
 
 	register_trace_android_rvh_select_task_rq_rt(walt_select_task_rq_rt, NULL);
