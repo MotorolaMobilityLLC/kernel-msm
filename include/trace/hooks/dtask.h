@@ -119,6 +119,9 @@ DECLARE_HOOK(android_vh_percpu_rwsem_up_write,
 DECLARE_RESTRICTED_HOOK(android_rvh_percpu_rwsem_wait_complete,
 	TP_PROTO(struct percpu_rw_semaphore *sem, long state, bool *complete),
 	TP_ARGS(sem, state, complete), 1);
+DECLARE_HOOK(android_vh_percpu_rwsem_init,
+	TP_PROTO(struct percpu_rw_semaphore *sem),
+	TP_ARGS(sem));
 
 struct mutex_waiter;
 DECLARE_HOOK(android_vh_alter_mutex_list_add,
