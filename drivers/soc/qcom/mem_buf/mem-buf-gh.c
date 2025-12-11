@@ -616,7 +616,6 @@ static void mem_buf_cleanup_alloc_req(struct mem_buf_xfer_mem *xfer_mem,
 			acl_desc->n_acl_entries = 1;
 			acl_desc->acl_entries[0].vmid = VMID_HLOS;
 			acl_desc->acl_entries[0].perms = GH_RM_ACL_X | GH_RM_ACL_W | GH_RM_ACL_R;
-
 			ret = mem_buf_map_mem_s2(GH_RM_TRANS_TYPE_DONATE, &memparcel_hdl,
 						      acl_desc, &sgl_desc, VMID_TVM);
 			if (ret) {
@@ -929,10 +928,12 @@ static void mem_buf_relinquish_mem(struct mem_buf_desc *membuf)
 	arg.nr_acl_entries = 1;
 	arg.vmids = vmids;
 	arg.perms = perms;
-	arg.flags = GH_RM_MEM_DONATE_SANITIZE;
+	arg.flags = gh_rm_default_trans_type() == GH_RM_TRANS_TYPE_LEND
+			? GH_RM_MEM_LEND_SANITIZE
+			: GH_RM_MEM_DONATE_SANITIZE;
 	arg.label = 0;
 
-	ret = mem_buf_assign_mem(GH_RM_TRANS_TYPE_DONATE, sgt, &arg);
+	ret = mem_buf_assign_mem(gh_rm_default_trans_type(), sgt, &arg);
 	if (ret)
 		goto err_free_sgt;
 

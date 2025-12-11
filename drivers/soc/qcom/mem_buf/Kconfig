@@ -38,6 +38,15 @@ config QCOM_MEM_BUF_MSGQ
 	  requested from another VM.
 	  If unsure, say N.
 
+config MEM_BUF_RM_TRANS_LEND
+    bool "Use LEND for mem_buf RM transfers by default"
+    help
+      Enable this to make mem_buf-to-RM memory transfers use
+      LEND instead of DONATE. This improves
+      reclaim behavior on QTVM crashes and aligns with RM auto-release
+      semantics.
+      If disabled, the default remains SHARE (or DONATE, based on legacy).
+
 config CONFIG_RECLAIM_LENT_MEMORY
 	bool "Qualcomm Technologies, Inc. Reclaim lent memory"
 	help

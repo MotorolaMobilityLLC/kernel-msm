@@ -1451,7 +1451,7 @@ static int virtio_mem_send_plug_request(struct virtio_mem *vm, uint64_t addr,
 	alloc_data.nr_acl_entries = ARRAY_SIZE(vmids);
 	alloc_data.vmids = vmids;
 	alloc_data.perms = perms;
-	alloc_data.trans_type = GH_RM_TRANS_TYPE_LEND;
+	alloc_data.trans_type = gh_rm_default_trans_type();
 	gh_sgl = kzalloc(offsetof(struct gh_sgl_desc, sgl_entries[1]), GFP_KERNEL);
 	if (!gh_sgl)
 		return -ENOMEM;
