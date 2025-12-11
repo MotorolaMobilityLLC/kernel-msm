@@ -2000,6 +2000,7 @@ retry:
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 					if (nr_pages >= HPAGE_PMD_NR) {
 						count_vm_event(THP_SWPOUT_FALLBACK);
+						count_memcg_folio_events(folio, THP_SWPOUT_FALLBACK, 1);
 					}
 					count_mthp_stat(order, MTHP_STAT_SWPOUT_FALLBACK);
 #endif
