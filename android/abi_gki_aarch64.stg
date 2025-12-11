@@ -320101,6 +320101,13 @@ function {
   parameter_id: 0x0ae4a2c7
 }
 function {
+  id: 0x35cdf327
+  return_type_id: 0x045d9eb9
+  parameter_id: 0x0258f96e
+  parameter_id: 0x0ae4a2c7
+  parameter_id: 0x3e10b518
+}
+function {
   id: 0x35de1544
   return_type_id: 0x48b5725f
   parameter_id: 0x9519135f
@@ -386219,6 +386226,15 @@ elf_symbol {
   full_name: "devm_clk_get_optional_enabled"
 }
 elf_symbol {
+  id: 0xcd6f8e13
+  name: "devm_clk_hw_get_clk"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x9051435e
+  type_id: 0x35cdf327
+  full_name: "devm_clk_hw_get_clk"
+}
+elf_symbol {
   id: 0x0d9ec99a
   name: "devm_clk_hw_register"
   is_defined: true
@@ -442591,6 +442607,7 @@ interface {
   symbol_id: 0x4cc1057f
   symbol_id: 0xf569682d
   symbol_id: 0x8837a38c
+  symbol_id: 0xcd6f8e13
   symbol_id: 0x0d9ec99a
   symbol_id: 0x159517e6
   symbol_id: 0x08be3ee4
