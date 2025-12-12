@@ -1500,6 +1500,7 @@ static int cpufreq_online(unsigned int cpu)
 		}
 
 		trace_android_vh_cpufreq_online(policy);
+		trace_android_rvh_cpufreq_create_policy(policy);
 
 		blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 				CPUFREQ_CREATE_POLICY, policy);
