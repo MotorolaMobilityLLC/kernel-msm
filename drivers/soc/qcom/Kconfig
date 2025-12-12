@@ -94,6 +94,12 @@ config MOT_DRV_OIS_MODIFY_VDDIO
         help
           This is enabling OIS modify vddio.
 
+config MOT_DRV_SHAKE_LENS_PROTECTION
+        default n
+        bool "enable LENS_PROTECTION for shake"
+        help
+          This is enabling LENS_PROTECTION for shake.
+
 config MOT_SENSOR_PRE_POWERUP
 	default n
 	bool "enable camera sensor pre powerup"
