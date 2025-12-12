@@ -225,8 +225,10 @@
   __const_udelay
   consume_skb
   contig_page_data
+  contpte_ptep_get
   _copy_from_iter
   __copy_overflow
+  copy_page
   _copy_to_iter
   __cpu_active_mask
   cpu_all_bits
@@ -1111,6 +1113,7 @@
   get_random_u8
   get_reclaim_params
   get_sg_io_hdr
+  get_swap_device
   __get_task_comm
   get_task_cred
   get_task_mm
@@ -1229,6 +1232,7 @@
   i3c_master_register
   i3c_master_set_info
   i3c_master_unregister
+  I_BDEV
   icc_link_create
   icc_node_add
   icc_node_create
@@ -1288,6 +1292,8 @@
   init_wait_entry
   __init_waitqueue_head
   init_wait_var_entry
+  inode_owner_or_capable
+  inode_permission
   input_alloc_absinfo
   input_allocate_device
   input_close_device
@@ -1550,6 +1556,19 @@
   loops_per_jiffy
   lru_cache_disable
   lru_disable_count
+  LZ4_compress_fast
+  LZ4_compress_fast_continue
+  LZ4_compress_HC
+  LZ4_compress_HC_continue
+  LZ4_decompress_safe
+  LZ4_decompress_safe_continue
+  LZ4_loadDict
+  LZ4_loadDictHC
+  LZ4_resetStreamHC
+  LZ4_setStreamDecode
+  lzo1x_1_compress
+  lzo1x_decompress_safe
+  lzorle1x_1_compress
   mac_pton
   mas_empty_area_rev
   mas_find
@@ -1670,6 +1689,7 @@
   netlink_unregister_notifier
   net_ns_type_operations
   net_ratelimit
+  next_arg
   nf_register_net_hooks
   nf_unregister_net_hooks
   nla_find
@@ -1686,6 +1706,7 @@
   noop_llseek
   nr_cpu_ids
   nr_irqs
+  nr_swap_pages
   ns_capable
   ns_capable_noaudit
   nsecs_to_jiffies
@@ -1911,6 +1932,7 @@
   phy_power_on
   phy_set_mode_ext
   phy_set_speed
+  pidfd_get_task
   pid_task
   pinconf_generic_dt_free_map
   pinconf_generic_dt_node_to_map
@@ -2032,6 +2054,7 @@
   pskb_expand_head
   __pskb_pull_tail
   ___pskb_trim
+  __pte_offset_map_lock
   push_cpu_stop
   __put_cred
   put_device
@@ -2100,6 +2123,7 @@
   rdev_get_id
   rdev_get_regmap
   readahead_expand
+  read_comp_algo_dictionary
   reboot_mode
   refcount_dec_not_one
   refcount_warn_saturate
@@ -3217,6 +3241,7 @@
   wakeup_source_unregister
   __wake_up_sync
   wake_up_var
+  walk_page_range
   __warn_printk
   watchdog_init_timeout
   watchdog_register_device
@@ -3257,13 +3282,44 @@
   xhci_set_interrupter_moderation
   xhci_stop_endpoint_sync
   xhci_suspend
+  zlib_deflate
+  zlib_deflateEnd
+  zlib_deflateInit2
+  zlib_deflateReset
+  zlib_deflate_workspacesize
+  zlib_inflate
+  zlib_inflateEnd
+  zlib_inflateInit2
+  zlib_inflateReset
+  zlib_inflate_workspacesize
   zs_compact
   zs_create_pool
   zs_destroy_pool
   zs_free
   zs_get_total_pages
   zs_huge_class_size
+  zs_lookup_class_index
   zs_malloc
   zs_map_object
   zs_pool_stats
+  zstd_cctx_workspace_bound
+  zstd_compress_cctx
+  zstd_compress_using_cdict
+  zstd_create_cctx_advanced
+  zstd_create_cdict_byreference
+  zstd_create_dctx_advanced
+  zstd_create_ddict_byreference
+  zstd_dctx_workspace_bound
+  zstd_decompress_dctx
+  zstd_decompress_using_ddict
+  zstd_default_clevel
+  zstd_free_cctx
+  zstd_free_cdict
+  zstd_free_dctx
+  zstd_free_ddict
+  zstd_get_cparams
+  zstd_get_params
+  zstd_init_cctx
+  zstd_init_dctx
+  zstd_is_error
   zs_unmap_object
