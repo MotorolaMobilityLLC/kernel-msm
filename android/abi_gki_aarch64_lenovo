@@ -1260,6 +1260,7 @@
   __traceiter_android_rvh_wake_up_new_task
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_cpufreq_online
+  __traceiter_android_rvh_cpufreq_create_policy
   __traceiter_android_vh_update_topology_flags_workfn
   __traceiter_binder_transaction_received
   __traceiter_android_vh_alloc_swap_slot_cache
@@ -1287,6 +1288,7 @@
   __tracepoint_android_rvh_wake_up_new_task
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_cpufreq_online
+  __tracepoint_android_rvh_cpufreq_create_policy
   __tracepoint_android_vh_update_topology_flags_workfn
   __tracepoint_binder_transaction_received
   __tracepoint_cpu_frequency_limits
