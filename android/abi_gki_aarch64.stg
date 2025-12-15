@@ -361175,6 +361175,15 @@ elf_symbol {
   full_name: "__traceiter_android_rvh_cpu_util_cfs_boost"
 }
 elf_symbol {
+  id: 0xb3da5d93
+  name: "__traceiter_android_rvh_cpufreq_create_policy"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x47e97219
+  type_id: 0x9ba9c2f7
+  full_name: "__traceiter_android_rvh_cpufreq_create_policy"
+}
+elf_symbol {
   id: 0x1baec33d
   name: "__traceiter_android_rvh_cpufreq_transition"
   is_defined: true
@@ -368535,6 +368544,15 @@ elf_symbol {
   crc: 0x5fcd4eeb
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_rvh_cpu_util_cfs_boost"
+}
+elf_symbol {
+  id: 0xe8729b05
+  name: "__tracepoint_android_rvh_cpufreq_create_policy"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xe0c069f8
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_cpufreq_create_policy"
 }
 elf_symbol {
   id: 0x9f779ef7
@@ -439791,6 +439809,7 @@ interface {
   symbol_id: 0x6c4603a3
   symbol_id: 0x4053abff
   symbol_id: 0xcd9f9741
+  symbol_id: 0xb3da5d93
   symbol_id: 0x1baec33d
   symbol_id: 0xf5806276
   symbol_id: 0x1a7f4cf6
@@ -440609,6 +440628,7 @@ interface {
   symbol_id: 0xb2f08341
   symbol_id: 0x05576f29
   symbol_id: 0xa4ed84bf
+  symbol_id: 0xe8729b05
   symbol_id: 0x9f779ef7
   symbol_id: 0x331f5cf0
   symbol_id: 0xc53e6388
