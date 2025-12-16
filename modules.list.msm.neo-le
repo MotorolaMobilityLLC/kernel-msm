@@ -101,3 +101,4 @@ debug-regulator.ko
 qcom-pdc.ko
 gdsc-regulator.ko
 sdhci-msm-scaling.ko
+qcom_hib.ko

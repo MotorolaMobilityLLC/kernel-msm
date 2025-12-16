@@ -1811,27 +1811,10 @@ static int pinctrl_hibernation_notifier(struct notifier_block *nb,
 								unsigned long event, void *dummy)
 {
 	struct msm_pinctrl *pctrl = msm_pinctrl_data;
-	const struct msm_pinctrl_soc_data *soc = pctrl->soc;
 
 	if (event == PM_HIBERNATION_PREPARE) {
-		pctrl->gpio_regs = kcalloc(soc->ngroups,
-			sizeof(*pctrl->gpio_regs), GFP_KERNEL);
-		if (pctrl->gpio_regs == NULL)
-			return -ENOMEM;
-		if (soc->ntiles) {
-			pctrl->msm_tile_regs = kcalloc(soc->ntiles,
-				sizeof(*pctrl->msm_tile_regs), GFP_KERNEL);
-			if (pctrl->msm_tile_regs == NULL) {
-				kfree(pctrl->gpio_regs);
-				return -ENOMEM;
-			}
-		}
 		pctrl->hibernation = true;
 	} else if (event == PM_POST_HIBERNATION) {
-		kfree(pctrl->gpio_regs);
-		kfree(pctrl->msm_tile_regs);
-		pctrl->gpio_regs = NULL;
-		pctrl->msm_tile_regs = NULL;
 		pctrl->hibernation = false;
 	}
 	return NOTIFY_OK;
@@ -1850,8 +1833,23 @@ static int msm_pinctrl_hibernation_suspend(void)
 	void __iomem *tile_addr = NULL;
 	u32 i, j;
 
-	if (likely(!pctrl->hibernation))
+	if (likely(!pctrl->hibernation) && (pm_suspend_target_state != PM_SUSPEND_MEM ||
+						!IS_ENABLED(CONFIG_DEEPSLEEP)))
 		return 0;
+
+	pctrl->gpio_regs = kcalloc(soc->ngroups,
+		sizeof(*pctrl->gpio_regs), GFP_KERNEL);
+	if (!pctrl->gpio_regs)
+		return -ENOMEM;
+
+	if (soc->ntiles) {
+		pctrl->msm_tile_regs = kcalloc(soc->ntiles,
+			sizeof(*pctrl->msm_tile_regs), GFP_KERNEL);
+		if (!pctrl->msm_tile_regs) {
+			kfree(pctrl->gpio_regs);
+			return -ENOMEM;
+		}
+	}
 
     /* Save direction conn registers for hmss */
 
@@ -1957,6 +1955,11 @@ static void msm_pinctrl_hibernation_resume(void)
 			msm_writel_io(pctrl->gpio_regs[i].io_reg,
 					pctrl, pgroup);
 	}
+
+	kfree(pctrl->gpio_regs);
+	kfree(pctrl->msm_tile_regs);
+	pctrl->gpio_regs = NULL;
+	pctrl->msm_tile_regs = NULL;
 }
 
 static struct syscore_ops msm_pinctrl_pm_ops = {
