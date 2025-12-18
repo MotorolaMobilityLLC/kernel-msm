@@ -189,6 +189,7 @@
   cpus_read_lock
   cpus_read_unlock
   cpu_topology
+  cpuset_cpus_allowed
   crc32_le
   css_next_child
   css_task_iter_end
