@@ -1245,10 +1245,15 @@ static int geni_spi_power_state(struct device *dev, bool power_on)
 	struct device *pwr_dev = mas->pd_list->pd_devs[DOMAIN_IDX_POWER];
 	int ret;
 
-	if (power_on)
+	if (power_on) {
 		ret = pm_runtime_resume_and_get(pwr_dev);
-	else
+	} else {
+		ret = mas->dev_data->geni_spi_set_rate(mas->se.dev, 1000);
+		if (ret)
+			return ret;
+
 		ret = pm_runtime_put_sync(pwr_dev);
+	}
 
 	if (ret)
 		dev_err(mas->se.dev, "failed to switch power state(high=%d) ret=%d\n",
@@ -1506,7 +1511,11 @@ static int __maybe_unused spi_geni_resume(struct device *dev)
 	if (ret)
 		return ret;
 	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
-		mas->last_mode = 0;
+		/*
+		 * Initialize last_mode to 0xFF during system resume
+		 * to force hardware reconfiguration after DSQB.
+		 */
+		mas->last_mode = 0xFF;
 		mas->cur_xfer_mode = GENI_SE_INVALID;
 		ret = spi_geni_init(mas);
 		if (ret) {
