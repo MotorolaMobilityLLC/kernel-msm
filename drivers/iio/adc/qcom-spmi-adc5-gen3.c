@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitops.h>
@@ -1496,6 +1496,10 @@ static const struct adc5_channels adc5_gen4_chans_pmic[ADC5_MAX_CHANNEL] = {
 						SCALE_HW_CALIB_THERM_100K_PU_PM7)
 	[ADC5_GEN4_AMUX4_GPIO_100K_PU]	= ADC5_CHAN_TEMP("amux4_gpio_pu2", 0,
 						SCALE_HW_CALIB_THERM_100K_PU_PM7)
+	[ADC5_GEN4_ATEST1]		= ADC5_CHAN_VOLT("atest1", 0,
+						SCALE_HW_CALIB_DEFAULT)
+	[ADC5_GEN4_ATEST2]		= ADC5_CHAN_VOLT("atest2", 0,
+						SCALE_HW_CALIB_DEFAULT)
 };
 
 static const struct adc5_data adc5_gen3_data_pmic = {
