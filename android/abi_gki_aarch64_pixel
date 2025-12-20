@@ -1,5 +1,6 @@
 [abi_symbol_list]
   activate_task
+  active_load_balance_cpu_stop
   add_cpu
   add_timer
   add_timer_on
@@ -543,6 +544,7 @@
   devm_usb_get_phy_by_phandle
   devm_watchdog_register_device
   _dev_notice
+  dev_open
   dev_pm_clear_wake_irq
   dev_pm_domain_attach
   dev_pm_domain_attach_by_id
@@ -682,6 +684,7 @@
   do_SAK
   do_send_sig_info
   do_trace_netlink_extack
+  double_rq_lock
   do_wait_intr_irq
   down
   downgrade_write
@@ -1050,13 +1053,13 @@
   free_hyp_memcache
   free_iova_fast
   free_irq
+  freelist_task
   free_netdev
   __free_pages
   free_pages
   free_pages_exact
   free_percpu
   free_percpu_irq
-  freelist_task
   freezer_active
   freezing_slow_path
   freq_qos_add_request
@@ -1667,6 +1670,8 @@
   netdev_err
   netdev_info
   netdev_refcnt_read
+  netdev_rx_handler_register
+  netdev_rx_handler_unregister
   netdev_set_default_ethtool_ops
   netdev_state_change
   netdev_update_features
@@ -1985,6 +1990,8 @@
   platform_msi_domain_free_irqs
   __platform_register_drivers
   platform_unregister_drivers
+  plist_add
+  plist_del
   pm_genpd_add_subdomain
   pm_genpd_init
   pm_genpd_remove
@@ -2265,6 +2272,7 @@
   runqueues
   sbitmap_weight
   sched_clock
+  sched_energy_present
   sched_feat_keys
   sched_setattr_nocheck
   sched_set_fifo
@@ -2587,6 +2595,7 @@
   sysfs_notify
   sysfs_remove_file_from_group
   sysfs_remove_file_ns
+  sysfs_remove_files
   sysfs_remove_group
   sysfs_remove_groups
   sysfs_remove_link
@@ -2671,6 +2680,7 @@
   trace_event_raw_init
   trace_event_reg
   trace_handle_return
+  __traceiter_android_rvh_after_enqueue_task
   __traceiter_android_rvh_attach_entity_load_avg
   __traceiter_android_rvh_can_migrate_task
   __traceiter_android_rvh_cgroup_force_kthread_migration
@@ -2684,6 +2694,7 @@
   __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_enqueue_task_fair
   __traceiter_android_rvh_find_lowest_rq
+  __traceiter_android_rvh_gup_longterm_locked
   __traceiter_android_rvh_hw_protection_shutdown
   __traceiter_android_rvh_iommu_alloc_insert_iova
   __traceiter_android_rvh_iommu_iovad_init_alloc_algo
@@ -2736,6 +2747,7 @@
   __traceiter_android_vh_chk_task
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
+  __traceiter_android_vh_do_async_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
@@ -2783,7 +2795,6 @@
   __traceiter_android_vh_usb_dev_resume
   __traceiter_android_vh_use_amu_fie
   __traceiter_android_vh_xhci_full_reset_on_remove
-  __traceiter_android_rvh_gup_longterm_locked
   __traceiter_clock_set_rate
   __traceiter_cma_alloc_finish
   __traceiter_cma_alloc_start
@@ -2820,6 +2831,7 @@
   __traceiter_workqueue_execute_end
   __traceiter_workqueue_execute_start
   trace_output_call
+  __tracepoint_android_rvh_after_enqueue_task
   __tracepoint_android_rvh_attach_entity_load_avg
   __tracepoint_android_rvh_can_migrate_task
   __tracepoint_android_rvh_cgroup_force_kthread_migration
@@ -2833,6 +2845,7 @@
   __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_enqueue_task_fair
   __tracepoint_android_rvh_find_lowest_rq
+  __tracepoint_android_rvh_gup_longterm_locked
   __tracepoint_android_rvh_hw_protection_shutdown
   __tracepoint_android_rvh_iommu_alloc_insert_iova
   __tracepoint_android_rvh_iommu_iovad_init_alloc_algo
@@ -2885,6 +2898,7 @@
   __tracepoint_android_vh_chk_task
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
+  __tracepoint_android_vh_do_async_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
@@ -2932,7 +2946,6 @@
   __tracepoint_android_vh_usb_dev_resume
   __tracepoint_android_vh_use_amu_fie
   __tracepoint_android_vh_xhci_full_reset_on_remove
-  __tracepoint_android_rvh_gup_longterm_locked
   __tracepoint_clock_set_rate
   __tracepoint_cma_alloc_finish
   __tracepoint_cma_alloc_start
