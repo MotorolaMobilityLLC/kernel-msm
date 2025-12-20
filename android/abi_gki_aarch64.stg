@@ -310668,6 +310668,12 @@ function {
   parameter_id: 0x19357319
 }
 function {
+  id: 0x147b2718
+  return_type_id: 0x48b5725f
+  parameter_id: 0x119c80ef
+  parameter_id: 0x2115ac15
+}
+function {
   id: 0x147c9fd8
   return_type_id: 0x48b5725f
   parameter_id: 0x1393392e
@@ -377224,6 +377230,15 @@ elf_symbol {
   full_name: "activate_task"
 }
 elf_symbol {
+  id: 0xbe1d1ccc
+  name: "active_load_balance_cpu_stop"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xe3ada447
+  type_id: 0x9bafba63
+  full_name: "active_load_balance_cpu_stop"
+}
+elf_symbol {
   id: 0xd20e014a
   name: "add_cpu"
   is_defined: true
@@ -415879,6 +415894,24 @@ elf_symbol {
   full_name: "platform_unregister_drivers"
 }
 elf_symbol {
+  id: 0x2c4cd39b
+  name: "plist_add"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x267f26d1
+  type_id: 0x147b2718
+  full_name: "plist_add"
+}
+elf_symbol {
+  id: 0xd734aca0
+  name: "plist_del"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x1a5a9583
+  type_id: 0x147b2718
+  full_name: "plist_del"
+}
+elf_symbol {
   id: 0xb634bd54
   name: "pm_clk_add"
   is_defined: true
@@ -420937,6 +420970,15 @@ elf_symbol {
   crc: 0x86d43be9
   type_id: 0x16d1bcdb
   full_name: "sched_clock_register"
+}
+elf_symbol {
+  id: 0x36d6d8fb
+  name: "sched_energy_present"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xe69d902d
+  type_id: 0x8e47c273
+  full_name: "sched_energy_present"
 }
 elf_symbol {
   id: 0xd2090791
@@ -442356,6 +442398,7 @@ interface {
   symbol_id: 0xfbb6649f
   symbol_id: 0xdf7862e2
   symbol_id: 0xa3514d5f
+  symbol_id: 0xbe1d1ccc
   symbol_id: 0xd20e014a
   symbol_id: 0xf09e1ca4
   symbol_id: 0x4c40d07d
@@ -446642,6 +446685,8 @@ interface {
   symbol_id: 0xdea8ab93
   symbol_id: 0x55fd0d76
   symbol_id: 0x25e7db1a
+  symbol_id: 0x2c4cd39b
+  symbol_id: 0xd734aca0
   symbol_id: 0xb634bd54
   symbol_id: 0x5b13a53d
   symbol_id: 0xaba73bf2
@@ -447204,6 +447249,7 @@ interface {
   symbol_id: 0x12fb2fd6
   symbol_id: 0xac6ce0b0
   symbol_id: 0xe224f61e
+  symbol_id: 0x36d6d8fb
   symbol_id: 0xd2090791
   symbol_id: 0xedd0d1ed
   symbol_id: 0xda5d60be
