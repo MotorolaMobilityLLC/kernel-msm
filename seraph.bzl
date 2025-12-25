@@ -62,6 +62,7 @@ def define_seraph():
         "drivers/i3c/master/i3c-master-msm-geni.ko",
         "drivers/iio/adc/qcom-spmi-adc5-gen3.ko",
         "drivers/iio/adc/qcom-vadc-common.ko",
+        "drivers/iio/dac/qcom-spmi-vdac.ko",
         "drivers/input/misc/pm8941-pwrkey.ko",
         "drivers/interconnect/icc-test.ko",
         "drivers/interconnect/qcom/icc-bcm-voter.ko",
