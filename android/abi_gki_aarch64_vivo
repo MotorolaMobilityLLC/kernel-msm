@@ -127,6 +127,8 @@
   __traceiter_android_vh_blk_mq_kick_requeue_list
   __traceiter_android_vh_build_skb_around
   __traceiter_android_vh_cgroup_attach
+  __traceiter_android_vh_cpuset_attach_task
+  __traceiter_android_vh_cpuset_css_online
   __traceiter_android_vh_check_folio_look_around_ref
   __traceiter_android_vh_check_nanosleep_syscall
   __traceiter_android_vh_clear_rwsem_reader_owned
@@ -278,6 +280,8 @@
   __tracepoint_android_vh_blk_mq_kick_requeue_list
   __tracepoint_android_vh_build_skb_around
   __tracepoint_android_vh_cgroup_attach
+  __tracepoint_android_vh_cpuset_attach_task
+  __tracepoint_android_vh_cpuset_css_online
   __tracepoint_android_vh_check_folio_look_around_ref
   __tracepoint_android_vh_check_nanosleep_syscall
   __tracepoint_android_vh_clear_rwsem_reader_owned
