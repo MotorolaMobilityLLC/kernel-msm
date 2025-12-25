@@ -455,4 +455,16 @@ config VF610_DAC
 	  This driver can also be built as a module. If so, the module will
 	  be called vf610_dac.
 
+config QCOM_SPMI_VDAC
+	tristate "QCOM SPMI VDAC driver"
+	depends on SPMI
+	help
+	  This is the IIO based PMIC Dual-push-pull (DPPD) voltage based
+	  Digital to Analog Converter driver for Qualcomm Technologies Inc.
+	  This driver supports to set DAC voltage and read back from the
+	  ATEST1 and ATEST2 VADC channels.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called qcom-spmi-vdac
+
 endmenu
