@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
@@ -18,6 +18,7 @@
 #include <linux/gunyah/gh_dbl.h>
 #include <soc/qcom/secure_buffer.h>
 #include <linux/qcom_scm.h>
+#include <linux/remoteproc.h>
 #include "qrtr.h"
 
 #define GUNYAH_MAGIC_KEY	0x24495043 /* "$IPC" */
@@ -99,6 +100,8 @@ struct qrtr_gunyah_dev {
 	struct gunyah_pipe tx_pipe;
 	struct gunyah_pipe rx_pipe;
 	wait_queue_head_t tx_avail_notify;
+
+	u32 rproc_handle;
 };
 
 static void qrtr_gunyah_read(struct qrtr_gunyah_dev *qdev);
@@ -581,6 +584,35 @@ static int qrtr_gunyah_vm_cb(struct notifier_block *nb, unsigned long cmd, void 
 			qdev->registered = false;
 		}
 		break;
+	case GH_VM_CRASH:
+		dev_info(qdev->dev, "%s: VM crash detected!\n", __func__);
+
+#if IS_ENABLED(CONFIG_REMOTEPROC)
+		struct rproc *rproc;
+		int ret;
+
+		rproc = rproc_get_by_phandle(qdev->rproc_handle);
+		if (!rproc) {
+			dev_err(qdev->dev, "%s: Failed to get rproc handle!\n", __func__);
+			break;
+		}
+
+		ret = rproc_shutdown(rproc);
+		if (ret) {
+			dev_err(qdev->dev, "%s: rproc_shutdown() failed: %d, state=%d, rproc=%s\n",
+				__func__, ret, rproc->state, rproc->name);
+			goto put_rproc;
+		}
+
+		ret = rproc_boot(rproc);
+		if (ret)
+			dev_err(qdev->dev, "%s: rproc_boot() failed: %d, state=%d, rproc=%s\n",
+				__func__, ret, rproc->state, rproc->name);
+
+put_rproc:
+		rproc_put(rproc);
+#endif
+		break;
 	}
 	mutex_unlock(&qdev->state_lock);
 
@@ -801,6 +833,12 @@ static int qrtr_gunyah_probe(struct platform_device *pdev)
 
 	if (!qdev->master && gunyah_rx_avail(&qdev->rx_pipe))
 		qrtr_gunyah_read(qdev);
+
+	if (qdev->master) {
+		ret = of_property_read_u32(node, "qcom,rproc-handle", &qdev->rproc_handle);
+		if (ret)
+			dev_warn(qdev->dev, "qcom,rproc-handle not found, VM crash recovery disabled\n");
+	}
 
 	return 0;
 
