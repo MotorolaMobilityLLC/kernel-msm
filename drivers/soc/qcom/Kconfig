@@ -81,6 +81,12 @@ config MOT_SENSOR_PRE_POWERUP
 	help
 	  This is enabling power on sensor in advance.
 
+config MOT_BOOST_CDM_WORKQUEUE_PRIO
+	default n
+	bool "enable boost CDM workqueue priority"
+	help
+	  This is enabling boost CDM workqueue priority.
+
 config CCI_DEBUG_INTF
 	default n
 	bool "enable cci debug"
