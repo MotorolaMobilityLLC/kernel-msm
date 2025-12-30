@@ -56,6 +56,10 @@ DECLARE_HOOK(android_vh_loop_skip_queue_work,
         TP_PROTO(struct request *req, bool *skip),
         TP_ARGS(req, skip));
 
+DECLARE_HOOK(android_vh_bio_add_page_merge_bypass,
+	TP_PROTO(struct bio *bio, bool *skip),
+	TP_ARGS(bio, skip));
+
 #endif /* _TRACE_HOOK_BLK_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>
