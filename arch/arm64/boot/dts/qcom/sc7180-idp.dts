@@ -306,14 +306,9 @@
 
 		reset-gpios = <&pm6150l_gpio 3 GPIO_ACTIVE_HIGH>;
 
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			port@0 {
-				reg = <0>;
-				panel0_in: endpoint {
-					remote-endpoint = <&dsi0_out>;
-				};
+		port {
+			panel0_in: endpoint {
+				remote-endpoint = <&dsi0_out>;
 			};
 		};
 	};
@@ -331,10 +326,6 @@
 &dsi_phy {
 	status = "okay";
 	vdds-supply = <&vreg_l4a_0p8>;
-};
-
-&mdp {
-	status = "okay";
 };
 
 &mdss {

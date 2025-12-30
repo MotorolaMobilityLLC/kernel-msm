@@ -870,6 +870,7 @@ noinline int __filemap_add_folio(struct address_space *mapping,
 	VM_BUG_ON_FOLIO(folio_test_swapbacked(folio), folio);
 	mapping_set_update(&xas, mapping);
 
+	trace_android_vh_filemap_add_folio(mapping, folio, index);
 	if (!huge) {
 		int error = mem_cgroup_charge(folio, NULL, gfp);
 		VM_BUG_ON_FOLIO(index & (folio_nr_pages(folio) - 1), folio);
@@ -2290,6 +2291,7 @@ unsigned filemap_get_folios_contig(struct address_space *mapping,
 			*start = folio->index + nr;
 			goto out;
 		}
+		xas_advance(&xas, folio_next_index(folio) - 1);
 		continue;
 put_folio:
 		folio_put(folio);
@@ -3177,6 +3179,11 @@ static struct file *do_async_mmap_readahead(struct vm_fault *vmf,
 	DEFINE_READAHEAD(ractl, file, ra, file->f_mapping, vmf->pgoff);
 	struct file *fpin = NULL;
 	unsigned int mmap_miss;
+	bool skip = false;
+
+	trace_android_vh_do_async_mmap_readahead(vmf, folio, &skip);
+	if (skip)
+		return fpin;
 
 	/* If we don't want any read-ahead, don't bother */
 	if (vmf->vma->vm_flags & VM_RAND_READ || !ra->ra_pages)

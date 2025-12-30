@@ -1093,6 +1093,7 @@
   platform_device_add_resources
   platform_device_alloc
   softnet_data
+  netdev_sw_irq_coalesce_default_on
 
 # required by gpio-brcmstb.ko
   bgpio_init
@@ -1604,6 +1605,7 @@
   sdhci_set_clock
   sdhci_set_uhs_signaling
   sdhci_setup_host
+  __hwspin_trylock
 
 # required by slcan.ko
   hex_asc_upper
@@ -1767,6 +1769,11 @@
 # required by nexusmem.ko
   restore_online_page_callback
   __alloc_pages_bulk
+  __rt_mutex_init
+  rt_mutex_lock
+  rt_mutex_trylock
+  rt_mutex_unlock
+  rt_mutex_lock_interruptible
 
 # required by nexus.ko
   recalc_sigpending

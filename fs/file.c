@@ -20,6 +20,7 @@
 #include <linux/spinlock.h>
 #include <linux/rcupdate.h>
 #include <linux/close_range.h>
+#include <linux/dma-buf.h>
 #include <net/sock.h>
 
 #include "internal.h"
@@ -319,6 +320,7 @@ struct files_struct *dup_fd(struct files_struct *oldf, struct fd_range *punch_ho
 	new_fdt->open_fds = newf->open_fds_init;
 	new_fdt->full_fds_bits = newf->full_fds_bits_init;
 	new_fdt->fd = &newf->fd_array[0];
+	newf->dmabuf_info = NULL;
 
 	spin_lock(&oldf->file_lock);
 	old_fdt = files_fdtable(oldf);
@@ -361,17 +363,25 @@ struct files_struct *dup_fd(struct files_struct *oldf, struct fd_range *punch_ho
 	old_fds = old_fdt->fd;
 	new_fds = new_fdt->fd;
 
+	/*
+	 * We may be racing against fd allocation from other threads using this
+	 * files_struct, despite holding ->file_lock.
+	 *
+	 * alloc_fd() might have already claimed a slot, while fd_install()
+	 * did not populate it yet. Note the latter operates locklessly, so
+	 * the file can show up as we are walking the array below.
+	 *
+	 * At the same time we know no files will disappear as all other
+	 * operations take the lock.
+	 *
+	 * Instead of trying to placate userspace racing with itself, we
+	 * ref the file if we see it and mark the fd slot as unused otherwise.
+	 */
 	for (i = open_files; i != 0; i--) {
-		struct file *f = *old_fds++;
+		struct file *f = rcu_dereference_raw(*old_fds++);
 		if (f) {
 			get_file(f);
 		} else {
-			/*
-			 * The fd may be claimed in the fd bitmap but not yet
-			 * instantiated in the files array if a sibling thread
-			 * is partway through open().  So make sure that this
-			 * fd is available to the new process.
-			 */
 			__clear_open_fd(open_files - i, new_fdt);
 		}
 		rcu_assign_pointer(*new_fds++, f);
@@ -410,6 +420,9 @@ static struct fdtable *close_files(struct files_struct * files)
 			if (set & 1) {
 				struct file * file = xchg(&fdt->fd[i], NULL);
 				if (file) {
+					if (is_dma_buf_file(file))
+						dma_buf_unaccount_task(file->private_data,
+								       files->dmabuf_info);
 					filp_close(file, files);
 					cond_resched();
 				}
@@ -430,6 +443,7 @@ void put_files_struct(struct files_struct *files)
 		/* free the arrays if they are not embedded */
 		if (fdt != &files->fdtab)
 			__free_fdtable(fdt);
+		put_dmabuf_info(files->dmabuf_info);
 		kmem_cache_free(files_cachep, files);
 	}
 }
@@ -585,6 +599,14 @@ void fd_install(unsigned int fd, struct file *file)
 	struct files_struct *files = current->files;
 	struct fdtable *fdt;
 
+	if (is_dma_buf_file(file)) {
+		int err = dma_buf_account_task(file->private_data, files->dmabuf_info);
+
+		if (err)
+			pr_err("dmabuf accounting failed during fd_install operation, err %d\n",
+			       err);
+	}
+
 	rcu_read_lock_sched();
 
 	if (unlikely(files->resize_in_progress)) {
@@ -624,8 +646,10 @@ static struct file *pick_file(struct files_struct *files, unsigned fd)
 		return NULL;
 
 	fd = array_index_nospec(fd, fdt->max_fds);
-	file = fdt->fd[fd];
+	file = rcu_dereference_raw(fdt->fd[fd]);
 	if (file) {
+		if (is_dma_buf_file(file))
+			dma_buf_unaccount_task(file->private_data, files->dmabuf_info);
 		rcu_assign_pointer(fdt->fd[fd], NULL);
 		__put_unused_fd(files, fd);
 	}
@@ -733,6 +757,15 @@ int __close_range(unsigned fd, unsigned max_fd, unsigned int flags)
 		fds = dup_fd(cur_fds, punch_hole);
 		if (IS_ERR(fds))
 			return PTR_ERR(fds);
+
+		/*
+		 * This is a new partial sharing relationship, since we have a new files_struct.
+		 * Since partial sharing is not supported for dmabuf accounting, we need to remove
+		 * the accounting info from the task. Leave the cur_fds->dmabuf_info so any existing
+		 * accounting can be unaccounted properly.
+		 */
+		put_dmabuf_info(current->dmabuf_info);
+		current->dmabuf_info = NULL;
 		/*
 		 * We used to share our file descriptor table, and have now
 		 * created a private one, make sure we're using it below.
@@ -811,6 +844,8 @@ void do_close_on_exec(struct files_struct *files)
 			rcu_assign_pointer(fdt->fd[fd], NULL);
 			__put_unused_fd(files, fd);
 			spin_unlock(&files->file_lock);
+			if (is_dma_buf_file(file))
+				dma_buf_unaccount_task(file->private_data, files->dmabuf_info);
 			filp_close(file, files);
 			cond_resched();
 			spin_lock(&files->file_lock);
@@ -1092,7 +1127,7 @@ __releases(&files->file_lock)
 	 */
 	fdt = files_fdtable(files);
 	fd = array_index_nospec(fd, fdt->max_fds);
-	tofree = fdt->fd[fd];
+	tofree = rcu_dereference_raw(fdt->fd[fd]);
 	if (!tofree && fd_is_open(fd, fdt))
 		goto Ebusy;
 	get_file(file);
@@ -1104,8 +1139,11 @@ __releases(&files->file_lock)
 		__clear_close_on_exec(fd, fdt);
 	spin_unlock(&files->file_lock);
 
-	if (tofree)
+	if (tofree) {
+		if (is_dma_buf_file(tofree))
+			dma_buf_unaccount_task(tofree->private_data, files->dmabuf_info);
 		filp_close(tofree, files);
+	}
 
 	return fd;
 

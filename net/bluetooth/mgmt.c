@@ -1085,7 +1085,8 @@ static int mesh_send_done_sync(struct hci_dev *hdev, void *data)
 	struct mgmt_mesh_tx *mesh_tx;
 
 	hci_dev_clear_flag(hdev, HCI_MESH_SENDING);
-	hci_disable_advertising_sync(hdev);
+	if (list_empty(&hdev->adv_instances))
+		hci_disable_advertising_sync(hdev);
 	mesh_tx = mgmt_mesh_next(hdev, NULL);
 
 	if (mesh_tx)
@@ -2223,6 +2224,9 @@ static int set_mesh_sync(struct hci_dev *hdev, void *data)
 	else
 		hci_dev_clear_flag(hdev, HCI_MESH);
 
+	hdev->le_scan_interval = __le16_to_cpu(cp->period);
+	hdev->le_scan_window = __le16_to_cpu(cp->window);
+
 	len -= sizeof(*cp);
 
 	/* If filters don't fit, forward all adv pkts */
@@ -2237,6 +2241,7 @@ static int set_mesh(struct sock *sk, struct hci_dev *hdev, void *data, u16 len)
 {
 	struct mgmt_cp_set_mesh *cp = data;
 	struct mgmt_pending_cmd *cmd;
+	__u16 period, window;
 	int err = 0;
 
 	bt_dev_dbg(hdev, "sock %p", sk);
@@ -2247,6 +2252,23 @@ static int set_mesh(struct sock *sk, struct hci_dev *hdev, void *data, u16 len)
 				       MGMT_STATUS_NOT_SUPPORTED);
 
 	if (cp->enable != 0x00 && cp->enable != 0x01)
+		return mgmt_cmd_status(sk, hdev->id, MGMT_OP_SET_MESH_RECEIVER,
+				       MGMT_STATUS_INVALID_PARAMS);
+
+	/* Keep allowed ranges in sync with set_scan_params() */
+	period = __le16_to_cpu(cp->period);
+
+	if (period < 0x0004 || period > 0x4000)
+		return mgmt_cmd_status(sk, hdev->id, MGMT_OP_SET_MESH_RECEIVER,
+				       MGMT_STATUS_INVALID_PARAMS);
+
+	window = __le16_to_cpu(cp->window);
+
+	if (window < 0x0004 || window > 0x4000)
+		return mgmt_cmd_status(sk, hdev->id, MGMT_OP_SET_MESH_RECEIVER,
+				       MGMT_STATUS_INVALID_PARAMS);
+
+	if (window > period)
 		return mgmt_cmd_status(sk, hdev->id, MGMT_OP_SET_MESH_RECEIVER,
 				       MGMT_STATUS_INVALID_PARAMS);
 
@@ -5236,24 +5258,14 @@ static void mgmt_adv_monitor_added(struct sock *sk, struct hci_dev *hdev,
 	mgmt_event(MGMT_EV_ADV_MONITOR_ADDED, hdev, &ev, sizeof(ev), sk);
 }
 
-void mgmt_adv_monitor_removed(struct hci_dev *hdev, u16 handle)
+static void mgmt_adv_monitor_removed(struct sock *sk, struct hci_dev *hdev,
+				     __le16 handle)
 {
 	struct mgmt_ev_adv_monitor_removed ev;
-	struct mgmt_pending_cmd *cmd;
-	struct sock *sk_skip = NULL;
-	struct mgmt_cp_remove_adv_monitor *cp;
 
-	cmd = pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev);
-	if (cmd) {
-		cp = cmd->param;
+	ev.monitor_handle = handle;
 
-		if (cp->monitor_handle)
-			sk_skip = cmd->sk;
-	}
-
-	ev.monitor_handle = cpu_to_le16(handle);
-
-	mgmt_event(MGMT_EV_ADV_MONITOR_REMOVED, hdev, &ev, sizeof(ev), sk_skip);
+	mgmt_event(MGMT_EV_ADV_MONITOR_REMOVED, hdev, &ev, sizeof(ev), sk);
 }
 
 static int read_adv_mon_features(struct sock *sk, struct hci_dev *hdev,
@@ -5355,8 +5367,7 @@ static int __add_adv_patterns_monitor(struct sock *sk, struct hci_dev *hdev,
 
 	if (pending_find(MGMT_OP_SET_LE, hdev) ||
 	    pending_find(MGMT_OP_ADD_ADV_PATTERNS_MONITOR, hdev) ||
-	    pending_find(MGMT_OP_ADD_ADV_PATTERNS_MONITOR_RSSI, hdev) ||
-	    pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {
+	    pending_find(MGMT_OP_ADD_ADV_PATTERNS_MONITOR_RSSI, hdev)) {
 		status = MGMT_STATUS_BUSY;
 		goto unlock;
 	}
@@ -5524,18 +5535,25 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,
 {
 	struct mgmt_rp_remove_adv_monitor rp;
 	struct mgmt_pending_cmd *cmd = data;
-	struct mgmt_cp_remove_adv_monitor *cp = cmd->param;
+	struct mgmt_cp_remove_adv_monitor *cp;
+
+	if (status == -ECANCELED)
+		return;
 
 	hci_dev_lock(hdev);
 
+	cp = cmd->param;
+
 	rp.monitor_handle = cp->monitor_handle;
 
-	if (!status)
+	if (!status) {
+		mgmt_adv_monitor_removed(cmd->sk, hdev, cp->monitor_handle);
 		hci_update_passive_scan(hdev);
+	}
 
 	mgmt_cmd_complete(cmd->sk, cmd->index, cmd->opcode,
 			  mgmt_status(status), &rp, sizeof(rp));
-	mgmt_pending_remove(cmd);
+	mgmt_pending_free(cmd);
 
 	hci_dev_unlock(hdev);
 	bt_dev_dbg(hdev, "remove monitor %d complete, status %d",
@@ -5563,14 +5581,13 @@ static int remove_adv_monitor(struct sock *sk, struct hci_dev *hdev,
 	hci_dev_lock(hdev);
 
 	if (pending_find(MGMT_OP_SET_LE, hdev) ||
-	    pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev) ||
 	    pending_find(MGMT_OP_ADD_ADV_PATTERNS_MONITOR, hdev) ||
 	    pending_find(MGMT_OP_ADD_ADV_PATTERNS_MONITOR_RSSI, hdev)) {
 		status = MGMT_STATUS_BUSY;
 		goto unlock;
 	}
 
-	cmd = mgmt_pending_add(sk, MGMT_OP_REMOVE_ADV_MONITOR, hdev, data, len);
+	cmd = mgmt_pending_new(sk, MGMT_OP_REMOVE_ADV_MONITOR, hdev, data, len);
 	if (!cmd) {
 		status = MGMT_STATUS_NO_RESOURCES;
 		goto unlock;
@@ -5580,7 +5597,7 @@ static int remove_adv_monitor(struct sock *sk, struct hci_dev *hdev,
 				  mgmt_remove_adv_monitor_complete);
 
 	if (err) {
-		mgmt_pending_remove(cmd);
+		mgmt_pending_free(cmd);
 
 		if (err == -ENOMEM)
 			status = MGMT_STATUS_NO_RESOURCES;
@@ -6612,6 +6629,7 @@ static int set_scan_params(struct sock *sk, struct hci_dev *hdev,
 		return mgmt_cmd_status(sk, hdev->id, MGMT_OP_SET_SCAN_PARAMS,
 				       MGMT_STATUS_NOT_SUPPORTED);
 
+	/* Keep allowed ranges in sync with set_mesh() */
 	interval = __le16_to_cpu(cp->interval);
 
 	if (interval < 0x0004 || interval > 0x4000)
@@ -9723,6 +9741,9 @@ void mgmt_device_connected(struct hci_dev *hdev, struct hci_conn *conn,
 				     sizeof(*ev) + (name ? eir_precalc_len(name_len) : 0) +
 				     eir_precalc_len(sizeof(conn->dev_class)));
 
+	if (!skb)
+		return;
+
 	ev = skb_put(skb, sizeof(*ev));
 	bacpy(&ev->addr.bdaddr, &conn->dst);
 	ev->addr.type = link_to_bdaddr(conn->type, conn->dst_type);
@@ -10504,6 +10525,8 @@ void mgmt_remote_name(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 link_type,
 
 	skb = mgmt_alloc_skb(hdev, MGMT_EV_DEVICE_FOUND,
 			     sizeof(*ev) + (name ? eir_precalc_len(name_len) : 0));
+	if (!skb)
+		return;
 
 	ev = skb_put(skb, sizeof(*ev));
 	bacpy(&ev->addr.bdaddr, bdaddr);

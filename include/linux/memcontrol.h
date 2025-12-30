@@ -357,6 +357,11 @@ enum page_memcg_data_flags {
 
 static inline bool folio_memcg_kmem(struct folio *folio);
 
+int mem_cgroup_move_account(struct page *page,
+			    bool compound,
+			    struct mem_cgroup *from,
+			    struct mem_cgroup *to);
+
 /*
  * After the initialization objcg->memcg is always pointing at
  * a valid memcg, but can be atomically swapped to the parent memcg.
@@ -1152,6 +1157,7 @@ unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
 						gfp_t gfp_mask,
 						unsigned long *total_scanned);
 
+extern int mem_cgroup_init(void);
 #else /* CONFIG_MEMCG */
 
 #define MEM_CGROUP_ID_SHIFT	0
@@ -1186,6 +1192,14 @@ static inline bool folio_memcg_kmem(struct folio *folio)
 static inline bool PageMemcgKmem(struct page *page)
 {
 	return false;
+}
+
+static inline int mem_cgroup_move_account(struct page *page,
+					  bool compound,
+					  struct mem_cgroup *from,
+					  struct mem_cgroup *to)
+{
+	return 0;
 }
 
 static inline bool mem_cgroup_is_root(struct mem_cgroup *memcg)
@@ -1582,6 +1596,8 @@ unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
 {
 	return 0;
 }
+
+static inline int mem_cgroup_init(void) { return 0; }
 #endif /* CONFIG_MEMCG */
 
 static inline void __inc_lruvec_kmem_state(void *p, enum node_stat_item idx)

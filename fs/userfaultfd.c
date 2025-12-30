@@ -692,6 +692,34 @@ void dup_userfaultfd_complete(struct list_head *fcs)
 	}
 }
 
+void dup_userfaultfd_fail(struct list_head *fcs)
+{
+	struct userfaultfd_fork_ctx *fctx, *n;
+
+	/*
+	 * An error has occurred on fork, we will tear memory down, but have
+	 * allocated memory for fctx's and raised reference counts for both the
+	 * original and child contexts (and on the mm for each as a result).
+	 *
+	 * These would ordinarily be taken care of by a user handling the event,
+	 * but we are no longer doing so, so manually clean up here.
+	 *
+	 * mm tear down will take care of cleaning up VMA contexts.
+	 */
+	list_for_each_entry_safe(fctx, n, fcs, list) {
+		struct userfaultfd_ctx *octx = fctx->orig;
+		struct userfaultfd_ctx *ctx = fctx->new;
+
+		atomic_dec(&octx->mmap_changing);
+		VM_BUG_ON(atomic_read(&octx->mmap_changing) < 0);
+		userfaultfd_ctx_put(octx);
+		userfaultfd_ctx_put(ctx);
+
+		list_del(&fctx->list);
+		kfree(fctx);
+	}
+}
+
 void mremap_userfaultfd_prep(struct vm_area_struct *vma,
 			     struct vm_userfaultfd_ctx *vm_ctx)
 {
@@ -1389,6 +1417,9 @@ static int userfaultfd_register(struct userfaultfd_ctx *ctx,
 	if (prev != vma)
 		mas_next(&mas, ULONG_MAX);
 
+	if (vma->vm_start < start)
+		prev = vma;
+
 	ret = 0;
 	do {
 		cond_resched();
@@ -1566,6 +1597,9 @@ static int userfaultfd_unregister(struct userfaultfd_ctx *ctx,
 	prev = mas_prev(&mas, 0);
 	if (prev != vma)
 		mas_next(&mas, ULONG_MAX);
+
+	if (vma->vm_start < start)
+		prev = vma;
 
 	ret = 0;
 	do {

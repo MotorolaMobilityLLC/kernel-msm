@@ -3208,17 +3208,14 @@ DEFINE_REFCOUNT_DEFERRED_EVENT(xfs_refcount_deferred);
 
 TRACE_EVENT(xfs_refcount_finish_one_leftover,
 	TP_PROTO(struct xfs_mount *mp, xfs_agnumber_t agno,
-		 int type, xfs_agblock_t agbno, xfs_extlen_t len,
-		 xfs_agblock_t new_agbno, xfs_extlen_t new_len),
-	TP_ARGS(mp, agno, type, agbno, len, new_agbno, new_len),
+		 int type, xfs_agblock_t agbno, xfs_extlen_t len),
+	TP_ARGS(mp, agno, type, agbno, len),
 	TP_STRUCT__entry(
 		__field(dev_t, dev)
 		__field(xfs_agnumber_t, agno)
 		__field(int, type)
 		__field(xfs_agblock_t, agbno)
 		__field(xfs_extlen_t, len)
-		__field(xfs_agblock_t, new_agbno)
-		__field(xfs_extlen_t, new_len)
 	),
 	TP_fast_assign(
 		__entry->dev = mp->m_super->s_dev;
@@ -3226,17 +3223,13 @@ TRACE_EVENT(xfs_refcount_finish_one_leftover,
 		__entry->type = type;
 		__entry->agbno = agbno;
 		__entry->len = len;
-		__entry->new_agbno = new_agbno;
-		__entry->new_len = new_len;
 	),
-	TP_printk("dev %d:%d type %d agno 0x%x agbno 0x%x fsbcount 0x%x new_agbno 0x%x new_fsbcount 0x%x",
+	TP_printk("dev %d:%d type %d agno 0x%x agbno 0x%x fsbcount 0x%x",
 		  MAJOR(__entry->dev), MINOR(__entry->dev),
 		  __entry->type,
 		  __entry->agno,
 		  __entry->agbno,
-		  __entry->len,
-		  __entry->new_agbno,
-		  __entry->new_len)
+		  __entry->len)
 );
 
 /* simple inode-based error/%ip tracepoint class */
@@ -3497,6 +3490,31 @@ DEFINE_EVENT(xfs_fsmap_class, name, \
 DEFINE_FSMAP_EVENT(xfs_fsmap_low_key);
 DEFINE_FSMAP_EVENT(xfs_fsmap_high_key);
 DEFINE_FSMAP_EVENT(xfs_fsmap_mapping);
+
+DECLARE_EVENT_CLASS(xfs_fsmap_linear_class,
+	TP_PROTO(struct xfs_mount *mp, u32 keydev, uint64_t bno),
+	TP_ARGS(mp, keydev, bno),
+	TP_STRUCT__entry(
+		__field(dev_t, dev)
+		__field(dev_t, keydev)
+		__field(xfs_fsblock_t, bno)
+	),
+	TP_fast_assign(
+		__entry->dev = mp->m_super->s_dev;
+		__entry->keydev = new_decode_dev(keydev);
+		__entry->bno = bno;
+	),
+	TP_printk("dev %d:%d keydev %d:%d bno 0x%llx",
+		  MAJOR(__entry->dev), MINOR(__entry->dev),
+		  MAJOR(__entry->keydev), MINOR(__entry->keydev),
+		  __entry->bno)
+)
+#define DEFINE_FSMAP_LINEAR_EVENT(name) \
+DEFINE_EVENT(xfs_fsmap_linear_class, name, \
+	TP_PROTO(struct xfs_mount *mp, u32 keydev, uint64_t bno), \
+	TP_ARGS(mp, keydev, bno))
+DEFINE_FSMAP_LINEAR_EVENT(xfs_fsmap_low_key_linear);
+DEFINE_FSMAP_LINEAR_EVENT(xfs_fsmap_high_key_linear);
 
 DECLARE_EVENT_CLASS(xfs_getfsmap_class,
 	TP_PROTO(struct xfs_mount *mp, struct xfs_fsmap *fsmap),

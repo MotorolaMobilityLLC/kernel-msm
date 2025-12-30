@@ -40,6 +40,7 @@ EXPORT_SYMBOL_GPL(arch_is_gh_guest);
 #define GH_HYPERCALL_MSGQ_SEND			GH_HYPERCALL(0x801B)
 #define GH_HYPERCALL_MSGQ_RECV			GH_HYPERCALL(0x801C)
 #define GH_HYPERCALL_VCPU_RUN			GH_HYPERCALL(0x8065)
+#define GH_HYPERCALL_ADDRSPACE_FIND_INFO_AREA	GH_HYPERCALL(0x806A)
 
 /**
  * gh_hypercall_hyp_identify() - Returns build information and feature flags
@@ -137,6 +138,29 @@ enum gh_error gh_hypercall_vcpu_run(u64 capid, u64 *resume_data,
 	return res.a0;
 }
 EXPORT_SYMBOL_GPL(gh_hypercall_vcpu_run);
+
+/**
+ * gh_hypercall_addrspace_find_info_area() - Find the IPA and size of the info area
+ * @ipa: Filled with the IPA of the info area
+ * @size: Filled with the size of the info area
+ *
+ * See also:
+ * https://github.com/quic/gunyah-hypervisor/blob/develop/docs/api/gunyah_api.md#address-space-management
+ */
+enum gh_error
+gh_hypercall_addrspace_find_info_area(unsigned long *ipa, unsigned long *size)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_1_1_hvc(GH_HYPERCALL_ADDRSPACE_FIND_INFO_AREA, 0, &res);
+	if (res.a0 == GH_ERROR_OK) {
+		*ipa = res.a1;
+		*size = res.a2;
+	}
+
+	return res.a0;
+}
+EXPORT_SYMBOL_GPL(gh_hypercall_addrspace_find_info_area);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Gunyah Hypervisor Hypercalls");
