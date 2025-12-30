@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
 
 #include <linux/genalloc.h>
 #include <linux/mailbox_client.h>
@@ -589,19 +591,28 @@ static void qrtr_genpool_setup_work(struct work_struct *work)
 {
 	struct qrtr_genpool_dev *qdev = container_of(work, struct qrtr_genpool_dev, setup_work);
 	unsigned long flags;
+	u32 state_next;
 	int rc;
 
 	spin_lock_irqsave(&qdev->lock, flags);
-	if (qdev->state == LOCAL_STATE_REBOOT) {
-		spin_unlock_irqrestore(&qdev->lock, flags);
-		return;
-	}
-
-	if (qdev->state == LOCAL_STATE_PREPARE_REBOOT) {
+	switch (qdev->state) {
+	case LOCAL_STATE_DEFAULT:
+		state_next = LOCAL_STATE_INIT;
+		break;
+	case LOCAL_STATE_INIT:
+	case LOCAL_STATE_START:
+		state_next = LOCAL_STATE_START;
+		break;
+	case LOCAL_STATE_PREPARE_REBOOT:
 		qrtr_genpool_set_state(qdev, LOCAL_STATE_REBOOT);
 		spin_unlock_irqrestore(&qdev->lock, flags);
 		wake_up_all(&qdev->state_wait);
 		return;
+	case LOCAL_STATE_REBOOT:
+		goto unlock;
+	default:
+		dev_err(qdev->dev, "Unexpected state %u\n", qdev->state);
+		goto unlock;
 	}
 	spin_unlock_irqrestore(&qdev->lock, flags);
 
@@ -631,8 +642,10 @@ static void qrtr_genpool_setup_work(struct work_struct *work)
 	enable_irq(qdev->irq_xfer);
 
 	spin_lock_irqsave(&qdev->lock, flags);
-	qrtr_genpool_set_state(qdev, LOCAL_STATE_START);
+	qrtr_genpool_set_state(qdev, state_next);
 	qrtr_genpool_signal_setup(qdev);
+
+unlock:
 	spin_unlock_irqrestore(&qdev->lock, flags);
 }
 
@@ -726,6 +739,8 @@ static int qrtr_genpool_probe(struct platform_device *pdev)
 	rc = qrtr_genpool_irq_init(qdev);
 	if (rc)
 		goto err;
+
+	schedule_work(&qdev->setup_work);
 
 	return 0;
 
