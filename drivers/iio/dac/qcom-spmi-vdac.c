@@ -168,10 +168,10 @@ static ssize_t vdac_adc_readback_show(struct device *dev,
 		goto cleanup;
 	}
 
-	volt_diff = vdac_p_ref - vdac_n_ref;
+	volt_diff = vdac_n_ref - vdac_p_ref;
 
-	dev_dbg(dev, "VDAC readback: P=%d mV, N=%d mV, diff(P-N)=%d mV\n",
-			vdac_p_ref, vdac_n_ref, volt_diff);
+	dev_dbg(dev, "VDAC readback: P=%d mV, N=%d mV, diff(N-P)=%d mV\n",
+			vdac_n_ref, vdac_p_ref, volt_diff);
 	ret = 0;
 
 cleanup:
