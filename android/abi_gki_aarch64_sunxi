@@ -97,3 +97,5 @@
   hid_driver_reset_resume
   hid_driver_suspend
   devm_power_supply_register_no_ws
+  __tracepoint_android_vh_bio_add_page_merge_bypass
+  __traceiter_android_vh_bio_add_page_merge_bypass
