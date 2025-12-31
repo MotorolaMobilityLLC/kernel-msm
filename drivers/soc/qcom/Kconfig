@@ -99,6 +99,12 @@ config QCOM_PATCH_CSID_ERROR_FIX
 	help
 	  This is enabling qcom patch csid error fix.
 
+config MOT_DRV_CAM_LOG_CLEAN
+	default n
+	bool "enable log clean on camera driver"
+	help
+	  This is enabling mot drv cam log clean.
+
 config AF_NOISE_ELIMINATION
 	default n
 	bool "enable af noise elimination"
