@@ -1,0 +1,15 @@
+[abi_symbol_list]
+  alloc_buffer_head
+  __cond_resched_lock
+  filemap_fdatawrite_wbc
+  __find_get_block
+  free_buffer_head
+  __posix_acl_create
+  posix_acl_equiv_mode
+  posix_acl_valid
+  shrink_dcache_sb
+  sync_inodes_sb
+  try_to_free_buffers
+  utf8_data_table
+  wait_for_completion_io
+  write_dirty_buffer
