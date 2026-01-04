@@ -882,3 +882,11 @@ Description:
 		- "compat": Hash-based lookup with a linear search fallback enabled
 		- "auto:perf": lookup_mode is auto and fallback is disabled on-disk
 		- "auto:compat": lookup_mode is auto and fallback is enabled on-disk
+
+What:		/sys/fs/f2fs/<disk>/max_lock_elapsed_time
+Date:		December 2025
+Contact:	"Chao Yu" <chao@kernel.org>
+Description:	This is a threshold, once a thread enters critical region that lock covers, total
+		elapsed time exceeds this threshold, f2fs will print tracepoint to dump information
+		of related context. This sysfs entry can be used to control the value of threshold,
+		by default, the value is 500 ms.
