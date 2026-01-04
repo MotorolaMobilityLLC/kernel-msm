@@ -599,7 +599,8 @@ int f2fs_init_write_merge_io(struct f2fs_sb_info *sbi)
 		for (j = HOT; j < n; j++) {
 			struct f2fs_bio_info *io = &sbi->write_io[i][j];
 
-			init_f2fs_rwsem(&io->io_rwsem);
+			init_f2fs_rwsem_trace(&io->io_rwsem, sbi,
+						LOCK_NAME_IO_RWSEM);
 			io->sbi = sbi;
 			io->bio = NULL;
 			io->last_block_in_bio = 0;
@@ -623,8 +624,9 @@ static void __f2fs_submit_merged_write(struct f2fs_sb_info *sbi,
 {
 	enum page_type btype = PAGE_TYPE_OF_BIO(type);
 	struct f2fs_bio_info *io = sbi->write_io[btype] + temp;
+	struct f2fs_lock_context lc;
 
-	f2fs_down_write(&io->io_rwsem);
+	f2fs_down_write_trace(&io->io_rwsem, &lc);
 
 	if (!io->bio)
 		goto unlock_out;
@@ -638,7 +640,7 @@ static void __f2fs_submit_merged_write(struct f2fs_sb_info *sbi,
 	}
 	__submit_merged_bio(io);
 unlock_out:
-	f2fs_up_write(&io->io_rwsem);
+	f2fs_up_write_trace(&io->io_rwsem, &lc);
 }
 
 static void __submit_merged_write_cond(struct f2fs_sb_info *sbi,
@@ -652,10 +654,11 @@ static void __submit_merged_write_cond(struct f2fs_sb_info *sbi,
 		if (!force)	{
 			enum page_type btype = PAGE_TYPE_OF_BIO(type);
 			struct f2fs_bio_info *io = sbi->write_io[btype] + temp;
+			struct f2fs_lock_context lc;
 
-			f2fs_down_read(&io->io_rwsem);
+			f2fs_down_read_trace(&io->io_rwsem, &lc);
 			ret = __has_merged_page(io->bio, inode, page, ino);
-			f2fs_up_read(&io->io_rwsem);
+			f2fs_up_read_trace(&io->io_rwsem, &lc);
 		}
 		if (ret)
 			__f2fs_submit_merged_write(sbi, type, temp);
@@ -949,11 +952,12 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
 	enum page_type btype = PAGE_TYPE_OF_BIO(fio->type);
 	struct f2fs_bio_info *io = sbi->write_io[btype] + fio->temp;
 	struct page *bio_page;
+	struct f2fs_lock_context lc;
 	enum count_type type;
 
 	f2fs_bug_on(sbi, is_read_io(fio->op));
 
-	f2fs_down_write(&io->io_rwsem);
+	f2fs_down_write_trace(&io->io_rwsem, &lc);
 next:
 #ifdef CONFIG_BLK_DEV_ZONED
 	if (f2fs_sb_has_blkzoned(sbi) && btype < META && io->zone_pending_bio) {
@@ -1034,7 +1038,7 @@ out:
 	if (is_sbi_flag_set(sbi, SBI_IS_SHUTDOWN) ||
 				!f2fs_is_checkpoint_ready(sbi))
 		__submit_merged_bio(io);
-	f2fs_up_write(&io->io_rwsem);
+	f2fs_up_write_trace(&io->io_rwsem, &lc);
 }
 
 static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
