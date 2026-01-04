@@ -29,6 +29,16 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(f2fs_write_checkpoint);
 static struct kmem_cache *ino_entry_slab;
 struct kmem_cache *f2fs_inode_entry_slab;
 
+static inline void f2fs_lock_all(struct f2fs_sb_info *sbi)
+{
+	f2fs_down_write(&sbi->cp_rwsem);
+}
+
+static inline void f2fs_unlock_all(struct f2fs_sb_info *sbi)
+{
+	f2fs_up_write(&sbi->cp_rwsem);
+}
+
 void _trace_android_rvh_f2fs_down_read(wait_queue_head_t *read_waiters,
 					struct rw_semaphore *rwsem, bool *skip)
 {
