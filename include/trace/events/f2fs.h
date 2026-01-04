@@ -181,7 +181,8 @@ TRACE_DEFINE_ENUM(EX_BLOCK_AGE);
 		{ LOCK_NAME_NODE_CHANGE,	"node_change" },	\
 		{ LOCK_NAME_NODE_WRITE,		"node_write" },		\
 		{ LOCK_NAME_GC_LOCK,		"gc_lock" },		\
-		{ LOCK_NAME_CP_GLOBAL,		"cp_global" })
+		{ LOCK_NAME_CP_GLOBAL,		"cp_global" },		\
+		{ LOCK_NAME_IO_RWSEM,		"io_rwsem" })
 
 struct f2fs_sb_info;
 struct f2fs_io_info;
