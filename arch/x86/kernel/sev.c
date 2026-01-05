@@ -676,10 +676,12 @@ static u64 __init get_jump_table_addr(void)
 
 static void pvalidate_pages(unsigned long vaddr, unsigned long npages, bool validate)
 {
-	unsigned long vaddr_end;
+	unsigned long vaddr_begin, vaddr_end;
 	int rc;
 
 	vaddr = vaddr & PAGE_MASK;
+
+	vaddr_begin = vaddr;
 	vaddr_end = vaddr + (npages << PAGE_SHIFT);
 
 	while (vaddr < vaddr_end) {
@@ -689,6 +691,13 @@ static void pvalidate_pages(unsigned long vaddr, unsigned long npages, bool vali
 
 		vaddr = vaddr + PAGE_SIZE;
 	}
+
+	/*
+	 * If validating memory (making it private) and affected by the
+	 * cache-coherency vulnerability, perform the cache eviction mitigation.
+	 */
+	if (validate && !cpu_feature_enabled(X86_FEATURE_COHERENCY_SFW_NO))
+		sev_evict_cache((void *)vaddr_begin, npages);
 }
 
 static void __head early_set_pages_state(unsigned long paddr, unsigned long npages, enum psc_op op)

@@ -1387,6 +1387,7 @@ static int veth_dev_init(struct net_device *dev)
 	if (!dev->lstats)
 		return -ENOMEM;
 
+	netdev_lockdep_set_classes(dev);
 	err = veth_alloc_queues(dev);
 	if (err) {
 		free_percpu(dev->lstats);

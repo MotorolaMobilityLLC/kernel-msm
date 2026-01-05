@@ -257,7 +257,7 @@ void mlock_folio(struct folio *folio)
 
 	folio_get(folio);
 	if (!pagevec_add(pvec, mlock_lru(&folio->page)) ||
-	    folio_test_large(folio) || lru_cache_disabled())
+	    !folio_may_be_lru_cached(folio) || lru_cache_disabled())
 		mlock_pagevec(pvec);
 	local_unlock(&mlock_pvec.lock);
 }

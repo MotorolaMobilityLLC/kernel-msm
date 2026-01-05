@@ -3057,3 +3057,7 @@
 
 # required by pl2303.ko
   tty_termios_hw_change
+
+# required by motorcomm.ko
+  phy_basic_ports_array
+  __mdiobus_modify_changed

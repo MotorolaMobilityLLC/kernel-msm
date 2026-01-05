@@ -3347,12 +3347,12 @@ static struct list_head *get_populated_pcp_list(struct zone *zone,
 		int batch = READ_ONCE(pcp->batch);
 		int alloced;
 
-		trace_android_vh_nr_pcp_alloc(pcp, zone, &(zones_extra_data[zone_idx(zone)].pad),
-			order, &batch);
 		trace_android_vh_rmqueue_bulk_bypass(order, pcp, migratetype, list);
 		if (!list_empty(list))
 			return list;
 
+		trace_android_vh_nr_pcp_alloc(pcp, zone, &(zones_extra_data[zone_idx(zone)].pad),
+			order, &batch);
 		/*
 		 * Scale batch relative to order if batch implies
 		 * free pages can be stored on the PCP. Batch can
@@ -3362,7 +3362,7 @@ static struct list_head *get_populated_pcp_list(struct zone *zone,
 		 */
 		if (batch > 1)
 			batch = max(batch >> order, 2);
-		alloced = rmqueue_bulk(zone, order, pcp->batch, list, migratetype, alloc_flags);
+		alloced = rmqueue_bulk(zone, order, batch, list, migratetype, alloc_flags);
 
 		pcp->count += alloced << order;
 		if (list_empty(list))
@@ -5122,7 +5122,7 @@ gfp_to_alloc_flags(gfp_t gfp_mask, unsigned int order)
 		if (!(gfp_mask & __GFP_NOMEMALLOC)) {
 			alloc_flags |= ALLOC_NON_BLOCK;
 
-			if (order > 0)
+			if (order > 0 && (alloc_flags & ALLOC_MIN_RESERVE))
 				alloc_flags |= ALLOC_HIGHATOMIC;
 		}
 
