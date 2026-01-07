@@ -1409,6 +1409,8 @@ static __maybe_unused int mtk_star_suspend(struct device *dev)
 	if (netif_running(ndev))
 		mtk_star_disable(ndev);
 
+	netif_device_detach(ndev);
+
 	clk_bulk_disable_unprepare(MTK_STAR_NCLKS, priv->clks);
 
 	return 0;
@@ -1432,6 +1434,8 @@ static __maybe_unused int mtk_star_resume(struct device *dev)
 		if (ret)
 			clk_bulk_disable_unprepare(MTK_STAR_NCLKS, priv->clks);
 	}
+
+	netif_device_attach(ndev);
 
 	return ret;
 }

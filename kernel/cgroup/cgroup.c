@@ -84,7 +84,7 @@
 DEFINE_MUTEX(cgroup_mutex);
 DEFINE_SPINLOCK(css_set_lock);
 
-#ifdef CONFIG_PROVE_RCU
+#if (defined CONFIG_PROVE_RCU || defined CONFIG_LOCKDEP)
 EXPORT_SYMBOL_GPL(cgroup_mutex);
 EXPORT_SYMBOL_GPL(css_set_lock);
 #endif
@@ -2236,9 +2236,37 @@ static struct file_system_type cgroup2_fs_type = {
 };
 
 #ifdef CONFIG_CPUSETS
+enum cpuset_param {
+	Opt_cpuset_v2_mode,
+};
+
+static const struct fs_parameter_spec cpuset_fs_parameters[] = {
+	fsparam_flag  ("cpuset_v2_mode", Opt_cpuset_v2_mode),
+	{}
+};
+
+static int cpuset_parse_param(struct fs_context *fc, struct fs_parameter *param)
+{
+	struct cgroup_fs_context *ctx = cgroup_fc2context(fc);
+	struct fs_parse_result result;
+	int opt;
+
+	opt = fs_parse(fc, cpuset_fs_parameters, param, &result);
+	if (opt < 0)
+		return opt;
+
+	switch (opt) {
+	case Opt_cpuset_v2_mode:
+		ctx->flags |= CGRP_ROOT_CPUSET_V2_MODE;
+		return 0;
+	}
+	return -EINVAL;
+}
+
 static const struct fs_context_operations cpuset_fs_context_ops = {
 	.get_tree	= cgroup1_get_tree,
 	.free		= cgroup_fs_context_free,
+	.parse_param	= cpuset_parse_param,
 };
 
 /*
@@ -2275,6 +2303,7 @@ static int cpuset_init_fs_context(struct fs_context *fc)
 static struct file_system_type cpuset_fs_type = {
 	.name			= "cpuset",
 	.init_fs_context	= cpuset_init_fs_context,
+	.parameters		= cpuset_fs_parameters,
 	.fs_flags		= FS_USERNS_MOUNT,
 };
 #endif
@@ -4712,6 +4741,7 @@ void css_task_iter_start(struct cgroup_subsys_state *css, unsigned int flags,
 
 	spin_unlock_irq(&css_set_lock);
 }
+EXPORT_SYMBOL_GPL(css_task_iter_start);
 
 /**
  * css_task_iter_next - return the next task for the iterator
@@ -4745,6 +4775,7 @@ struct task_struct *css_task_iter_next(struct css_task_iter *it)
 
 	return it->cur_task;
 }
+EXPORT_SYMBOL_GPL(css_task_iter_next);
 
 /**
  * css_task_iter_end - finish task iteration
@@ -4767,6 +4798,7 @@ void css_task_iter_end(struct css_task_iter *it)
 	if (it->cur_task)
 		put_task_struct(it->cur_task);
 }
+EXPORT_SYMBOL_GPL(css_task_iter_end);
 
 static void cgroup_procs_release(struct kernfs_open_file *of)
 {

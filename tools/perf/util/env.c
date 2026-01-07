@@ -5,25 +5,31 @@
 #include "util/header.h"
 #include <linux/ctype.h>
 #include <linux/zalloc.h>
-#include "bpf-event.h"
 #include "cgroup.h"
 #include <errno.h>
 #include <sys/utsname.h>
-#include <bpf/libbpf.h>
 #include <stdlib.h>
 #include <string.h>
 
 struct perf_env perf_env;
 
-void perf_env__insert_bpf_prog_info(struct perf_env *env,
+#ifdef HAVE_LIBBPF_SUPPORT
+#include "bpf-event.h"
+#include <bpf/libbpf.h>
+
+bool perf_env__insert_bpf_prog_info(struct perf_env *env,
 				    struct bpf_prog_info_node *info_node)
 {
+	bool ret;
+
 	down_write(&env->bpf_progs.lock);
-	__perf_env__insert_bpf_prog_info(env, info_node);
+	ret = __perf_env__insert_bpf_prog_info(env, info_node);
 	up_write(&env->bpf_progs.lock);
+
+	return ret;
 }
 
-void __perf_env__insert_bpf_prog_info(struct perf_env *env, struct bpf_prog_info_node *info_node)
+bool __perf_env__insert_bpf_prog_info(struct perf_env *env, struct bpf_prog_info_node *info_node)
 {
 	__u32 prog_id = info_node->info_linear->info.id;
 	struct bpf_prog_info_node *node;
@@ -41,13 +47,14 @@ void __perf_env__insert_bpf_prog_info(struct perf_env *env, struct bpf_prog_info
 			p = &(*p)->rb_right;
 		} else {
 			pr_debug("duplicated bpf prog info %u\n", prog_id);
-			return;
+			return false;
 		}
 	}
 
 	rb_link_node(&info_node->rb_node, parent, p);
 	rb_insert_color(&info_node->rb_node, &env->bpf_progs.infos);
 	env->bpf_progs.infos_cnt++;
+	return true;
 }
 
 struct bpf_prog_info_node *perf_env__find_bpf_prog_info(struct perf_env *env,
@@ -181,6 +188,11 @@ static void perf_env__purge_bpf(struct perf_env *env)
 
 	up_write(&env->bpf_progs.lock);
 }
+#else // HAVE_LIBBPF_SUPPORT
+static void perf_env__purge_bpf(struct perf_env *env __maybe_unused)
+{
+}
+#endif // HAVE_LIBBPF_SUPPORT
 
 void perf_env__exit(struct perf_env *env)
 {
@@ -217,11 +229,13 @@ void perf_env__exit(struct perf_env *env)
 	zfree(&env->memory_nodes);
 }
 
-void perf_env__init(struct perf_env *env)
+void perf_env__init(struct perf_env *env __maybe_unused)
 {
+#ifdef HAVE_LIBBPF_SUPPORT
 	env->bpf_progs.infos = RB_ROOT;
 	env->bpf_progs.btfs = RB_ROOT;
 	init_rwsem(&env->bpf_progs.lock);
+#endif
 }
 
 int perf_env__set_cmdline(struct perf_env *env, int argc, const char *argv[])
