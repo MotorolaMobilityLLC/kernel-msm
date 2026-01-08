@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023,2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define DRIVER_NAME "msm_sharedmem"
@@ -178,8 +178,10 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 
 		shared_mem = dma_alloc_coherent(&pdev->dev, shared_mem_tot_sz,
 					&shared_mem_pyhsical, GFP_KERNEL);
-		if (shared_mem == NULL)
-			return -ENOMEM;
+		if (shared_mem == NULL) {
+			pr_err_ratelimited("shared mem allocation failed..deferring probe\n");
+			return -EPROBE_DEFER;
+		}
 
 		if (guard_memory)
 			shared_mem_pyhsical += SZ_4K;
