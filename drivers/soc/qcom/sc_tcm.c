@@ -144,53 +144,6 @@ err_sc_tcm_add:
 	return ret;
 }
 
-/*
- * This function can be used to register the ddr as proxy_tcm_region.
- *
- * cache-controller@25000000 {
- *	compatible = "qcom,seraph-llcc";
- *	memory-region = <&proxy_tcm_mem>;
- * };
- *
- * &reserved_memory {
- *	proxy_tcm_mem: proxy_tcm_mem@0 {
- *		no-map;
- *		reg = <0x0 0x82800000 0x0 0xa00000>;
- *	};
- *};
- **/
-static int __maybe_unused sc_tcm_region_proxy(phys_addr_t *base, size_t *size)
-{
-	struct device_node *node;
-	struct device_node *mem_node;
-	struct reserved_mem *rmem;
-	int ret = 0;
-
-	node = of_find_compatible_node(NULL, NULL, "qcom,seraph-llcc");
-	if (!node)
-		return -EINVAL;
-
-	mem_node = of_parse_phandle(node, "memory-region", 0);
-	if (!mem_node) {
-		ret = -EINVAL;
-		goto of_node_put;
-	}
-
-	rmem = of_reserved_mem_lookup(mem_node);
-	if (!rmem) {
-		ret = -EINVAL;
-		goto mem_node_put;
-	}
-
-	*base = rmem->base;
-	*size = rmem->size;
-mem_node_put:
-	of_node_put(mem_node);
-of_node_put:
-	of_node_put(node);
-	return ret;
-}
-
 static int sc_tcm_region_llcc(phys_addr_t *base, size_t *size)
 {
 	struct llcc_tcm_data *data;
