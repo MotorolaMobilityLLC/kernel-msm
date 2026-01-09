@@ -956,6 +956,7 @@ void __mmdrop(struct mm_struct *mm)
 	mm_pasid_drop(mm);
 	mm_destroy_cid(mm);
 	percpu_counter_destroy_many(mm->rss_stat, NR_MM_COUNTERS);
+	trace_android_vh_mmap_lock_free(&mm->mmap_lock);
 
 	free_mm(mm);
 }
@@ -1292,6 +1293,12 @@ static void mm_init_uprobes_state(struct mm_struct *mm)
 #ifdef CONFIG_UPROBES
 	mm->uprobes_state.xol_area = NULL;
 #endif
+}
+
+static void mmap_init_lock(struct mm_struct *mm)
+{
+	init_rwsem(&mm->mmap_lock);
+	trace_android_vh_mmap_lock_init(&mm->mmap_lock);
 }
 
 static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
