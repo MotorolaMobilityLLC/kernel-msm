@@ -1280,6 +1280,7 @@ static ssize_t fuse_dev_do_read(struct fuse_dev *fud, struct file *file,
 	}
 
 	req = list_entry(fiq->pending.next, struct fuse_req, list);
+	trace_android_vh_fuse_request_fetch(req, current);
 	clear_bit(FR_PENDING, &req->flags);
 	list_del_init(&req->list);
 	spin_unlock(&fiq->lock);
