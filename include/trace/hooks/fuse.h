@@ -18,6 +18,9 @@ DECLARE_HOOK(android_vh_queue_request_and_unlock,
 DECLARE_HOOK(android_vh_fuse_request_end,
 	TP_PROTO(struct task_struct *self),
 	TP_ARGS(self));
+DECLARE_HOOK(android_vh_fuse_request_fetch,
+	TP_PROTO(struct fuse_req *req, struct task_struct *self),
+	TP_ARGS(req, self));
 
 #endif /* _TRACE_HOOK_FUSE_H */
 /* This part must be outside protection */
