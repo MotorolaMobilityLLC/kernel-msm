@@ -1452,6 +1452,8 @@ static __always_inline void __folio_add_file_rmap(struct folio *folio,
 
 	VM_WARN_ON_FOLIO(folio_test_anon(folio), folio);
 
+	trace_android_vh_folio_add_file_rmap(folio, page, nr_pages, level);
+
 	nr = __folio_add_rmap(folio, page, nr_pages, level, &nr_pmdmapped);
 	if (nr_pmdmapped)
 		__lruvec_stat_mod_folio(folio, folio_test_swapbacked(folio) ?
@@ -1587,6 +1589,7 @@ static __always_inline void __folio_remove_rmap(struct folio *folio,
 	 * it's only reliable while mapped.
 	 */
 
+	trace_android_vh_folio_remove_rmap(folio, page, nr_pages, level);
 	munlock_vma_folio(folio, vma);
 }
 
