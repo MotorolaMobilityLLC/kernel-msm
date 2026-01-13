@@ -24,7 +24,9 @@
 #include <linux/sched/sysctl.h>
 #include <linux/sched/topology.h>
 #include <linux/sched/signal.h>
+#ifndef __GENKSYMS__
 #include <linux/suspend.h>
+#endif
 #include <linux/delay.h>
 #include <linux/crash_dump.h>
 #include <linux/prefetch.h>
