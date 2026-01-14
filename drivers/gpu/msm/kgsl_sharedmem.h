@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __KGSL_SHAREDMEM_H
 #define __KGSL_SHAREDMEM_H
@@ -201,7 +202,7 @@ void kgsl_page_sync_for_device(struct device *dev, struct page *page,
  *
  * Returns the alignment requested, as power of 2 exponent.
  */
-static inline int
+static inline u32
 kgsl_memdesc_get_align(const struct kgsl_memdesc *memdesc)
 {
 	return FIELD_GET(KGSL_MEMALIGN_MASK, memdesc->flags);
