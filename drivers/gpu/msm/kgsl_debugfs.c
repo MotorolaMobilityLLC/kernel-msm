@@ -146,7 +146,7 @@ static const char *memtype_str(int memtype)
 
 static char get_alignflag(const struct kgsl_memdesc *m)
 {
-	int align = kgsl_memdesc_get_align(m);
+	u32 align = kgsl_memdesc_get_align(m);
 
 	if (align >= ilog2(SZ_1M))
 		return 'L';
