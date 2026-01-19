@@ -665,6 +665,9 @@ DECLARE_HOOK(android_vh_mm_customize_lru_add_dst,
 DECLARE_HOOK(android_vh_oom_reaper_delay_bypass,
 	TP_PROTO(struct task_struct *tsk, bool *bypass),
 	TP_ARGS(tsk, bypass));
+DECLARE_HOOK(android_vh_filemap_get_folio_end,
+	TP_PROTO(struct address_space *mapping, struct folio *folio),
+	TP_ARGS(mapping, folio));
 DECLARE_HOOK(android_vh_nr_pcp_alloc,
 	TP_PROTO(struct per_cpu_pages *pcp, struct zone *zone,
 		unsigned long __percpu **pad, unsigned int order, int *batch),
