@@ -386054,6 +386054,15 @@ elf_symbol {
   full_name: "devfreq_update_status"
 }
 elf_symbol {
+  id: 0x6ff644b0
+  name: "devfreq_update_target"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x94c2ede5
+  type_id: 0x9497b363
+  full_name: "devfreq_update_target"
+}
+elf_symbol {
   id: 0x2ad163ea
   name: "device_add"
   is_defined: true
@@ -443402,6 +443411,7 @@ interface {
   symbol_id: 0x799c3ec1
   symbol_id: 0x34ba5507
   symbol_id: 0x13972c3d
+  symbol_id: 0x6ff644b0
   symbol_id: 0x2ad163ea
   symbol_id: 0x02599b70
   symbol_id: 0x21c2b40a
