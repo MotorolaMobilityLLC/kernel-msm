@@ -721,7 +721,41 @@ static void mem_buf_relinquish_work(struct work_struct *work)
 	kfree(rmt_msg);
 }
 
-static int mem_buf_alloc_resp_hdlr(void *hdlr_data, void *msg_buf, size_t size, void *out_buf)
+#ifdef CONFIG_RECLAIM_LENT_MEMORY
+void mem_buf_relinquish_all_mem(gh_vmid_t vmid)
+{
+	struct mem_buf_xfer_mem *xfer_mem_iter, *tmp, *xfer_mem = NULL;
+
+	mutex_lock(&mem_buf_xfer_mem_list_lock);
+	list_for_each_entry_safe(xfer_mem_iter, tmp, &mem_buf_xfer_mem_list,
+				entry) {
+		xfer_mem = xfer_mem_iter;
+		if (xfer_mem->nr_acl_entries == 1
+				&& xfer_mem->dst_vmids[0] == vmid) {
+			list_del(&xfer_mem->entry);
+			mem_buf_cleanup_alloc_req(xfer_mem, xfer_mem->hdl);
+		}
+	}
+	mutex_unlock(&mem_buf_xfer_mem_list_lock);
+}
+
+u64 mem_buf_account_all_mem(void)
+{
+	u64 total_size = 0;
+	struct mem_buf_xfer_mem *xfer_mem_iter;
+
+	mutex_lock(&mem_buf_xfer_mem_list_lock);
+	list_for_each_entry(xfer_mem_iter, &mem_buf_xfer_mem_list,
+				entry) {
+		total_size += xfer_mem_iter->size;
+	}
+	mutex_unlock(&mem_buf_xfer_mem_list_lock);
+
+	return total_size;
+}
+#endif /*CONFIG_RECLAIM_LENT_MEMORY*/
+
+static int mem_buf_alloc_resp_hdlr(void *msgq, void *msg_buf, size_t size, void *out_buf)
 {
 	struct mem_buf_alloc_resp *alloc_resp = msg_buf;
 	struct mem_buf_desc *membuf = out_buf;
