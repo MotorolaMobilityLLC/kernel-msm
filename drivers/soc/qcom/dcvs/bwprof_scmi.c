@@ -634,6 +634,27 @@ static ssize_t bwprof_vpu_ls_show(struct config_item *item, char *page)
 
 CONFIGFS_ATTR_RO(bwprof_, vpu_ls);
 
+static ssize_t bwprof_pcie_ls_show(struct config_item *item, char *page)
+{
+	u8 master;
+	struct bwprof_hw_group *grp = container_of(to_config_group(item),
+			struct bwprof_hw_group, ls_group);
+
+	if (!grp)
+		return -EINVAL;
+
+	if (grp->hw_type == BWPROF_DDR)
+		master = DDR_PCIe;
+	else if (grp->hw_type == BWPROF_LLCC)
+		master = LLCC_PCIe;
+	else
+		return -EINVAL;
+
+	return bwprof_ls_show_common(page, master);
+}
+
+CONFIGFS_ATTR_RO(bwprof_, pcie_ls);
+
 static struct configfs_attribute *bwprof_attrs[] = {
 	&bwprof_attr_available_config,
 	&bwprof_attr_set_config,
@@ -649,6 +670,7 @@ static struct configfs_attribute *bwprof_ls_attrs[] = {
 	&bwprof_attr_dpu_ls,
 	&bwprof_attr_eva_ls,
 	&bwprof_attr_vpu_ls,
+	&bwprof_attr_pcie_ls,
 	NULL,
 };
 
