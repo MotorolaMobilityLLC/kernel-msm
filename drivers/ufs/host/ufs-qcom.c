@@ -45,6 +45,7 @@
 #include <ufs/ufshci.h>
 #include <ufs/ufs_quirks.h>
 #include <ufs/ufshcd-crypto-qti.h>
+#include "vendor/ufs_hid_jedec.h"
 
 #define MCQ_QCFGPTR_MASK	GENMASK(7, 0)
 #define MCQ_QCFGPTR_UNIT	0x200
@@ -4119,6 +4120,8 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		/* Failure is non-fatal */
 		dev_warn(dev, "%s: failed to configure the testbus %d\n",
 				__func__, err);
+
+	moto_hid_jedec_init(hba);
 
 	ufs_qcom_init_sysfs(hba);
 	ufs_qcom_init_bus_vote_sysfs(host);
