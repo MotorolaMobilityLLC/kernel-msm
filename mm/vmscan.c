@@ -1429,6 +1429,7 @@ static int __remove_mapping(struct address_space *mapping, struct folio *folio,
 	BUG_ON(!folio_test_locked(folio));
 	BUG_ON(mapping != folio_mapping(folio));
 
+	trace_android_vh_remove_mapping(mapping, folio, reclaimed);
 	if (!folio_test_swapcache(folio))
 		spin_lock(&mapping->host->i_lock);
 	xa_lock_irq(&mapping->i_pages);
@@ -1521,6 +1522,7 @@ cannot_free:
 	xa_unlock_irq(&mapping->i_pages);
 	if (!folio_test_swapcache(folio))
 		spin_unlock(&mapping->host->i_lock);
+	trace_android_vh_remove_mapping_failed(mapping, folio, reclaimed);
 	return 0;
 }
 
