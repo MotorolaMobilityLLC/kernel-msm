@@ -386,6 +386,7 @@
   devfreq_suspend_device
   devfreq_unregister_opp_notifier
   devfreq_update_interval
+  devfreq_update_target
   __dev_fwnode
   __dev_get_by_index
   dev_get_by_index
