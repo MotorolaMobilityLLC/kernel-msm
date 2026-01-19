@@ -7,6 +7,8 @@ def register_modules(registry):
             # do not sort
             "drivers/ufs/host/ufs-qcom.h",
             "drivers/ufs/host/ufshcd-crypto-qti.c",
+            "drivers/ufs/host/vendor/ufs_hid_jedec.c",
+            "drivers/ufs/host/vendor/ufs_hid_jedec.h",
         ],
         deps = [
             # do not sort
@@ -28,6 +30,8 @@ def register_modules(registry):
             "drivers/ufs/host/ufs-qcom-trace.h",
             "drivers/ufs/host/ufs-qcom.c",
             "drivers/ufs/host/ufs-qcom.h",
+            "drivers/ufs/host/vendor/ufs_hid_jedec.c",
+            "drivers/ufs/host/vendor/ufs_hid_jedec.h",
         ],
         deps = [
             # do not sort

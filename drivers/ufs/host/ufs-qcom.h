@@ -17,6 +17,7 @@
 #include <ufs/ufshcd.h>
 #include <ufs/unipro.h>
 #include "drivers/ufs/host/ufshcd-pltfrm.h"
+#include "vendor/ufs_hid_jedec.h"
 
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
@@ -611,6 +612,8 @@ struct ufs_qcom_host {
 	unsigned int boost_monitor_timer;
 	u32 min_boost_thres;
 	u32 max_boost_thres;
+	struct work_struct update_sysfs_work;
+	struct moto_hid_jedec_feature hid_jedec;
 };
 
 static inline u32
