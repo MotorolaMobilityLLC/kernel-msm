@@ -590,3 +590,9 @@
   contpte_ptep_get
   contpte_ptep_set_access_flags
   __ptep_set_access_flags
+  __traceiter_android_vh_resched_curr_lazy
+  __traceiter_android_vh_restore_curr_resched
+  __traceiter_android_vh_clear_curr_lazy
+  __tracepoint_android_vh_resched_curr_lazy
+  __tracepoint_android_vh_restore_curr_resched
+  __tracepoint_android_vh_clear_curr_lazy
