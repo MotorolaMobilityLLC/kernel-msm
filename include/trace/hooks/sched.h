@@ -228,6 +228,10 @@ DECLARE_RESTRICTED_HOOK(android_rvh_ttwu_cond,
 	TP_PROTO(int cpu, bool *cond),
 	TP_ARGS(cpu, cond), 1);
 
+DECLARE_RESTRICTED_HOOK(android_rvh_schedule_bug,
+	TP_PROTO(void *unused),
+	TP_ARGS(unused), 1);
+
 DECLARE_RESTRICTED_HOOK(android_rvh_sched_exec,
 	TP_PROTO(bool *cond),
 	TP_ARGS(cond), 1);
