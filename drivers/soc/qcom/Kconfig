@@ -325,7 +325,7 @@ config QCOM_OCMEM
 
 config QCOM_PCIE_PDC
 	tristate "Qualcomm Technologies, Inc. (QTI) PCIe PDC driver"
-	depends on QCOM_CRM && (ARCH_QCOM || COMPILE_TEST)
+	depends on (QCOM_CRM || QCOM_CRM_V2) && (ARCH_QCOM || COMPILE_TEST)
 	help
 	  Support for enabling PCIe PDC interrupts in Qualcomm Technologies, Inc.
 	  (QTI) SoCs. PCIe PDC driver provides interfaces to configure PDC interrupt
