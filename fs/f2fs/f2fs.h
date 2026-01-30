@@ -148,6 +148,7 @@ enum f2fs_lock_name {
 	LOCK_NAME_GC_LOCK,
 	LOCK_NAME_CP_GLOBAL,
 	LOCK_NAME_IO_RWSEM,
+	LOCK_NAME_MAX,
 };
 
 /*
@@ -1337,7 +1338,10 @@ struct f2fs_time_stat {
 
 struct f2fs_lock_context {
 	struct f2fs_time_stat ts;
+	int orig_nice;
+	int new_nice;
 	bool lock_trace;
+	bool need_restore;
 };
 
 struct f2fs_gc_control {
@@ -1463,6 +1467,8 @@ enum {
 
 /* a threshold of maximum elapsed time in critical region to print tracepoint */
 #define MAX_LOCK_ELAPSED_TIME		500
+
+#define F2FS_DEFAULT_TASK_PRIORITY		(DEFAULT_PRIO)
 
 static inline int f2fs_test_bit(unsigned int nr, char *addr);
 static inline void f2fs_set_bit(unsigned int nr, char *addr);
@@ -1866,6 +1872,12 @@ struct f2fs_sb_info {
 
 	/* max elapsed time threshold in critical region that lock covered */
 	unsigned long long max_lock_elapsed_time;
+
+	/* enable/disable to adjust task priority in critical region covered by lock */
+	unsigned int adjust_lock_priority;
+
+	/* adjust priority for task which is in critical region covered by lock */
+	unsigned int lock_duration_priority;
 
 #ifdef CONFIG_F2FS_FS_COMPRESSION
 	struct kmem_cache *page_array_slab;	/* page array entry */
