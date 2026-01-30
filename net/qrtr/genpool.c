@@ -600,9 +600,11 @@ static void qrtr_genpool_setup_work(struct work_struct *work)
 		state_next = LOCAL_STATE_INIT;
 		break;
 	case LOCAL_STATE_INIT:
-	case LOCAL_STATE_START:
 		state_next = LOCAL_STATE_START;
 		break;
+	case LOCAL_STATE_START:
+		state_next = LOCAL_STATE_INIT;
+		goto state_change;
 	case LOCAL_STATE_PREPARE_REBOOT:
 		qrtr_genpool_set_state(qdev, LOCAL_STATE_REBOOT);
 		spin_unlock_irqrestore(&qdev->lock, flags);
@@ -642,6 +644,7 @@ static void qrtr_genpool_setup_work(struct work_struct *work)
 	enable_irq(qdev->irq_xfer);
 
 	spin_lock_irqsave(&qdev->lock, flags);
+state_change:
 	qrtr_genpool_set_state(qdev, state_next);
 	qrtr_genpool_signal_setup(qdev);
 
