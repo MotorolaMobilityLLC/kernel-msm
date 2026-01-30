@@ -346,6 +346,21 @@ static const struct vadc_map_pt adcmap7_die_temp[] = {
 	{ 433700, -60000 },
 };
 
+static const struct vadc_map_pt adcmap_gen3_die_temp_lite[] = {
+	{ 833200, -60000 },
+	{ 798300, -40000 },
+	{ 762900, -20000 },
+	{ 727100, 0 },
+	{ 690900, 20000 },
+	{ 654400, 40000 },
+	{ 617500, 60000 },
+	{ 580400, 80000 },
+	{ 543000, 100000 },
+	{ 505400, 120000 },
+	{ 467600, 140000 },
+	{ 429600, 160000 },
+};
+
 /*
  * Resistance to temperature table for 100k pull up for NTCG104EF104.
  */
@@ -702,6 +717,10 @@ static int qcom_vadc7_scale_hw_calib_die_temp(
 				const struct u32_fract *prescale,
 				const struct adc5_data *data,
 				u16 adc_code, int *result_mdec);
+static int qcom_adc5_gen3_scale_hw_calib_die_temp_lite(
+				const struct u32_fract *prescale,
+				const struct adc5_data *data,
+				u16 adc_code, int *result_mdec);
 static int qcom_adc5_gen4_scale_hw_calib_batt_therm_10(
 				const struct u32_fract *prescale,
 				const struct adc5_data *data,
@@ -729,6 +748,8 @@ static struct qcom_adc5_scale_type scale_adc5_fn[] = {
 	[SCALE_HW_CALIB_PMIC_THERM] = {qcom_vadc_scale_hw_calib_die_temp},
 	[SCALE_HW_CALIB_PMIC_THERM_PM7] = {
 					qcom_vadc7_scale_hw_calib_die_temp},
+	[SCALE_HW_CALIB_PM5_GEN3_PMIC_THERM_LITE] = {
+					qcom_adc5_gen3_scale_hw_calib_die_temp_lite},
 	[SCALE_HW_CALIB_PM5_CHG_TEMP] = {qcom_vadc_scale_hw_chg5_temp},
 	[SCALE_HW_CALIB_PM5_SMB_TEMP] = {qcom_vadc_scale_hw_smb_temp},
 	[SCALE_HW_CALIB_PM5_SMB1398_TEMP] = {qcom_vadc_scale_hw_smb1398_temp},
@@ -1121,6 +1142,22 @@ static int qcom_vadc7_scale_hw_calib_die_temp(
 				prescale, data, 1);
 
 	return qcom_vadc_map_voltage_temp(adcmap7_die_temp, ARRAY_SIZE(adcmap7_die_temp),
+			voltage, result_mdec);
+}
+
+static int qcom_adc5_gen3_scale_hw_calib_die_temp_lite(
+				const struct u32_fract *prescale,
+				const struct adc5_data *data,
+				u16 adc_code, int *result_mdec)
+{
+
+	int voltage;
+
+	voltage = qcom_vadc_scale_code_voltage_factor(adc_code,
+				prescale, data, 1);
+
+	return qcom_vadc_map_voltage_temp(adcmap_gen3_die_temp_lite,
+			ARRAY_SIZE(adcmap_gen3_die_temp_lite),
 			voltage, result_mdec);
 }
 
