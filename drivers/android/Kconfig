@@ -80,6 +80,7 @@ config ANDROID_DEBUG_KINFO
 
 config ANDROID_KABI_RESERVE
 	bool "Android KABI reserve padding"
+	depends on 64BIT
 	default y
 	help
 	  This option enables the padding that the Android GKI kernel adds
@@ -96,6 +97,7 @@ config ANDROID_KABI_RESERVE
 
 config ANDROID_VENDOR_OEM_DATA
 	bool "Android vendor and OEM data padding"
+	depends on 64BIT
 	default y
 	help
 	  This option enables the padding that the Android GKI kernel adds

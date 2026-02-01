@@ -155,6 +155,9 @@ static int damon_reclaim_apply_parameters(void)
 	struct damos *scheme, *old_scheme;
 	int err = 0;
 
+	if (!damon_reclaim_mon_attrs.aggr_interval)
+		return -EINVAL;
+
 	err = damon_set_attrs(ctx, &damon_reclaim_mon_attrs);
 	if (err)
 		return err;

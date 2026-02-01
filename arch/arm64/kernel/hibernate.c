@@ -357,6 +357,7 @@ int swsusp_arch_suspend(void)
 		sleep_cpu = smp_processor_id();
 		ret = swsusp_save();
 	} else {
+		trace_android_vh_hibernate_resume_state(HIBERNATION_IMAGE_RESTORE_START);
 		/* Clean kernel core startup/idle code to PoC*/
 		dcache_clean_inval_poc((unsigned long)__mmuoff_data_start,
 				    (unsigned long)__mmuoff_data_end);

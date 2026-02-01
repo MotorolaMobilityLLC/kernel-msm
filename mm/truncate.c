@@ -24,6 +24,9 @@
 #include <linux/rmap.h>
 #include "internal.h"
 
+#undef CREATE_TRACE_POINTS
+#include <trace/hooks/vmscan.h>
+
 /*
  * Regular page slots are stabilized by the page lock even without the tree
  * itself locked.  These unlocked entries need verification under the tree
@@ -516,6 +519,11 @@ unsigned long invalidate_mapping_pagevec(struct address_space *mapping,
 	unsigned long ret;
 	unsigned long count = 0;
 	int i;
+	bool skip = false;
+
+	trace_android_vh_invalidate_mapping_pagevec(mapping, &skip);
+	if (skip)
+		return count;
 
 	folio_batch_init(&fbatch);
 	while (find_lock_entries(mapping, index, end, &fbatch, indices)) {

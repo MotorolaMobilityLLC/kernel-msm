@@ -697,6 +697,8 @@
   __wake_up
   wake_up_process
   __warn_printk
+  vb2_discard_done
+  vb2_queue_init_name
 
 # required by atmel_mxt_ts.ko
   gpiod_direction_output
@@ -1544,6 +1546,8 @@
   of_fwnode_ops
   of_node_name_eq
   v4l2_async_register_subdev
+  v4l2_fwnode_parse_link
+  v4l2_fwnode_put_link
 
 # required by videobuf-core.ko
   __wake_up_sync
@@ -1564,4 +1568,5 @@
 
 # required by bd96801.regulator.ko
   linear_range_get_value_array
+  regulator_desc_list_voltage_linear
   regulator_desc_list_voltage_linear_range

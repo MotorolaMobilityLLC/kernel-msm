@@ -269,6 +269,9 @@ DECLARE_HOOK(android_vh_shmem_swapin_folio,
 DECLARE_HOOK(android_vh_madvise_cold_or_pageout_page,
 	TP_PROTO(bool pageout, struct page *page),
 	TP_ARGS(pageout, page));
+DECLARE_HOOK(android_vh_mark_folio_accessed,
+	TP_PROTO(struct folio *folio),
+	TP_ARGS(folio));
 DECLARE_HOOK(android_vh_page_should_be_protected,
 	TP_PROTO(struct folio *folio, unsigned long nr_scanned,
 	s8 priority, u64 *ext, int *should_protect),
@@ -299,6 +302,9 @@ DECLARE_HOOK(android_vh_filemap_add_folio,
 DECLARE_HOOK(android_vh_free_unref_page_list_bypass,
 	TP_PROTO(struct list_head *list, bool *skip),
 	TP_ARGS(list, skip));
+DECLARE_HOOK(android_vh_do_async_mmap_readahead,
+	TP_PROTO(struct vm_fault *vmf, struct folio *folio, bool *skip),
+	TP_ARGS(vmf, folio, skip));
 DECLARE_HOOK(android_vh_do_read_fault,
 	TP_PROTO(struct vm_fault *vmf, unsigned long fault_around_bytes),
 	TP_ARGS(vmf, fault_around_bytes));
