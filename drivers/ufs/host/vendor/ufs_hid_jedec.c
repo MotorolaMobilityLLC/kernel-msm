@@ -183,36 +183,10 @@ static struct attribute *ufs_sysfs_hid[] = {
 static umode_t ufs_sysfs_hid_is_visible(struct kobject *kobj,
 		struct attribute *attr, int n)
 {
-	u8 *desc_buf;
-	int err;
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
 
-	desc_buf = kzalloc(QUERY_DESC_MAX_SIZE, GFP_KERNEL);
-	if (!desc_buf) {
-		goto out;
-	}
-
-	err = ufshcd_read_desc_param(hba, QUERY_DESC_IDN_DEVICE, 0, 0, desc_buf,
-				     QUERY_DESC_MAX_SIZE);
-	if (err) {
-		dev_err(hba->dev, "%s: Failed reading Device Desc. err = %d\n",
-			__func__, err);
-		goto out;
-	}
-
-	ufs->hid_jedec.hid_sup = get_unaligned_be32(desc_buf +
-			DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP) &
-			MOTO_UFS_DEV_HID_SUPPORT;
-
-	dev_err(dev,"%s:  get hid jedec support = %d \n",__func__, ufs->hid_jedec.hid_sup);
-
-	out:
-	kfree(desc_buf);
-
-	return ufs->hid_jedec.hid_sup ? attr->mode : 0;
-	//return	hba->dev_info.hid_sup ? attr->mode : 0;
+	return to_hba_priv(hba)->hid_sup ? attr->mode : 0;
 }
 
 static const struct attribute_group ufs_sysfs_hid_group = {
@@ -225,57 +199,16 @@ static const struct attribute_group *ufs_sysfs_hid_groups[] = {
 	NULL,
 };
 
-void moto_sysfs_update_hid(struct ufs_hba *hba)
+int moto_hid_jedec_init(struct ufs_hba *hba)
 {
-	int ret;
-	struct device *dev = hba->dev;
-	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
-	struct moto_hid_jedec_feature *hid_jedec = &ufs->hid_jedec;
-
-    if (hid_jedec->hid_sup) {
-        sysfs_remove_group(&dev->kobj, &ufs_sysfs_hid_group);
-        ret = sysfs_create_group(&dev->kobj, &ufs_sysfs_hid_group);
-		if (ret) {
-			dev_err(dev,
-				"%s: hid_group creation failed (err = %d)\n",
-				__func__, ret);
-			return;
-		}
-    }
-}
-
-static void hid_jedec_ufs_update_sysfs_work(struct work_struct *work)
-{
-	struct ufs_qcom_host *ufs = container_of(work, struct ufs_qcom_host,
-						update_sysfs_work);
-	struct ufs_hba *hba = ufs->hba;
 	int err;
+
+	dev_info(hba->dev,"moto ufs hid init\n");
 
 	err = sysfs_create_groups(&hba->dev->kobj,
 				ufs_sysfs_hid_groups);
 	if (err)
 		dev_err(hba->dev, "%s: Failed to add a pixel group\n",
 				__func__);
-}
-
-static void hid_jedec_ufs_update_sysfs(void *data, struct ufs_hba *hba)
-{
-	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
-
-	// queue_delayed_work(system_highpri_wq, &ufs->update_sysfs_work, msecs_to_jiffies(100));
-	queue_work(system_highpri_wq, &ufs->update_sysfs_work);
-}
-
-int moto_hid_jedec_init(struct ufs_hba *hba)
-{
-	struct ufs_qcom_host *ufs = ufshcd_get_variant(hba);
-	int ret;
-
-	ret = register_trace_android_vh_ufs_update_sysfs(
-				hid_jedec_ufs_update_sysfs, NULL);
-	if (ret)
-		return ret;
-
-	INIT_WORK(&ufs->update_sysfs_work, hid_jedec_ufs_update_sysfs_work);
 	return 0;
 }

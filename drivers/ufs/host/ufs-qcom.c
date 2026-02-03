@@ -4074,8 +4074,6 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		dev_warn(dev, "%s: failed to configure the testbus %d\n",
 				__func__, err);
 
-	moto_hid_jedec_init(hba);
-
 	ufs_qcom_init_sysfs(hba);
 	ufs_qcom_init_bus_vote_sysfs(host);
 
@@ -5212,6 +5210,7 @@ static struct ufs_dev_quirk ufs_qcom_dev_fixups[] = {
 static void ufs_qcom_fixup_dev_quirks(struct ufs_hba *hba)
 {
 	ufshcd_fixup_dev_quirks(hba, ufs_qcom_dev_fixups);
+	moto_hid_jedec_init(hba);
 }
 
 /* Resources */
