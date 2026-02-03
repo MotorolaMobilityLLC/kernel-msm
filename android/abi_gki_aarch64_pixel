@@ -3269,6 +3269,7 @@
   ww_mutex_unlock
   x509_load_certificate_list
   __xa_alloc
+  __xa_clear_mark
   xa_destroy
   __xa_erase
   xa_erase
