@@ -376706,6 +376706,15 @@ elf_symbol {
   full_name: "__xa_alloc_cyclic"
 }
 elf_symbol {
+  id: 0x017f1776
+  name: "__xa_clear_mark"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x8391b043
+  type_id: 0x1ae27633
+  full_name: "__xa_clear_mark"
+}
+elf_symbol {
   id: 0x1820daaf
   name: "__xa_cmpxchg"
   is_defined: true
@@ -442391,6 +442400,7 @@ interface {
   symbol_id: 0xcf1808d5
   symbol_id: 0x01b711f3
   symbol_id: 0xb0e141a3
+  symbol_id: 0x017f1776
   symbol_id: 0x1820daaf
   symbol_id: 0x4b52e164
   symbol_id: 0xd6e3f912
