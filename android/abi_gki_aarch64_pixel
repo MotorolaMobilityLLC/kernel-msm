@@ -3277,6 +3277,7 @@
   xa_find_after
   __xa_insert
   xa_load
+  xa_set_mark
   xas_find
   xas_pause
   __xa_store
