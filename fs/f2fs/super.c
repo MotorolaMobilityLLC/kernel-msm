@@ -3988,6 +3988,7 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->max_lock_elapsed_time = MAX_LOCK_ELAPSED_TIME;
 	sbi->adjust_lock_priority = 0;
 	sbi->lock_duration_priority = F2FS_DEFAULT_TASK_PRIORITY;
+	sbi->critical_task_priority = F2FS_CRITICAL_TASK_PRIORITY;
 
 	sbi->dir_level = DEF_DIR_LEVEL;
 	sbi->interval_time[CP_TIME] = DEF_CP_INTERVAL;
