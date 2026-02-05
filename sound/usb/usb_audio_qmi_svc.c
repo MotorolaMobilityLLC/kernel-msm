@@ -971,6 +971,7 @@ static void uaudio_connect(struct snd_usb_audio *chip)
 		return;
 
 	uadev[chip->card->number].chip = chip;
+	uadev[chip->card->number].chip->quirk_flags |= QUIRK_FLAG_CTL_MSG_DELAY_5M;
 	uadev[chip->card->number].sb = sb;
 }
 
