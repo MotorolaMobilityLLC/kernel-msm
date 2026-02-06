@@ -367544,6 +367544,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_test_clear_look_around_ref"
 }
 elf_symbol {
+  id: 0x6d485f59
+  name: "__traceiter_android_vh_thaw_killed_process"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x17e70a68
+  type_id: 0x9be885da
+  full_name: "__traceiter_android_vh_thaw_killed_process"
+}
+elf_symbol {
   id: 0x40d428a7
   name: "__traceiter_android_vh_thermal_pm_notify_suspend"
   is_defined: true
@@ -374958,6 +374967,15 @@ elf_symbol {
   crc: 0x09ad9821
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_test_clear_look_around_ref"
+}
+elf_symbol {
+  id: 0x4776310b
+  name: "__tracepoint_android_vh_thaw_killed_process"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xd3564467
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_thaw_killed_process"
 }
 elf_symbol {
   id: 0xafd4e4b1
@@ -441382,6 +441400,7 @@ interface {
   symbol_id: 0xfcc3558a
   symbol_id: 0x9c4fb9ab
   symbol_id: 0x48f0cf25
+  symbol_id: 0x6d485f59
   symbol_id: 0x40d428a7
   symbol_id: 0x3d1d57b0
   symbol_id: 0xa00355c9
@@ -442206,6 +442225,7 @@ interface {
   symbol_id: 0xbf50cdb8
   symbol_id: 0x1a59144d
   symbol_id: 0x4ef2c337
+  symbol_id: 0x4776310b
   symbol_id: 0xafd4e4b1
   symbol_id: 0xba33290e
   symbol_id: 0xd292bd77
