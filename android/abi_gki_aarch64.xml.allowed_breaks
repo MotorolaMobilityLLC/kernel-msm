@@ -125,3 +125,7 @@ type 'enum binder_work_type' changed
   enumerator 'BINDER_WORK_FROZEN_BINDER' (9) was added
   ... 1 other enumerator(s) added
 
+type 'struct ipv6_devconf' changed
+  member 'u64 android_kabi_reserved4' was removed
+  member 'union { struct { __u8 ra_honor_pio_pflag; __u8 padding4[7]; }; struct { u64 android_kabi_reserved4; }; union { }; }' was added
+

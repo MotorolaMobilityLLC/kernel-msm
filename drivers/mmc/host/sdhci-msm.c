@@ -1627,7 +1627,7 @@ static int sdhci_msm_dt_parse_hsr_info(struct device *dev,
 		ret = -EINVAL;
 	} else {
 		msm_host->dll_hsr = (struct sdhci_msm_dll_hsr *)dll_hsr_table;
-	}
+}
 
 skip_hsr:
 	if (!msm_host->dll_hsr)
