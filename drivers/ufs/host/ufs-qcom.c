@@ -46,6 +46,9 @@
 #include <ufs/ufshci.h>
 #include <ufs/ufs_quirks.h>
 #include <ufs/ufshcd-crypto-qti.h>
+#ifdef CONFIG_UFS_JEDEC_HID
+#include "vendor/ufs_hid_jedec.h"
+#endif
 
 #define MCQ_QCFGPTR_MASK	GENMASK(7, 0)
 #define MCQ_QCFGPTR_UNIT	0x200
@@ -5056,6 +5059,9 @@ static void ufs_qcom_fixup_dev_quirks(struct ufs_hba *hba)
 	ufshcd_fixup_dev_quirks(hba, ufs_qcom_dev_fixups);
 #if defined(CONFIG_UFSFEATURE)
 	ufsf_set_init_state(hba);
+#endif
+#ifdef CONFIG_UFS_JEDEC_HID
+	moto_hid_jedec_init(hba);
 #endif
 }
 

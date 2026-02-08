@@ -5,6 +5,7 @@ obj-$(CONFIG_SCSI_UFS_DWC_TC_PLATFORM) += tc-dwc-g210-pltfrm.o ufshcd-dwc.o tc-d
 obj-$(CONFIG_SCSI_UFS_CDNS_PLATFORM) += cdns-pltfrm.o
 obj-$(CONFIG_SCSI_UFS_QCOM) += ufs-qcom.o
 ufs-qcom-y += ufs_qcom.o
+ufs-qcom-$(CONFIG_UFS_JEDEC_HID) += vendor/ufs_hid_jedec.o
 ufs-qcom-$(CONFIG_UFSFEATURE) += vendor/ufsfeature.o vendor/ufsfeature-mimic.o
 ufs-qcom-$(CONFIG_UFSHID) += vendor/ufshid.o
 obj-$(CONFIG_SCSI_UFS_CRYPTO_QTI) += ufshcd-crypto-qti.o

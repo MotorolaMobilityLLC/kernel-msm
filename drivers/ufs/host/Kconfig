@@ -191,3 +191,9 @@ config MICRON_UFSHID
 	depends on SCSI_UFSHCD && UFSFEATURE && UFSHID
 	help
 	  Enable Micron HID feature
+
+config UFS_JEDEC_HID
+	tristate "UFS Host Initiated Defrag support based on upstream"
+	depends on !UFSHID
+	help
+            Jedec HID feature Enable

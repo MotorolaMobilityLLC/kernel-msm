@@ -19,6 +19,9 @@
 #if defined(CONFIG_UFSFEATURE)
 #include "vendor/ufsfeature.h"
 #endif
+#ifdef CONFIG_UFS_JEDEC_HID
+#include "vendor/ufs_hid_jedec.h"
+#endif
 #define MAX_UFS_QCOM_HOSTS	2
 #define MAX_U32                 (~(u32)0)
 #define MPHY_TX_FSM_STATE       0x41
@@ -623,6 +626,9 @@ struct ufs_qcom_host {
 	unsigned int boost_monitor_timer;
 	u32 min_boost_thres;
 	u32 max_boost_thres;
+#ifdef CONFIG_UFS_JEDEC_HID
+	struct moto_hid_jedec_feature hid_jedec;
+#endif
 #if defined(CONFIG_UFSFEATURE)
 	struct ufsf_feature ufsf;
 #endif
