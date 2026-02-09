@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2025~2026, Qualcomm Innovation Center, Inc. All rights reserved.
  */
+
+#define pr_fmt(fmt) "midpoint: " fmt
 
 #include <linux/kernel.h>
 #include <linux/cpufreq.h>
@@ -14,16 +16,20 @@
 #define MIDPOINT_DEFAULT_QOS_TIMEOUT_MS 100000U
 static int midpoint_freq = 0;
 static int qos_timeout_ms = MIDPOINT_DEFAULT_QOS_TIMEOUT_MS;
+static int post_boot_timeout = 0;
+static int delayed_qos_removal = 0;
 static int midpoint_started = 0;
 
 module_param(midpoint_freq, int, 0400);
 module_param(qos_timeout_ms, int, 0400);
+module_param(post_boot_timeout, int, 0400);
 
 static DEFINE_PER_CPU(struct freq_qos_request, qos_max_req);
 static DEFINE_PER_CPU(struct freq_qos_request, qos_min_req);
 static struct delayed_work qos_remove_work;
 static void request_freq_qos(struct work_struct *w);
 static DECLARE_WORK(request_qos_work, request_freq_qos);
+static DEFINE_MUTEX(qos_lock);
 
 static void midpoint_qos_remove(void) {
 	struct freq_qos_request *req;
@@ -42,7 +48,12 @@ static void midpoint_qos_remove(void) {
 
 static void midpoint_qos_remove_work(struct work_struct *work)
 {
-	midpoint_qos_remove();
+	mutex_lock(&qos_lock);
+	if (midpoint_started) {
+		midpoint_qos_remove();
+		midpoint_started = 0;
+	}
+	mutex_unlock(&qos_lock);
 }
 
 static void request_freq_qos(struct work_struct *w)
@@ -95,11 +106,13 @@ static void request_freq_qos(struct work_struct *w)
 			goto out;
 	}
 
-	if ((qos_timeout_ms != NO_TIMEOUT && (qos_timeout_ms != 0))) {
-		INIT_DELAYED_WORK(&qos_remove_work, midpoint_qos_remove_work);
+	if (qos_timeout_ms != 0) {
 		schedule_delayed_work(&qos_remove_work, msecs_to_jiffies(qos_timeout_ms));
+	} else if (post_boot_timeout > 0) {
+		delayed_qos_removal = 1;
 	}
 	midpoint_started = 1;
+
 	pr_info("Added midpoint qos with freq=%d qos_timeout_ms=%d.\n", midpoint_freq, qos_timeout_ms);
 	return;
 
@@ -119,17 +132,29 @@ void midpoint_init(void)
 		pr_info("No boot frequency\n");
 		return;
 	}
+	INIT_DELAYED_WORK(&qos_remove_work, midpoint_qos_remove_work);
 	schedule_work(&request_qos_work);
 }
 
+/*
+ * Called by per-cpu waltgov_start, cpu is booted one by one,
+ * midpoint_qos_remove can only be executed once, it's a critical section,
+ * if a workqueue is scheduled,  a lock is needed in work function.
+*/
 void midpoint_stop(void)
 {
 	if (!midpoint_started) {
 		return;
 	}
 
+	if (delayed_qos_removal) {
+		schedule_delayed_work(&qos_remove_work, msecs_to_jiffies(post_boot_timeout));
+		pr_info("post-boot lunch\n");
+		return;
+	}
+
 	pr_info("midpoint stop \n");
-	if ((qos_timeout_ms == NO_TIMEOUT) || (qos_timeout_ms == 0))
+	if (qos_timeout_ms == 0)
 	{
 		midpoint_qos_remove();
 	}
