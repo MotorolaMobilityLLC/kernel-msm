@@ -807,11 +807,6 @@ static int mptcp_nl_remove_subflow_and_signal_addr(struct net *net,
 		struct sock *sk = (struct sock *)msk;
 		bool remove_subflow;
 
-		if (list_empty(&msk->conn_list)) {
-			mptcp_pm_remove_anno_addr(msk, addr, false);
-			goto next;
-		}
-
 		lock_sock(sk);
 		remove_subflow = lookup_subflow_by_saddr(&msk->conn_list, addr);
 		mptcp_pm_remove_anno_addr(msk, addr, remove_subflow);
@@ -819,7 +814,6 @@ static int mptcp_nl_remove_subflow_and_signal_addr(struct net *net,
 			mptcp_pm_remove_subflow(msk, addr->id);
 		release_sock(sk);
 
-next:
 		sock_put(sk);
 		cond_resched();
 	}
