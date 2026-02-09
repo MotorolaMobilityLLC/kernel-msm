@@ -313,6 +313,7 @@ void free_pages_and_swap_cache(struct encoded_page **pages, int nr)
 	for (int i = 0; i < nr; i++) {
 		struct page *page = encoded_page_ptr(pages[i]);
 
+		trace_android_vh_free_pages_and_swap_cache(page_folio(page));
 		/*
 		 * Skip over the "nr_pages" entry. It's sufficient to call
 		 * free_swap_cache() only once per folio.
