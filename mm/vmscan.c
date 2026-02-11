@@ -6730,6 +6730,7 @@ static void shrink_node_memcgs(pg_data_t *pgdat, struct scan_control *sc)
 		cond_resched();
 
 		trace_android_vh_shrink_node_memcgs(memcg, &skip);
+		trace_android_vh_should_memcg_bypass(memcg, sc->priority, &skip);
 		if (skip)
 			continue;
 
