@@ -362,6 +362,7 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 	const __be32 *addr;
 	u32 req_delay;
 	int error;
+	unsigned int init_sts;
 
 	if (of_property_read_u32(pdev->dev.of_node, "debounce", &req_delay))
 		req_delay = 15625;
@@ -465,6 +466,14 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 	if (error)
 		return error;
 
+	/* Read the initial key status */
+	error = regmap_read(pwrkey->regmap, pwrkey->baseaddr + PON_RT_STS, &init_sts);
+	if (error) {
+		dev_warn(&pdev->dev, "failed to read initial key state: %d\n", error);
+		init_sts = 0;
+	}
+	pwrkey->last_status = init_sts & pwrkey->data->status_bit;
+
 	error = devm_request_threaded_irq(&pdev->dev, pwrkey->irq,
 					  NULL, pm8941_pwrkey_irq,
 					  IRQF_ONESHOT,
@@ -479,6 +488,13 @@ static int pm8941_pwrkey_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to register input device: %d\n",
 			error);
 		return error;
+	}
+
+	/* If the initial state is a press, then report a press event once */
+	if (pwrkey->last_status) {
+		input_report_key(pwrkey->input, pwrkey->code, 1);
+		input_sync(pwrkey->input);
+		dev_info(&pdev->dev, "Initial key press reported\n");
 	}
 
 	if (pwrkey->data->supports_ps_hold_poff_config) {
