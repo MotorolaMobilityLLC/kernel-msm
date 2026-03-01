@@ -27,6 +27,17 @@ static const struct msm_pinctrl_soc_data neo_pinctrl = {
 	.egpio_func = 11,
 };
 
+static const struct msm_pinctrl_soc_data neo_vm_pinctrl = {
+	.pins = neo_pins,
+	.npins = ARRAY_SIZE(neo_pins),
+	.functions = neo_functions,
+	.nfunctions = ARRAY_SIZE(neo_functions),
+	.groups = neo_groups,
+	.ngroups = ARRAY_SIZE(neo_groups),
+	.ngpios = 156,
+	.egpio_func = 11,
+};
+
 static int neo_pinctrl_probe(struct platform_device *pdev)
 {
 	const struct msm_pinctrl_soc_data *pinctrl_data;
@@ -40,6 +51,7 @@ static int neo_pinctrl_probe(struct platform_device *pdev)
 
 static const struct of_device_id neo_pinctrl_of_match[] = {
 	{ .compatible = "qcom,neo-pinctrl", .data = &neo_pinctrl},
+	{ .compatible = "qcom,neo-vm-pinctrl", .data = &neo_vm_pinctrl},
 	{ },
 };
 

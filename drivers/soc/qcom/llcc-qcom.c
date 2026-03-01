@@ -903,6 +903,14 @@ static int qcom_llcc_tcm_init(struct platform_device *pdev,
 			}
 		}
 		tcm_drv_data->tcm_data->mem_size = tcm_drv_data->tcm_slice->slice_size * SZ_1K;
+
+		tcm_drv_data->tcm_data->virt_addr = ioremap(tcm_drv_data->tcm_data->phys_addr,
+				tcm_drv_data->tcm_data->mem_size);
+
+		if (IS_ERR_OR_NULL(tcm_drv_data->tcm_data->virt_addr)) {
+			ret = -ENOMEM;
+			goto slice_cfg_err;
+		}
 	} else {
 		if (IS_ERR_OR_NULL(slc_tcm_shmem)) {
 			pr_err("Failed to get slc tcm region\n");
@@ -937,19 +945,15 @@ static int qcom_llcc_tcm_init(struct platform_device *pdev,
 			goto cfg_err;
 		}
 	}
-	tcm_drv_data->tcm_data->virt_addr = ioremap(tcm_drv_data->tcm_data->phys_addr,
-			tcm_drv_data->tcm_data->mem_size);
-
-	if (IS_ERR_OR_NULL(tcm_drv_data->tcm_data->virt_addr)) {
-		ret = -ENOMEM;
-		goto slice_cfg_err;
-	}
 
 	mutex_init(&tcm_drv_data->lock);
 
 	return 0;
 
 slice_cfg_err:
+	if (!drv_data->sct_initialized && tcm_drv_data->tcm_data &&
+			tcm_drv_data->tcm_data->virt_addr)
+		iounmap(tcm_drv_data->tcm_data->virt_addr);
 	llcc_slice_putd(tcm_drv_data->tcm_slice);
 cfg_err:
 	tcm_drv_data = ERR_PTR(-ENODEV);
@@ -965,6 +969,7 @@ cfg_err:
 struct llcc_tcm_data *llcc_tcm_activate(void)
 {
 	int ret;
+	void __iomem *virt_addr;
 
 	if (IS_ERR(tcm_drv_data))
 		return ERR_PTR(-EPROBE_DEFER);
@@ -985,6 +990,20 @@ struct llcc_tcm_data *llcc_tcm_activate(void)
 			goto act_err;
 		else
 			goto act_err_deact;
+	}
+
+	if (drv_data->sct_initialized) {
+		virt_addr = ioremap(tcm_drv_data->tcm_data->phys_addr,
+				tcm_drv_data->tcm_data->mem_size);
+
+		if (IS_ERR_OR_NULL(virt_addr)) {
+			ret = -ENOMEM;
+			goto act_err_deact;
+		}
+
+		memset(virt_addr, 0xFF, tcm_drv_data->tcm_data->mem_size);
+		iounmap(virt_addr);
+		virt_addr = NULL;
 	}
 
 	tcm_drv_data->is_active = true;
@@ -1034,7 +1053,7 @@ EXPORT_SYMBOL_GPL(llcc_tcm_deactivate);
  */
 phys_addr_t llcc_tcm_get_phys_addr(struct llcc_tcm_data *tcm_data)
 {
-	if (IS_ERR_OR_NULL(tcm_data))
+	if (IS_ERR_OR_NULL(drv_data) || drv_data->sct_initialized || IS_ERR_OR_NULL(tcm_data))
 		return 0;
 
 	return tcm_data->phys_addr;
@@ -1049,7 +1068,7 @@ EXPORT_SYMBOL_GPL(llcc_tcm_get_phys_addr);
  */
 void __iomem *llcc_tcm_get_virt_addr(struct llcc_tcm_data *tcm_data)
 {
-	if (IS_ERR_OR_NULL(tcm_data))
+	if (IS_ERR_OR_NULL(drv_data) || drv_data->sct_initialized || IS_ERR_OR_NULL(tcm_data))
 		return NULL;
 
 	return tcm_data->virt_addr;
@@ -1696,6 +1715,8 @@ static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 	u32 i, sz, scid_max;
 	struct slc_sct_slice_desc *memslice;
 	struct device *dev = &pdev->dev;
+	struct device_node *tcm_memory_node;
+	const struct llcc_slice_config *llcc_cfg = NULL;
 	struct resource *res;
 	struct slc_sct_mem __iomem *slc_mem = NULL;
 
@@ -1793,6 +1814,13 @@ static int qcom_llcc_mem_based_init(struct platform_device *pdev)
 	drv_data->cfg = NULL;
 	drv_data->cfg_size = sz;
 	drv_data->max_slices = scid_max;
+
+	tcm_memory_node = of_parse_phandle(dev->of_node, "memory-region", 0);
+	if (tcm_memory_node) {
+		ret = qcom_llcc_tcm_init(pdev, llcc_cfg, sz, tcm_memory_node, drv_data);
+		if (ret)
+			dev_err(dev, "Failed to probe TCM manager\n");
+	}
 
 	dev_warn(dev, "llcc slice size not supported and is set to 0\n");
 end:
@@ -1989,6 +2017,13 @@ static int qcom_llcc_probe(struct platform_device *pdev)
 			pr_err("llcc configuration failed!!\n");
 			goto err;
 		}
+
+		tcm_memory_node = of_parse_phandle(dev->of_node, "memory-region", 0);
+		if (tcm_memory_node) {
+			ret = qcom_llcc_tcm_init(pdev, llcc_cfg, sz, tcm_memory_node, drv_data);
+			if (ret)
+				dev_err(dev, "Failed to probe TCM manager\n");
+		}
 	}
 
 	drv_data->ecc_irq = platform_get_irq_optional(pdev, 0);
@@ -2002,13 +2037,6 @@ static int qcom_llcc_probe(struct platform_device *pdev)
 
 	if (of_platform_populate(dev->of_node, NULL, NULL, dev) < 0)
 		dev_err(dev, "llcc populate failed!!\n");
-
-	tcm_memory_node = of_parse_phandle(dev->of_node, "memory-region", 0);
-	if (tcm_memory_node) {
-		ret = qcom_llcc_tcm_init(pdev, llcc_cfg, sz, tcm_memory_node, drv_data);
-		if (ret)
-			dev_err(dev, "Failed to probe TCM manager\n");
-	}
 
 	return 0;
 err:

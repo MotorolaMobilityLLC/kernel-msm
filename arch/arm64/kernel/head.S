@@ -506,7 +506,7 @@ SYM_INNER_LABEL(init_el1, SYM_L_LOCAL)
 	eret
 
 SYM_INNER_LABEL(init_el2, SYM_L_LOCAL)
-	mov_q	x0, HCR_HOST_NVHE_FLAGS
+	mov_q	x0, HCR_HOST_NVHE_FLAGS | HCR_ATA
 	msr	hcr_el2, x0
 	isb
 

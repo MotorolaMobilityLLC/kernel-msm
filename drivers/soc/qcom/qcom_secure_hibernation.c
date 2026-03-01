@@ -18,6 +18,7 @@
 #define AUTH_SIZE		16
 #define AUTH_TAG		0xFF
 #define AUTHTAG			1
+#define PAGE_BATCH              5000
 #define QSEECOM_ALIGN_SIZE      0x40
 #define QSEECOM_ALIGN_MASK      (QSEECOM_ALIGN_SIZE - 1)
 #define QSEECOM_ALIGN(x)        \
@@ -100,6 +101,8 @@ static int blk_array_pos;
 static unsigned long nr_pages;
 static void *auth_slot;
 static int qtee_ret;
+static unsigned long page_counter;
+static unsigned long pages_since_last_log;
 
 static void init_sg(struct scatterlist *sg, void *data, unsigned int size)
 {
@@ -147,7 +150,8 @@ static void encrypt_page(void *data, void *buf)
 		ret = -ENOMEM;
 		goto err_aead;
 	}
-
+	page_counter++;
+	pages_since_last_log++;
 	crypto_init_wait(&wait);
 	aead_request_set_callback(req, CRYPTO_TFM_REQ_MAY_BACKLOG,
 				crypto_req_done, &wait);
@@ -185,6 +189,11 @@ static void encrypt_page(void *data, void *buf)
 
 	if (first_encrypt)
 		first_encrypt = 0;
+
+	if (pages_since_last_log >= PAGE_BATCH) {
+		pr_info("Encrypted %lu pages\n", page_counter);
+		pages_since_last_log = 0;
+	}
 
 out:
 	aead_request_free(req);

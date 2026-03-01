@@ -77,6 +77,8 @@
   bio_chain
   bio_endio
   bio_end_io_acct_remapped
+  bio_free_pages
+  bio_kmalloc
   bio_split
   bio_start_io_acct
   bitmap_allocate_region
@@ -1211,6 +1213,7 @@
   generic_file_llseek
   generic_handle_domain_irq
   generic_handle_irq
+  generic_ro_fops
   geni_icc_disable
   geni_icc_enable
   geni_icc_get
@@ -2740,6 +2743,7 @@
   rcu_unexpedite_gp
   rcuwait_wake_up
   rdev_get_drvdata
+  readahead_expand
   reboot_mode
   rebuild_sched_domains
   reclaim_shmem_address_space
@@ -3545,8 +3549,10 @@
   __traceiter_android_vh_ftrace_oops_enter
   __traceiter_android_vh_ftrace_oops_exit
   __traceiter_android_vh_ftrace_size_check
+  __traceiter_android_vh_gic_resume
   __traceiter_android_vh_gic_v3_suspend
   __traceiter_android_vh_hibernated_do_mem_alloc
+  __traceiter_android_vh_hibernate_resume_state
   __traceiter_android_vh_hibernate_save_cmp_len
   __traceiter_android_vh_hibernate_state
   __traceiter_android_vh_ignore_dmabuf_vmap_bounds
@@ -3700,8 +3706,10 @@
   __tracepoint_android_vh_ftrace_oops_enter
   __tracepoint_android_vh_ftrace_oops_exit
   __tracepoint_android_vh_ftrace_size_check
+  __tracepoint_android_vh_gic_resume
   __tracepoint_android_vh_gic_v3_suspend
   __tracepoint_android_vh_hibernated_do_mem_alloc
+  __tracepoint_android_vh_hibernate_resume_state
   __tracepoint_android_vh_hibernate_save_cmp_len
   __tracepoint_android_vh_hibernate_state
   __tracepoint_android_vh_ignore_dmabuf_vmap_bounds
@@ -4257,6 +4265,7 @@
   zlib_deflateReset
   zlib_deflate_workspacesize
   zlib_inflate
+  zlib_inflateEnd
   zlib_inflateIncomp
   zlib_inflateInit2
   zlib_inflateReset

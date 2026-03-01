@@ -277,6 +277,15 @@ config QCOM_LLCC
 	  SDM845. This provides interfaces to clients that use the LLCC.
 	  Say yes here to enable LLCC slice driver.
 
+config QCOM_LLCC_DEBUG
+	tristate "Qualcomm Technologies,Inc. LLCC perf debug driver"
+	depends on DEBUG_FS
+	help
+	  This driver will expose debugfs nodes to show the status of
+	  PCB & configure sleep or wakeup as per ADR feature by reading
+	  the information through hardware. Debugfs interface is used to
+	  configure the PCBs in LLCC.
+
 config QCOM_KRYO_L2_ACCESSORS
 	bool
 	depends on ARCH_QCOM && ARM64 || COMPILE_TEST
@@ -316,7 +325,7 @@ config QCOM_OCMEM
 
 config QCOM_PCIE_PDC
 	tristate "Qualcomm Technologies, Inc. (QTI) PCIe PDC driver"
-	depends on QCOM_CRM && (ARCH_QCOM || COMPILE_TEST)
+	depends on (QCOM_CRM || QCOM_CRM_V2) && (ARCH_QCOM || COMPILE_TEST)
 	help
 	  Support for enabling PCIe PDC interrupts in Qualcomm Technologies, Inc.
 	  (QTI) SoCs. PCIe PDC driver provides interfaces to configure PDC interrupt

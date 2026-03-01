@@ -32,6 +32,7 @@
 #include <linux/security.h>
 #include <linux/secretmem.h>
 #include <trace/events/power.h>
+#include <trace/hooks/bl_hib.h>
 
 #include "power.h"
 
@@ -335,6 +336,7 @@ static int create_image(int platform_mode)
 	trace_suspend_resume(TPS("machine_suspend"), PM_EVENT_HIBERNATE, true);
 	error = swsusp_arch_suspend();
 	/* Restore control flow magically appears here */
+	trace_android_vh_hibernate_resume_state(HIBERNATION_IMAGE_RESTORE_START);
 	restore_processor_state();
 	trace_suspend_resume(TPS("machine_suspend"), PM_EVENT_HIBERNATE, false);
 	if (error)
@@ -363,7 +365,7 @@ static int create_image(int platform_mode)
 
  Platform_finish:
 	platform_finish(platform_mode);
-
+	trace_android_vh_hibernate_resume_state(HIBERNATION_DEVICE_RESUME_START);
 	dpm_resume_start(in_suspend ?
 		(error ? PMSG_RECOVER : PMSG_THAW) : PMSG_RESTORE);
 
@@ -440,6 +442,7 @@ int hibernation_snapshot(int platform_mode)
 	resume_console();
 	dpm_complete(msg);
 
+	trace_android_vh_hibernate_resume_state(HIBERNATION_DEVICE_RESUME_DONE);
  Close:
 	platform_end(platform_mode);
 	return error;
@@ -825,6 +828,7 @@ int hibernate(void)
 		pm_restore_gfp_mask();
 	} else {
 		pm_pr_dbg("Hibernation image restored successfully.\n");
+		trace_android_vh_hibernate_resume_state(HIBERNATION_IMAGE_RESTORE_DONE);
 	}
 
  Free_bitmaps:
@@ -848,6 +852,7 @@ int hibernate(void)
 	hibernate_release();
  Unlock:
 	unlock_system_sleep(sleep_flags);
+	trace_android_vh_hibernate_resume_state(HIBERNATION_EXIT);
 	pr_info("hibernation exit\n");
 
 	return error;

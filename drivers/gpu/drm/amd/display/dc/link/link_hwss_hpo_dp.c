@@ -29,6 +29,8 @@
 #include "dc_link_dp.h"
 #include "clk_mgr.h"
 
+#define DC_LOGGER link->ctx->logger
+
 static enum phyd32clk_clock_source get_phyd32clk_src(struct dc_link *link)
 {
 	switch (link->link_enc->transmitter) {
@@ -224,6 +226,11 @@ static void disable_hpo_dp_link_output(struct dc_link *link,
 		const struct link_resource *link_res,
 		enum signal_type signal)
 {
+	if (!link_res->hpo_dp_link_enc) {
+		DC_LOG_ERROR("%s: invalid hpo_dp_link_enc\n", __func__);
+		return;
+	}
+
 	if (IS_FPGA_MAXIMUS_DC(link->dc->ctx->dce_environment)) {
 		disable_hpo_dp_fpga_link_output(link, link_res, signal);
 	} else {

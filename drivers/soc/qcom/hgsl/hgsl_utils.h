@@ -115,5 +115,29 @@ static inline void hgsl_regmap_write(struct regmap *regmap, u32 offset, u32 valu
 	regmap_write(regmap, offset, value);
 }
 
+static inline int hgsl_check_userparams(
+	uint64_t uaddr64,
+	uint32_t usize)
+{
+	unsigned long uaddr, size, end;
+
+	if (!uaddr64 || !usize)
+		return -EINVAL;
+
+	uaddr = (unsigned long)untagged_addr(uaddr64);
+	size = (unsigned long)usize;
+
+	/* Check for integer overflow */
+	if (uaddr > ULONG_MAX - size)
+		return -EINVAL;
+
+	end = uaddr + size;
+
+	/* Quick check user addr limit */
+	if (uaddr >= TASK_SIZE_MAX || end > TASK_SIZE_MAX)
+		return -EFAULT;
+
+	return 0;
+}
 
 #endif  /* __HGSL_UTILS_H */
