@@ -470,6 +470,8 @@
   bio_init
   __bio_add_page
   blkdev_get_by_dev
+  __traceiter_android_rvh_swap_bio_charge
+  __tracepoint_android_rvh_swap_bio_charge
 
 #required by mem_reclaim_ctl.ko
 __traceiter_android_vh_page_should_be_protected
