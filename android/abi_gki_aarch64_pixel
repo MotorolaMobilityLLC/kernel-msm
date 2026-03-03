@@ -106,10 +106,12 @@
   blk_mq_free_request
   blk_mq_free_tag_set
   blk_mq_map_queues
+  blk_mq_quiesce_queue
   blk_mq_start_request
   blk_mq_start_stopped_hw_queues
   blk_mq_stop_hw_queues
   blk_mq_unique_tag
+  blk_mq_unquiesce_queue
   blk_mq_update_nr_hw_queues
   blk_op_str
   blk_queue_chunk_sectors
@@ -286,6 +288,7 @@
   __cpu_present_mask
   cpupri_find_fitness
   cpu_scale
+  cpuset_cpus_allowed
   cpus_read_lock
   cpus_read_unlock
   cpu_subsys
@@ -1195,6 +1198,7 @@
   __ipv6_addr_type
   __irq_alloc_descs
   __irq_apply_affinity_hint
+  irq_check_status_bit
   irq_create_mapping_affinity
   irq_create_of_mapping
   __irq_domain_add
@@ -1205,6 +1209,7 @@
   irq_domain_xlate_twocell
   irq_force_affinity
   irq_get_irq_data
+  irq_get_percpu_devid_partition
   irq_modify_status
   irq_of_parse_and_map
   __irq_resolve_mapping
@@ -1216,6 +1221,7 @@
   irq_set_irq_wake
   irq_to_desc
   irq_work_queue
+  irq_work_run
   irq_work_sync
   is_vmalloc_addr
   jiffies
@@ -1359,6 +1365,8 @@
   log_threaded_irq_wakeup_reason
   log_write_mmio
   loops_per_jiffy
+  lru_cache_disable
+  lru_disable_count
   mac_pton
   mas_empty_area_rev
   mas_find
@@ -1484,6 +1492,7 @@
   noop_llseek
   nr_cpu_ids
   nr_irqs
+  nr_swap_pages
   ns_capable
   ns_capable_noaudit
   nsec_to_clock_t
@@ -1599,6 +1608,7 @@
   param_ops_long
   param_ops_string
   param_ops_uint
+  param_ops_ullong
   param_ops_ulong
   param_set_copystring
   param_set_int
@@ -1646,6 +1656,7 @@
   perf_aux_output_begin
   perf_aux_output_end
   perf_aux_output_flag
+  perf_aux_output_skip
   perf_event_addr_filters_sync
   perf_event_create_kernel_counter
   perf_event_disable
@@ -1912,6 +1923,7 @@
   remap_vmalloc_range
   remove_cpu
   remove_proc_entry
+  remove_proc_subtree
   remove_wait_queue
   request_firmware
   request_firmware_direct
@@ -1960,6 +1972,7 @@
   rtnl_trylock
   rtnl_unlock
   runqueues
+  sbitmap_weight
   sched_clock
   sched_feat_keys
   sched_setattr_nocheck
@@ -2299,6 +2312,7 @@
   tasklet_setup
   tasklet_unlock_wait
   __task_pid_nr_ns
+  __task_rq_lock
   task_rq_lock
   tcpci_get_tcpm_port
   tcpci_irq
@@ -2330,6 +2344,7 @@
   thermal_zone_device_update
   thermal_zone_get_temp
   thermal_zone_get_zone_by_name
+  this_cpu_has_cap
   thread_group_cputime_adjusted
   tick_nohz_get_idle_calls_cpu
   time64_to_tm
@@ -2380,6 +2395,7 @@
   __traceiter_android_rvh_set_cpus_allowed_by_task
   __traceiter_android_rvh_set_iowait
   __traceiter_android_rvh_setscheduler
+  __traceiter_android_rvh_setscheduler_prio
   __traceiter_android_rvh_set_task_cpu
   __traceiter_android_rvh_set_user_nice
   __traceiter_android_rvh_set_user_nice_locked
@@ -2405,8 +2421,10 @@
   __traceiter_android_vh_binder_proc_transaction_finish
   __traceiter_android_vh_binder_restore_priority
   __traceiter_android_vh_binder_set_priority
+  __traceiter_android_vh_calculate_totalreserve_pages
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
+  __traceiter_android_vh_do_async_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
@@ -2520,6 +2538,7 @@
   __tracepoint_android_rvh_set_cpus_allowed_by_task
   __tracepoint_android_rvh_set_iowait
   __tracepoint_android_rvh_setscheduler
+  __tracepoint_android_rvh_setscheduler_prio
   __tracepoint_android_rvh_set_task_cpu
   __tracepoint_android_rvh_set_user_nice
   __tracepoint_android_rvh_set_user_nice_locked
@@ -2545,8 +2564,10 @@
   __tracepoint_android_vh_binder_proc_transaction_finish
   __tracepoint_android_vh_binder_restore_priority
   __tracepoint_android_vh_binder_set_priority
+  __tracepoint_android_vh_calculate_totalreserve_pages
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
+  __tracepoint_android_vh_do_async_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
@@ -2723,7 +2744,9 @@
   usb_function_register
   usb_function_unregister
   usb_gadget_activate
+  usb_gadget_connect
   usb_gadget_deactivate
+  usb_gadget_disconnect
   usb_gadget_set_state
   usb_gstrings_attach
   usb_hcd_is_primary_hcd

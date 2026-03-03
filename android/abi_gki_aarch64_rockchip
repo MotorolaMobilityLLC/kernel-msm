@@ -364,6 +364,7 @@
   drm_connector_attach_encoder
   drm_connector_cleanup
   drm_connector_has_possible_encoder
+  drm_connector_helper_hpd_irq_event
   drm_connector_init
   drm_connector_init_with_ddc
   drm_connector_list_iter_begin
@@ -2163,6 +2164,7 @@
   pinconf_generic_parse_dt_config
   pinctrl_force_default
   pinctrl_force_sleep
+  pinctrl_register_mappings
   pin_get_name
 
 # required by pl330.ko
@@ -2498,6 +2500,7 @@
   __drm_atomic_state_free
   drm_bridge_chain_mode_set
   drm_bridge_get_edid
+  drm_bridge_is_panel
   drm_connector_list_update
   drm_crtc_cleanup
   drm_crtc_enable_color_mgmt
@@ -2521,6 +2524,7 @@
   drm_flip_work_init
   drm_flip_work_queue
   drm_format_info
+  drm_format_info_bpp
   drm_format_info_min_pitch
   drm_framebuffer_cleanup
   drm_framebuffer_init
@@ -2543,7 +2547,9 @@
   drm_kms_helper_poll_init
   drm_mm_init
   drm_mm_insert_node_in_range
+  drmm_of_get_bridge
   drmm_mode_config_init
+  drmm_panel_bridge_add
   drm_mm_print
   drm_mm_remove_node
   drm_mm_reserve_node
@@ -2567,6 +2573,7 @@
   drm_mode_validate_ycbcr420
   drm_of_crtc_port_mask
   drm_of_encoder_active_endpoint
+  drm_panel_bridge_set_orientation
   drm_plane_cleanup
   drm_plane_create_alpha_property
   drm_plane_create_blend_mode_property

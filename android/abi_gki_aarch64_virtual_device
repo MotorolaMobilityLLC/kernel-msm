@@ -1089,6 +1089,7 @@
   drm_atomic_helper_dirtyfb
   drm_atomic_helper_plane_destroy_state
   drm_atomic_helper_plane_duplicate_state
+  __drm_atomic_helper_plane_duplicate_state
   drm_atomic_helper_plane_reset
   drm_connector_attach_edid_property
   drm_connector_register
@@ -1272,6 +1273,7 @@
   bpf_prog_add
   bpf_prog_put
   bpf_prog_sub
+  bpf_redirect_info
   bpf_stats_enabled_key
   bpf_warn_invalid_xdp_action
   __cpuhp_remove_state
