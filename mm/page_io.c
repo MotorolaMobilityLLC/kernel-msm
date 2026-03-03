@@ -502,6 +502,7 @@ static void swap_readpage_bdev_sync(struct folio *folio,
 	get_task_struct(current);
 	count_vm_events(PSWPIN, folio_nr_pages(folio));
 	submit_bio_wait(&bio);
+	trace_android_rvh_swap_bio_charge(&bio);
 	__end_swap_bio_read(&bio);
 	put_task_struct(current);
 }
