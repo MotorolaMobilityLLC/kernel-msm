@@ -428,8 +428,11 @@ static int qcom_tzmem_pool_add_memory(struct qcom_tzmem_pool *pool,
 
 	if (pool->is_cached) {
 		area->vaddr = (void *)__get_free_pages(gfp, get_order(area->size));
-		if (!area->vaddr)
+		if (!area->vaddr) {
+			pr_err("Failed to allocate %zu bytes (order=%d), pool total size=%zu, pool avail=%zu\n",
+				area->size, get_order(area->size), gen_pool_size(pool->genpool), gen_pool_avail(pool->genpool));
 			return -ENOMEM;
+		}
 
 		area->paddr = dma_map_single(qcom_tzmem_dev, area->vaddr,
 					     area->size, DMA_TO_DEVICE);
