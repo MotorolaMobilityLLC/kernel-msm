@@ -100,9 +100,9 @@ int qtee_shmbridge_driver_init(void)
 	struct qcom_tzmem_pool_config pool_config;
 
 	memset(&pool_config, 0, sizeof(pool_config));
-	pool_config.initial_size = SZ_512K;
+	pool_config.initial_size = SZ_1M;
 	pool_config.policy = QCOM_TZMEM_POLICY_ON_DEMAND;
-	pool_config.max_size = SZ_4M;
+	pool_config.max_size = SZ_8M;
 	pool_config.is_cached = true;
 
 	shmbridge_pool = qcom_tzmem_pool_new(&pool_config);
