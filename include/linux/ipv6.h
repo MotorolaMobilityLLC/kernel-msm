@@ -84,7 +84,7 @@ struct ipv6_devconf {
 
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
-	ANDROID_KABI_RESERVE(4);
+	ANDROID_KABI_BACKPORT_USE(4, struct { __u8 ra_honor_pio_pflag; __u8 padding4[7]; });
 };
 
 struct ipv6_params {

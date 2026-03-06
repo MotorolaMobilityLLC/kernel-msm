@@ -15,6 +15,7 @@
 #include "helpers.h"
 #include "hfi_helper.h"
 #include "pm_helpers.h"
+#include "hfi_platform.h"
 
 struct intbuf {
 	struct list_head list;
@@ -480,7 +481,7 @@ session_process_buf(struct venus_inst *inst, struct vb2_v4l2_buffer *vbuf)
 static bool is_dynamic_bufmode(struct venus_inst *inst)
 {
 	struct venus_core *core = inst->core;
-	struct venus_caps *caps;
+	struct hfi_plat_caps *caps;
 
 	/*
 	 * v4 doesn't send BUFFER_ALLOC_MODE_SUPPORTED property and supports
@@ -1040,36 +1041,6 @@ int venus_helper_set_work_mode(struct venus_inst *inst, u32 mode)
 }
 EXPORT_SYMBOL_GPL(venus_helper_set_work_mode);
 
-int venus_helper_init_codec_freq_data(struct venus_inst *inst)
-{
-	const struct codec_freq_data *data;
-	unsigned int i, data_size;
-	u32 pixfmt;
-	int ret = 0;
-
-	if (!IS_V4(inst->core))
-		return 0;
-
-	data = inst->core->res->codec_freq_data;
-	data_size = inst->core->res->codec_freq_data_size;
-	pixfmt = inst->session_type == VIDC_SESSION_TYPE_DEC ?
-			inst->fmt_out->pixfmt : inst->fmt_cap->pixfmt;
-
-	for (i = 0; i < data_size; i++) {
-		if (data[i].pixfmt == pixfmt &&
-		    data[i].session_type == inst->session_type) {
-			inst->clk_data.codec_freq_data = &data[i];
-			break;
-		}
-	}
-
-	if (!inst->clk_data.codec_freq_data)
-		ret = -EINVAL;
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(venus_helper_init_codec_freq_data);
-
 int venus_helper_set_num_bufs(struct venus_inst *inst, unsigned int input_bufs,
 			      unsigned int output_bufs,
 			      unsigned int output2_bufs)
@@ -1535,6 +1506,29 @@ void venus_helper_m2m_job_abort(void *priv)
 }
 EXPORT_SYMBOL_GPL(venus_helper_m2m_job_abort);
 
+int venus_helper_session_init(struct venus_inst *inst)
+{
+	enum hfi_version version = inst->core->res->hfi_version;
+	u32 session_type = inst->session_type;
+	u32 codec;
+	int ret;
+
+	codec = inst->session_type == VIDC_SESSION_TYPE_DEC ?
+			inst->fmt_out->pixfmt : inst->fmt_cap->pixfmt;
+
+	ret = hfi_session_init(inst, codec);
+	if (ret)
+		return ret;
+
+	inst->clk_data.vpp_freq = hfi_platform_get_codec_vpp_freq(version, codec,
+								  session_type);
+	inst->clk_data.vsp_freq = hfi_platform_get_codec_vsp_freq(version, codec,
+								  session_type);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(venus_helper_session_init);
+
 void venus_helper_init_instance(struct venus_inst *inst)
 {
 	if (inst->session_type == VIDC_SESSION_TYPE_DEC) {
@@ -1545,7 +1539,7 @@ void venus_helper_init_instance(struct venus_inst *inst)
 }
 EXPORT_SYMBOL_GPL(venus_helper_init_instance);
 
-static bool find_fmt_from_caps(struct venus_caps *caps, u32 buftype, u32 fmt)
+static bool find_fmt_from_caps(struct hfi_plat_caps *caps, u32 buftype, u32 fmt)
 {
 	unsigned int i;
 
@@ -1562,7 +1556,7 @@ int venus_helper_get_out_fmts(struct venus_inst *inst, u32 v4l2_fmt,
 			      u32 *out_fmt, u32 *out2_fmt, bool ubwc)
 {
 	struct venus_core *core = inst->core;
-	struct venus_caps *caps;
+	struct hfi_plat_caps *caps;
 	u32 ubwc_fmt, fmt = to_hfi_raw_fmt(v4l2_fmt);
 	bool found, found_ubwc;
 

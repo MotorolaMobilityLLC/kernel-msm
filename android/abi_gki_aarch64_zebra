@@ -4,3 +4,4 @@
   tty_termios_hw_change
   usb_bus_idr
   usb_bus_idr_lock
+  phy_device_free
