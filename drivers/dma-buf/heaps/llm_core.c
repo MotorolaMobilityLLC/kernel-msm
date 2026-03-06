@@ -240,6 +240,7 @@ again:
 inline struct llmheap_buf_cache *find_llm_cache_by_path(char *path, loff_t pos, unsigned long pages, int idx, bool allocate)
 {
 	struct llmheap_buf_cache *llm_cache = NULL, *target_cache = NULL;
+	void *p;
 
 	if (!path)
 		return NULL;
@@ -274,15 +275,6 @@ inline struct llmheap_buf_cache *find_llm_cache_by_path(char *path, loff_t pos, 
 					continue;
 				}
 								
-				if (!llm_cache->pages)
-				{
-					llm_cache->pages = __vmalloc_array(llm_cache->total_pages, sizeof(struct page *), GFP_KERNEL);
-					if (!llm_cache->pages)
-						continue;
-					memset(llm_cache->pages, 0, llm_cache->total_pages * sizeof(struct page *));
-					llm_cache->read_pages = llm_cache->remained_pages = 0;
-					pr_debug("relocated pages %p", llm_cache->pages);
-				}
 				llm_cache->flags |= DBUF_CACHE_IN_USAGE;
 				llm_cache->allocated_pages = 0;
 				llm_cache->stop_aio_worker = 0;
@@ -296,6 +288,30 @@ inline struct llmheap_buf_cache *find_llm_cache_by_path(char *path, loff_t pos, 
 		}
 	}
 	rcu_read_unlock();
+	if (target_cache && (!target_cache->pages))
+	{
+		llm_cache = target_cache;
+		p  = __vmalloc_array(llm_cache->total_pages, sizeof(struct page *), GFP_KERNEL);
+		spin_lock(&llm_cache->lock);
+		if (target_cache->pages) {
+			spin_unlock(&llm_cache->lock);
+			if (p) vfree(p);
+			return target_cache;
+		}
+
+		if (p)
+		{
+			target_cache->pages = p;
+			memset(target_cache->pages, 0, target_cache->total_pages * sizeof(struct page *));
+			target_cache->read_pages = target_cache->remained_pages = 0;
+			pr_debug("allocated pages %p", llm_cache->pages);
+		}else{
+			llm_cache->flags &= ~DBUF_CACHE_IN_USAGE;
+			pr_info("page alloc failed %ld\n", llm_cache->total_pages);
+			target_cache = NULL;
+		}
+		spin_unlock(&llm_cache->lock);
+	}
 	return target_cache;
 }
 
