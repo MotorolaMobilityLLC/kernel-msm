@@ -1014,6 +1014,7 @@ int filemap_add_folio(struct address_space *mapping, struct folio *folio,
 				return ret;
 			}
 		}
+		trace_android_vh_filemap_adjust_folio_flags(mapping, folio, index);
 		folio_add_lru(folio);
 	}
 	return ret;
