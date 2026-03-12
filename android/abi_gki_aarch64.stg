@@ -308869,6 +308869,12 @@ function {
   parameter_id: 0x4585663f
 }
 function {
+  id: 0x1201f8b1
+  return_type_id: 0x48b5725f
+  parameter_id: 0x0a2e9ae5
+  parameter_id: 0x0483e6f8
+}
+function {
   id: 0x12051b11
   return_type_id: 0x48b5725f
   parameter_id: 0x09427c40
@@ -308915,6 +308921,11 @@ function {
   return_type_id: 0x48b5725f
   parameter_id: 0x0c56e1ee
   parameter_id: 0x6720d32f
+}
+function {
+  id: 0x1213f72a
+  return_type_id: 0x48b5725f
+  parameter_id: 0x0a2e9ae5
 }
 function {
   id: 0x121493f8
@@ -322602,6 +322613,13 @@ function {
   parameter_id: 0x33d50b40
   parameter_id: 0xf435685e
   parameter_id: 0xf435685e
+}
+function {
+  id: 0x56fc975d
+  return_type_id: 0x92233392
+  parameter_id: 0x0665e6b6
+  parameter_id: 0x26ad5dc1
+  parameter_id: 0x92233392
 }
 function {
   id: 0x56fd367d
@@ -358279,6 +358297,15 @@ elf_symbol {
   full_name: "__blkg_prfill_rwstat"
 }
 elf_symbol {
+  id: 0xbf1d0365
+  name: "__blkg_prfill_u64"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x9bec4b1b
+  type_id: 0x56fc975d
+  full_name: "__blkg_prfill_u64"
+}
+elf_symbol {
   id: 0x2d1c1f2d
   name: "__blockdev_direct_IO"
   is_defined: true
@@ -379740,6 +379767,24 @@ elf_symbol {
   crc: 0x31ece098
   type_id: 0x13f12250
   full_name: "blkdev_put"
+}
+elf_symbol {
+  id: 0x3a816bcd
+  name: "blkg_conf_exit"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x5ae3d8f9
+  type_id: 0x1213f72a
+  full_name: "blkg_conf_exit"
+}
+elf_symbol {
+  id: 0xb0f09bc0
+  name: "blkg_conf_init"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x256303a5
+  type_id: 0x1201f8b1
+  full_name: "blkg_conf_init"
 }
 elf_symbol {
   id: 0x35eb35db
@@ -440445,6 +440490,7 @@ interface {
   symbol_id: 0x5a6afeee
   symbol_id: 0xc8eb813d
   symbol_id: 0x7bf707d4
+  symbol_id: 0xbf1d0365
   symbol_id: 0x2d1c1f2d
   symbol_id: 0x9bed4545
   symbol_id: 0xefdcf4c1
@@ -442829,6 +442875,8 @@ interface {
   symbol_id: 0x2a322266
   symbol_id: 0x8c705d8e
   symbol_id: 0x57e1cd01
+  symbol_id: 0x3a816bcd
+  symbol_id: 0xb0f09bc0
   symbol_id: 0x35eb35db
   symbol_id: 0x120ecf6c
   symbol_id: 0xabd39b51
