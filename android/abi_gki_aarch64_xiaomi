@@ -223,6 +223,14 @@
   elv_rqhash_add
   blk_req_needs_zone_write_lock
   __blk_req_zone_write_lock
+  blkcg_print_blkgs
+  blkg_conf_init
+  blkg_conf_prep
+  blkg_conf_exit
+  __blkg_prfill_u64
+  blkcg_root
+  blkcg_activate_policy
+  blkcg_deactivate_policy
 
 #required by cifs.ko
   add_swap_extent
