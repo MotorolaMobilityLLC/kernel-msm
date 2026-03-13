@@ -177,20 +177,21 @@ int snd_soc_info_volsw(struct snd_kcontrol *kcontrol,
 {
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
-	int platform_max;
+	int max;
 
-	if (!mc->platform_max)
-		mc->platform_max = mc->max;
-	platform_max = mc->platform_max;
+	max = uinfo->value.integer.max = mc->max - mc->min;
+	if (mc->platform_max && mc->platform_max < max)
+		max = mc->platform_max;
 
-	if (platform_max == 1 && !strstr(kcontrol->id.name, " Volume"))
+	if (max == 1 && !strstr(kcontrol->id.name, " Volume"))
 		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
 	else
 		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
 
 	uinfo->count = snd_soc_volsw_is_stereo(mc) ? 2 : 1;
 	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = platform_max - mc->min;
+	uinfo->value.integer.max = max;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_info_volsw);
@@ -203,7 +204,8 @@ EXPORT_SYMBOL_GPL(snd_soc_info_volsw);
  * Callback to provide information about a single mixer control, or a double
  * mixer control that spans 2 registers of the SX TLV type. SX TLV controls
  * have a range that represents both positive and negative values either side
- * of zero but without a sign bit.
+ * of zero but without a sign bit. min is the minimum register value, max is
+ * the number of steps.
  *
  * Returns 0 for success.
  */
@@ -212,12 +214,21 @@ int snd_soc_info_volsw_sx(struct snd_kcontrol *kcontrol,
 {
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
+	int max;
 
-	snd_soc_info_volsw(kcontrol, uinfo);
-	/* Max represents the number of levels in an SX control not the
-	 * maximum value, so add the minimum value back on
-	 */
-	uinfo->value.integer.max += mc->min;
+	if (mc->platform_max)
+		max = mc->platform_max;
+	else
+		max = mc->max;
+
+	if (max == 1 && !strstr(kcontrol->id.name, " Volume"))
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+	else
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+
+	uinfo->count = snd_soc_volsw_is_stereo(mc) ? 2 : 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = max;
 
 	return 0;
 }
@@ -316,12 +327,12 @@ int snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 	if (sign_bit)
 		mask = BIT(sign_bit + 1) - 1;
 
+	if (ucontrol->value.integer.value[0] < 0)
+		return -EINVAL;
 	val = ucontrol->value.integer.value[0];
 	if (mc->platform_max && val > mc->platform_max)
 		return -EINVAL;
 	if (val > max - min)
-		return -EINVAL;
-	if (val < 0)
 		return -EINVAL;
 	val = (val + min) & mask;
 	if (invert)
@@ -329,12 +340,12 @@ int snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 	val_mask = mask << shift;
 	val = val << shift;
 	if (snd_soc_volsw_is_stereo(mc)) {
+		if (ucontrol->value.integer.value[1] < 0)
+			return -EINVAL;
 		val2 = ucontrol->value.integer.value[1];
 		if (mc->platform_max && val2 > mc->platform_max)
 			return -EINVAL;
 		if (val2 > max - min)
-			return -EINVAL;
-		if (val2 < 0)
 			return -EINVAL;
 		val2 = (val2 + min) & mask;
 		if (invert)
@@ -430,12 +441,12 @@ int snd_soc_put_volsw_sx(struct snd_kcontrol *kcontrol,
 	int ret;
 	unsigned int val, val_mask;
 
+	if (ucontrol->value.integer.value[0] < 0)
+		return -EINVAL;
 	val = ucontrol->value.integer.value[0];
 	if (mc->platform_max && val > mc->platform_max)
 		return -EINVAL;
 	if (val > max)
-		return -EINVAL;
-	if (val < 0)
 		return -EINVAL;
 	val_mask = mask << shift;
 	val = (val + min) & mask;
