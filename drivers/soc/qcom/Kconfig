@@ -58,6 +58,12 @@ config CAM_SENSOR_CTLE_FOR_BLANC
 	help
 	  This is enabling camera sensor ctle for blanc feature.
 
+config MOT_DRV_STREAMOFF_CHECK
+	default n
+	bool "enable stream off process check"
+	help
+	  This is enabling stream off process check for blanc.
+
 config MOT_DRV_OIS_EARLY_UPGRADE_FW
 	default n
 	bool "enable OIS upgrade FW early"
