@@ -1874,8 +1874,11 @@ freed:
 					segno + 1 : NULL_SEGNO;
 skip:
 		f2fs_put_page(sum_page, 0);
+		if (unlikely(freezing(current)))
+			goto stop;
 	}
 
+stop:
 	if (submitted)
 		f2fs_submit_merged_write(sbi, data_type);
 
@@ -1949,6 +1952,10 @@ gc_more:
 		goto stop;
 	}
 retry:
+	if (unlikely(freezing(current))) {
+		ret = 0;
+		goto stop;
+	}
 	ret = __get_victim(sbi, &segno, gc_type, gc_control->one_time);
 	if (ret) {
 		/* allow to search victim from sections has pinned data */
