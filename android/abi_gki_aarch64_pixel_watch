@@ -28,6 +28,7 @@
   amba_driver_register
   amba_driver_unregister
   android_rvh_probe_register
+  anon_inode_getfd
   anon_inode_getfile
   __arch_copy_from_user
   __arch_copy_to_user
@@ -286,6 +287,7 @@
   default_llseek
   deferred_free
   delayed_work_timer_fn
+  desc_to_gpio
   destroy_workqueue
   dev_addr_mod
   _dev_alert
@@ -872,12 +874,14 @@
   gpiod_direction_input
   gpiod_direction_output
   gpiod_direction_output_raw
+  gpiod_get
   gpiod_get_array_value
   gpiod_get_optional
   gpiod_get_raw_value
   gpiod_get_raw_value_cansleep
   gpiod_get_value
   gpiod_is_active_low
+  gpiod_put
   gpiod_set_raw_value
   gpiod_set_value
   gpiod_set_value_cansleep
@@ -1711,6 +1715,7 @@
   remap_pfn_range
   remove_cpu
   remove_proc_entry
+  remove_proc_subtree
   remove_wait_queue
   report_iommu_fault
   request_firmware
