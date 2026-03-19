@@ -125,11 +125,11 @@ config MOT_SENSOR_PRE_POWERUP
 	help
 	  This is enabling camera sensor pre powerup feature.
 
-config MOT_DRV_DONGWOON_OIS_AF_DRIFT
+config MOT_DRV_OIS_AF_DRIFT
 	default n
-	bool "enable DONGWOON AF Drift"
+	bool "enable AF Drift"
 	help
-	  This is enabling DONGWOON AF DRIFT for calidata in ois flash.
+	  This is enabling AF DRIFT for calidata in ois flash.
 
 config MOT_DRV_AON_CUSTOM_POWER_SUPPORT
 	default n
