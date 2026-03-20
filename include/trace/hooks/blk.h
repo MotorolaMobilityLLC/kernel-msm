@@ -30,6 +30,9 @@ DECLARE_HOOK(android_vh_blk_fill_rwbs,
 DECLARE_HOOK(android_vh_do_new_mount_fc,
 	TP_PROTO(struct path *mountpoint, struct vfsmount *mnt),
 	TP_ARGS(mountpoint, mnt));
+DECLARE_RESTRICTED_HOOK(android_rvh_blk_mq_has_request,
+	TP_PROTO(struct blk_mq_hw_ctx *hctx, struct request *rq, bool *ret),
+	TP_ARGS(hctx, rq, ret), 1);
 DECLARE_HOOK(android_vh_f2fs_ra_op_flags,
 	TP_PROTO(blk_opf_t *op_flag, struct readahead_control *rac),
 	TP_ARGS(op_flag, rac));
