@@ -535,6 +535,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_fill_rwbs);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_io_statistics);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_mq_delay_run_hw_queue);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_blk_mq_kick_requeue_list);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_blk_mq_has_request);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_f2fs_ra_op_flags);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_use_amu_fie);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_resume_end);
