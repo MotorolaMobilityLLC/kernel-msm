@@ -101,6 +101,7 @@
   blk_mq_quiesce_tagset
   blk_mq_unfreeze_queue
   blk_mq_unquiesce_tagset
+  blk_op_str
   blk_put_queue
   blk_queue_flag_clear
   blk_queue_flag_set
@@ -1477,6 +1478,7 @@
   ksize
   ksoftirqd
   kstat
+  kstat_irqs_usr
   kstrdup
   kstrndup
   kstrtobool
@@ -2689,6 +2691,7 @@
   trace_handle_return
   __traceiter_android_rvh_after_enqueue_task
   __traceiter_android_rvh_attach_entity_load_avg
+  __traceiter_android_rvh_blk_mq_has_request
   __traceiter_android_rvh_can_migrate_task
   __traceiter_android_rvh_cgroup_force_kthread_migration
   __traceiter_android_rvh_check_preempt_wakeup
@@ -2843,6 +2846,7 @@
   trace_output_call
   __tracepoint_android_rvh_after_enqueue_task
   __tracepoint_android_rvh_attach_entity_load_avg
+  __tracepoint_android_rvh_blk_mq_has_request
   __tracepoint_android_rvh_can_migrate_task
   __tracepoint_android_rvh_cgroup_force_kthread_migration
   __tracepoint_android_rvh_check_preempt_wakeup
