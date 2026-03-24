@@ -188,6 +188,18 @@ DECLARE_HOOK(android_vh_restore_curr_resched,
 DECLARE_HOOK(android_vh_clear_curr_lazy,
 	TP_PROTO(struct task_struct *tsk),
 	TP_ARGS(tsk));
+
+DECLARE_HOOK(android_vh_lock_delay_schedule,
+	TP_PROTO(struct task_struct *prev, unsigned int sched_mode, bool *ext_slice),
+	TP_ARGS(prev, sched_mode, ext_slice));
+
+DECLARE_HOOK(android_vh_lock_task_fork,
+	TP_PROTO(struct task_struct *p),
+	TP_ARGS(p));
+
+DECLARE_HOOK(android_vh_lock_task_exit,
+	TP_PROTO(struct task_struct *p),
+	TP_ARGS(p));
 #endif /* _TRACE_HOOK_DTASK_H */
 
 /* This part must be outside protection */

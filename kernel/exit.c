@@ -835,6 +835,7 @@ void __noreturn do_exit(long code)
 
 	trace_android_vh_exit_check(current);
 
+	trace_android_vh_lock_task_exit(tsk);
 	/* sync mm's RSS info before statistics gathering */
 	if (tsk->mm)
 		sync_mm_rss(tsk->mm);
