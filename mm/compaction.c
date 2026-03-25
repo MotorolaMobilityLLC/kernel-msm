@@ -2216,6 +2216,7 @@ static enum compact_result __compact_finished(struct compact_control *cc)
 	const int migratetype = cc->migratetype;
 	int ret;
 	bool abort_compact = false;
+	bool bypass = false;
 
 	/* Compaction run completes if the migrate and free scanner meet */
 	if (compact_scanners_met(cc)) {
@@ -2255,6 +2256,10 @@ static enum compact_result __compact_finished(struct compact_control *cc)
 
 		goto out;
 	}
+
+	trace_android_vh_compact_bypass(cc, &bypass);
+	if (bypass)
+		return COMPACT_SUCCESS;
 
 	if (is_via_compact_memory(cc->order)) {
 		bool compact_enough = false;
