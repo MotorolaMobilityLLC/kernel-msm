@@ -1197,6 +1197,7 @@ static int smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 	struct hyp_arm_smmu_v3_domain *smmu_domain = domain->priv;
 	u32 pasid_bits = 0;
 	u64 *cd_table, *cd;
+	u32 domain_id, ste_cfg;
 
 	hyp_write_lock(&smmu_domain->lock);
 	kvm_iommu_lock(iommu);
@@ -1204,6 +1205,7 @@ static int smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 	if (!dst)
 		goto out_unlock;
 
+	ste_cfg = FIELD_GET(STRTAB_STE_0_CFG, dst[0]);
 	/*
 	 * Look at smmu_domain_config_s1 for CD allocation and life time
 	 * For detach stage-1 domains:
@@ -1213,6 +1215,10 @@ static int smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 	 * - PASID_BITS = 0: invalidate the STE, the cdptr per domain would be free at free_domain()
 	 */
 	if (smmu_domain->type == KVM_ARM_SMMU_DOMAIN_S1) {
+		if (ste_cfg != STRTAB_STE_0_CFG_S1_TRANS) {
+			ret = -EACCES;
+			goto out_unlock;
+		}
 		pasid_bits = FIELD_GET(STRTAB_STE_0_S1CDMAX, dst[0]);
 		if (pasid >= (1 << pasid_bits)) {
 			ret = -E2BIG;
@@ -1233,11 +1239,23 @@ static int smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 						goto out_unlock;
 					}
 				}
+				cd = smmu_get_cd_ptr(cd_table, 0);
+				domain_id = FIELD_GET(CTXDESC_CD_0_ASID, cd[0]);
+				if (domain->domain_id != domain_id) {
+					ret = -EACCES;
+					goto out_unlock;
+				}
 			} else {
 				cd = smmu_get_cd_ptr(cd_table, pasid);
 				if (!(cd[0] & CTXDESC_CD_0_V)) {
 					/* The device is not actually attached! */
 					ret = -ENOENT;
+					goto out_unlock;
+				}
+
+				domain_id = FIELD_GET(CTXDESC_CD_0_ASID, cd[0]);
+				if (domain->domain_id != domain_id) {
+					ret = -EACCES;
 					goto out_unlock;
 				}
 
@@ -1249,6 +1267,13 @@ static int smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 				ret = smmu_sync_cd(smmu, cd, sid, pasid);
 				goto out_skip_ste;
 			}
+		}
+	} else {
+		domain_id = FIELD_GET(STRTAB_STE_2_S2VMID, dst[2]);
+		if ((ste_cfg != STRTAB_STE_0_CFG_S2_TRANS) ||
+		    (domain->domain_id != domain_id)) {
+			ret = -EACCES;
+			goto out_unlock;
 		}
 	}
 	/* For stage-2 and pasid = 0 */
