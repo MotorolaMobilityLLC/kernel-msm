@@ -16349,6 +16349,11 @@ pointer_reference {
   pointee_type_id: 0x9ba95149
 }
 pointer_reference {
+  id: 0x2c7aa6d4
+  kind: POINTER
+  pointee_type_id: 0x9baa7dce
+}
+pointer_reference {
   id: 0x2c7b6f3a
   kind: POINTER
   pointee_type_id: 0x9bad5a77
@@ -308903,6 +308908,14 @@ function {
   parameter_id: 0x18bd6530
 }
 function {
+  id: 0x12101ef3
+  return_type_id: 0x1b8590a8
+  parameter_id: 0x26ee682a
+  parameter_id: 0x33756485
+  parameter_id: 0x2c7aa6d4
+  parameter_id: 0x18bd6530
+}
+function {
   id: 0x1210c1fa
   return_type_id: 0x1b8590a8
   parameter_id: 0x26ee682a
@@ -329722,6 +329735,15 @@ function {
   parameter_id: 0x18bd6530
 }
 function {
+  id: 0x920e936a
+  return_type_id: 0x6720d32f
+  parameter_id: 0x3e10b518
+  parameter_id: 0x0483e6f8
+  parameter_id: 0x6720d32f
+  parameter_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+}
+function {
   id: 0x920e9545
   return_type_id: 0x6720d32f
   parameter_id: 0x3e10b518
@@ -343193,6 +343215,13 @@ function {
   parameter_id: 0x18bd6530
   parameter_id: 0x00abf683
   parameter_id: 0x1d5bae2a
+}
+function {
+  id: 0x9baa7dce
+  return_type_id: 0x6720d32f
+  parameter_id: 0x1b8590a8
+  parameter_id: 0x33756485
+  parameter_id: 0x18bd6530
 }
 function {
   id: 0x9baa8508
@@ -357892,6 +357921,15 @@ elf_symbol {
   crc: 0x38f7b6e0
   type_id: 0x9eb640f8
   full_name: "LZ4_compress_HC_continue"
+}
+elf_symbol {
+  id: 0x6ea63025
+  name: "LZ4_compress_default"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4f4d78c5
+  type_id: 0x920e936a
+  full_name: "LZ4_compress_default"
 }
 elf_symbol {
   id: 0x7c322a62
@@ -396163,6 +396201,15 @@ elf_symbol {
   crc: 0xe1289bdd
   type_id: 0x3a251008
   full_name: "find_get_pid"
+}
+elf_symbol {
+  id: 0xf5a1bc09
+  name: "find_inode_nowait"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0691df5a
+  type_id: 0x12101ef3
+  full_name: "find_inode_nowait"
 }
 elf_symbol {
   id: 0x90d375c5
@@ -440725,6 +440772,7 @@ interface {
   symbol_id: 0x2dddbe52
   symbol_id: 0x26c56443
   symbol_id: 0xf4f8ddc2
+  symbol_id: 0x6ea63025
   symbol_id: 0x7c322a62
   symbol_id: 0x38116da8
   symbol_id: 0x31a154b4
@@ -444974,6 +445022,7 @@ interface {
   symbol_id: 0xb9dc79d0
   symbol_id: 0x8bbdb127
   symbol_id: 0x02b1ce77
+  symbol_id: 0xf5a1bc09
   symbol_id: 0x90d375c5
   symbol_id: 0xdc16d76a
   symbol_id: 0x5b7736f5
