@@ -564,6 +564,11 @@ pointer_reference {
   pointee_type_id: 0x2ddd96bf
 }
 pointer_reference {
+  id: 0x01e84e35
+  kind: POINTER
+  pointee_type_id: 0x2de1de4b
+}
+pointer_reference {
   id: 0x01ebfcdd
   kind: POINTER
   pointee_type_id: 0x2def15e8
@@ -58342,6 +58347,12 @@ member {
   offset: 2560
 }
 member {
+  id: 0xbc22f337
+  name: "bus_num"
+  type_id: 0x914dbfdc
+  offset: 512
+}
+member {
   id: 0xbc9a0684
   name: "bus_num"
   type_id: 0x29bf06ba
@@ -62687,6 +62698,12 @@ member {
   name: "chip_select"
   type_id: 0x5d8155a5
   offset: 104
+}
+member {
+  id: 0x95a68905
+  name: "chip_select"
+  type_id: 0x914dbfdc
+  offset: 528
 }
 member {
   id: 0x27578761
@@ -67687,6 +67704,12 @@ member {
   name: "controller"
   type_id: 0xc9082b19
   offset: 64
+}
+member {
+  id: 0x608f2a63
+  name: "controller_data"
+  type_id: 0x18bd6530
+  offset: 384
 }
 member {
   id: 0x608f2d5b
@@ -127183,6 +127206,12 @@ member {
   offset: 192
 }
 member {
+  id: 0x195fe3e8
+  name: "max_speed_hz"
+  type_id: 0xc9082b19
+  offset: 480
+}
+member {
   id: 0x195fe4f2
   name: "max_speed_hz"
   type_id: 0xc9082b19
@@ -131366,6 +131395,11 @@ member {
   offset: 320
 }
 member {
+  id: 0x2f2ce6ad
+  name: "modalias"
+  type_id: 0x5adf57ae
+}
+member {
   id: 0x2f2ce7e5
   name: "modalias"
   type_id: 0x5adf57ae
@@ -131423,6 +131457,12 @@ member {
   id: 0x8740e6e7
   name: "mode"
   type_id: 0xddf37902
+}
+member {
+  id: 0x8754136a
+  name: "mode"
+  type_id: 0xc9082b19
+  offset: 544
 }
 member {
   id: 0x875419a3
@@ -152973,6 +153013,12 @@ member {
   name: "platform_data"
   type_id: 0x18bd6530
   offset: 192
+}
+member {
+  id: 0x38e7f6de
+  name: "platform_data"
+  type_id: 0x391f15ea
+  offset: 256
 }
 member {
   id: 0x38f2d790
@@ -191228,6 +191274,12 @@ member {
   name: "swnode"
   type_id: 0x3413d17b
   offset: 448
+}
+member {
+  id: 0xb36c4aea
+  name: "swnode"
+  type_id: 0x3413d17b
+  offset: 320
 }
 member {
   id: 0xe4a96d72
@@ -263793,6 +263845,24 @@ struct_union {
     member_id: 0x0de57ce8
     member_id: 0x720565ca
     member_id: 0x3f74c084
+  }
+}
+struct_union {
+  id: 0x2de1de4b
+  kind: STRUCT
+  name: "spi_board_info"
+  definition {
+    bytesize: 80
+    member_id: 0x2f2ce6ad
+    member_id: 0x38e7f6de
+    member_id: 0xb36c4aea
+    member_id: 0x608f2a63
+    member_id: 0x99159291
+    member_id: 0x195fe3e8
+    member_id: 0xbc22f337
+    member_id: 0x95a68905
+    member_id: 0x8754136a
+    member_id: 0x2d081c40
   }
 }
 struct_union {
@@ -341252,6 +341322,12 @@ function {
   parameter_id: 0x0258f96e
 }
 function {
+  id: 0xdf719115
+  return_type_id: 0x12c0ba43
+  parameter_id: 0x00dd92af
+  parameter_id: 0x01e84e35
+}
+function {
   id: 0xdf76302d
   return_type_id: 0x12c0ba43
   parameter_id: 0x00dd92af
@@ -408597,6 +408673,15 @@ elf_symbol {
   full_name: "spi_mem_supports_op"
 }
 elf_symbol {
+  id: 0x58e086db
+  name: "spi_new_device"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xa6701316
+  type_id: 0xdf719115
+  full_name: "spi_new_device"
+}
+elf_symbol {
   id: 0xc98f6928
   name: "spi_register_controller"
   is_defined: true
@@ -428265,6 +428350,7 @@ interface {
   symbol_id: 0x94f291e3
   symbol_id: 0x071b0cf7
   symbol_id: 0x680976a6
+  symbol_id: 0x58e086db
   symbol_id: 0xc98f6928
   symbol_id: 0x042377cd
   symbol_id: 0x7e451d2e
