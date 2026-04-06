@@ -652,16 +652,6 @@ int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
 	if (share_vm && share_fs) {
 		/* task takes the parent_dmabuf_info with the elevated refcount. */
 		task->dmabuf_info = parent_dmabuf_info;
-
-		if (task->mm) {
-			refcount_inc(&task->dmabuf_info->refcnt);
-			task->mm->dmabuf_info = task->dmabuf_info;
-		}
-
-		if (task->files) {
-			refcount_inc(&task->dmabuf_info->refcnt);
-			task->files->dmabuf_info = task->dmabuf_info;
-		}
 		return 0;
 	}
 
@@ -777,9 +767,11 @@ retry:
 				continue;
 
 			err = __dma_buf_account_task(file->private_data, new_dmabuf_info, false);
-			if (err)
+			if (err) {
 				pr_err("dmabuf accounting failed during begin_new_exec, err %d\n",
 				       err);
+				continue;
+			}
 
 			/*
 			 * No put_files_struct in this case, so buffers don't get closed and
