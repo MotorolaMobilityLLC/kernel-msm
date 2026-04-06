@@ -137,10 +137,23 @@ void vma_set_pad_pages(struct vm_area_struct *vma,
 
 unsigned long vma_pad_pages(struct vm_area_struct *vma)
 {
+	int nr_pages;
+	int nr_pad;
+
 	if (!is_pgsize_migration_enabled())
 		return 0;
 
-	return (vma->vm_flags & VM_PAD_MASK) >> VM_PAD_SHIFT;
+	nr_pad = (vma->vm_flags & VM_PAD_MASK) >> VM_PAD_SHIFT;
+	if (!nr_pad)
+		return 0;
+
+	nr_pages = vma_pages(vma);
+
+	/* There must be at least 1 data page in the VMA */
+	if (WARN_ON(nr_pad >= nr_pages))
+		return 0;
+
+	return nr_pad;
 }
 
 static __always_inline bool str_has_suffix(const char *str, const char *suffix)
@@ -219,15 +232,23 @@ static inline bool linker_ctx(void)
 		memset(buf, 0, bufsize);
 		path = d_path(&file->f_path, buf, bufsize);
 
+		if (IS_ERR(path)) {
+			pgmigration_err("Unable to parse filepath");
+			goto out;
+		}
+
 		/*
 		 * Depending on interpreter requested, valid paths could be any of:
 		 *   1. /system/bin/bootstrap/linker64
 		 *   2. /system/bin/linker64
 		 *   3. /apex/com.android.runtime/bin/linker64
 		 *
-		 * Check the base name (linker64).
+		 * Check against absolute paths to ensure the dynamic loader
+		 * context is correctly identified.
 		 */
-		if (!strcmp(kbasename(path), "linker64")) {
+		if (!strcmp(path, "/system/bin/bootstrap/linker64") ||
+		    !strcmp(path, "/system/bin/linker64") ||
+		    !strcmp(path, "/apex/com.android.runtime/bin/linker64")) {
 			vma_end_read(vma);
 			return true;
 		}
@@ -270,6 +291,14 @@ void madvise_vma_pad_pages(struct vm_area_struct *vma,
 	 */
 	if (start <= vma->vm_start || end != vma->vm_end)
 		return;
+
+	/*
+	 * The only valid usecase is for madvising MAP_PRIVATE ELF mappings.
+	 */
+	if (vma->vm_flags & VM_SHARED) {
+		pgmigration_err("Invalid attempt to madvise padding on MAP_SHARED vma");
+		return;
+	}
 
 	nr_pad_pages = (end - start) >> PAGE_SHIFT;
 
