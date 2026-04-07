@@ -511,67 +511,90 @@ static struct task_dma_buf_info *alloc_task_dma_buf_info(void)
 	return dmabuf_info;
 }
 
-static struct task_dma_buf_info *dup_dma_buf_info(struct task_dma_buf_info *from)
-{
-	struct task_dma_buf_info *to;
-	struct task_dma_buf_record *from_rec, *to_rec;
-	unsigned int count;
-	int retries = 0;
+#define COUNT_DMABUF_FDS(files, file_lookup_func) ({ \
+	size_t count = 0; \
+	unsigned int max_fds = files_fdtable(files)->max_fds; \
+	for (unsigned int n = 0; n < max_fds; ++n) { \
+		struct file *file = file_lookup_func(files, n); \
+		if (file && is_dma_buf_file(file)) \
+			++count; \
+	} \
+	count; \
+})
 
-	/* Allocate now before locked section below. */
-	to = alloc_task_dma_buf_info();
-	if (!to)
+static struct task_dma_buf_info *compute_dmabuf_info(struct task_struct *task)
+{
+	struct task_dma_buf_info *dmabuf_info;
+	size_t count_fd = 0, count_vma = 0;
+	size_t count;
+
+	dmabuf_info = alloc_task_dma_buf_info();
+	if (!dmabuf_info)
 		return NULL;
 
-	/* Read required count racily, before obtaining dmabuf_info->lock */
-	count = READ_ONCE(from->dmabuf_count);
-	if (!task_dmabuf_records_preload(count))
-		goto err_list_copy;
+	/*
+	 * RCU not actually needed here because task isn't fully formed yet and nobody else can
+	 * access these structures, however lockdep will complain if we don't hold the lock.
+	 */
+	rcu_read_lock();
+	if (task->files)
+		count_fd = COUNT_DMABUF_FDS(task->files, files_lookup_fd_rcu);
 
-retry:
-	spin_lock(&from->lock);
-	if (from->dmabuf_count > count) {
-		/* We don't have enough reserved records, allocate more */
-		count = from->dmabuf_count;
+	if (task->mm) {
+		struct vm_area_struct *vma;
 
-		spin_unlock(&from->lock);
-		task_dmabuf_records_preload_end();
-		if (!task_dmabuf_records_preload(count))
-			goto err_list_copy;
+		VMA_ITERATOR(vmi, task->mm, 0);
 
-		/* Limit the number of retries to avoid live-lock */
-		if (retries++ > 5) {
-			task_dmabuf_records_preload_end();
-			goto err_list_copy;
+		for_each_vma(vmi, vma)
+			if (vma->vm_file && is_dma_buf_file(vma->vm_file))
+				++count_vma;
+	}
+	rcu_read_unlock();
+
+	/* count can't change underneath us. See comment above. */
+	count = count_fd + count_vma;
+	if (count > 0) {
+		unsigned int max_fds;
+
+		if (!task_dmabuf_records_preload(count)) {
+			kfree(dmabuf_info);
+			return NULL;
 		}
 
-		goto retry;
+		rcu_read_lock();
+		if (count_fd) {
+			max_fds = files_fdtable(task->files)->max_fds;
+			for (unsigned int n = 0; count_fd && n < max_fds; ++n) {
+				struct file *file = files_lookup_fd_rcu(task->files, n);
+
+				if (file && is_dma_buf_file(file)) {
+					__dma_buf_account_task(file->private_data, dmabuf_info,
+							       false);
+					--count_fd;
+				}
+			}
+		}
+
+		if (count_vma) {
+			struct vm_area_struct *vma;
+
+			VMA_ITERATOR(vmi, task->mm, 0);
+
+			for_each_vma(vmi, vma) {
+				if (vma->vm_file && is_dma_buf_file(vma->vm_file)) {
+					__dma_buf_account_task(vma->vm_file->private_data,
+							       dmabuf_info, false);
+					if (--count_vma == 0)
+						break;
+				}
+			}
+		}
+		rcu_read_unlock();
+
+		task_dmabuf_records_preload_end();
 	}
 
-	/* All required records are reserved */
-	list_for_each_entry(from_rec, &from->dmabufs, node) {
-		to_rec = alloc_task_dmabuf_record();
-		WARN_ON(!to_rec);
-		to_rec->dmabuf = from_rec->dmabuf;
-		to_rec->refcnt = from_rec->refcnt;
-		list_add(&to_rec->node, &to->dmabufs);
-		atomic64_inc(&to_rec->dmabuf->nr_task_refs);
-	}
-	to->dmabuf_count = from->dmabuf_count;
-	to->rss = from->rss;
-	to->rss_hwm = to->rss;
-	spin_unlock(&from->lock);
-
-	trim_task_dmabuf_records_locked();
-	task_dmabuf_records_preload_end();
-
-	return to;
-
-err_list_copy:
-	trim_task_dmabuf_records();
-	kfree(to);
-
-	return NULL;
+	return dmabuf_info;
 }
 
 int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
@@ -633,10 +656,13 @@ int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
 	}
 
 	/*
-	 * No sharing: Both MM and FD references to dmabufs are duplicated in the child. We
-	 * duplicate the dmabuf accounting info into the child as well here.
+	 * No sharing: Both MM and FD references to dmabufs were already duplicated in the child by
+	 * copy_files and copy_mm. The parent's dmabuf_info has not been synchronized with the child
+	 * since that occurred, and VM_DONTCOPY can also prevent a parent's VMAs from propagating to
+	 * the child. Construct the dmabuf accounting info for the child here based on what actually
+	 * made it into the child's files_struct and mm_struct.
 	 */
-	child_dmabuf_info = dup_dma_buf_info(parent_dmabuf_info);
+	child_dmabuf_info = compute_dmabuf_info(task);
 	if (!child_dmabuf_info)
 		return -ENOMEM;
 
@@ -674,16 +700,6 @@ void put_dmabuf_info(struct task_dma_buf_info *dmabuf_info)
 	kfree(dmabuf_info);
 }
 
-#define COUNT_DMABUF_FDS(file_lookup_func) ({ \
-	size_t count = 0; \
-	for (unsigned int n = 0; n < files_fdtable(current->files)->max_fds; ++n) { \
-		struct file *file = file_lookup_func(current->files, n); \
-		if (file && is_dma_buf_file(file)) \
-			++count; \
-	} \
-	count; \
-})
-
 /*
  * begin_new_exec is the starting point for the execution of a new program. It involves unsharing
  * files_struct (possibly creating a new one), and installs a new mm_struct. Since this modifies the
@@ -712,7 +728,7 @@ int dma_buf_begin_new_exec(struct files_struct *old_files)
 
 		/* Attempt to count dmabuf FDs locklessly before allocating */
 		rcu_read_lock();
-		num_dmabuf_fds = COUNT_DMABUF_FDS(files_lookup_fd_rcu);
+		num_dmabuf_fds = COUNT_DMABUF_FDS(current->files, files_lookup_fd_rcu);
 		rcu_read_unlock();
 retry:
 		if (!task_dmabuf_records_preload(num_dmabuf_fds))
@@ -721,7 +737,7 @@ retry:
 		spin_lock(&my_files->file_lock);
 
 		/* First make sure we have enough preallocated records */
-		num_dmabuf_fds_check = COUNT_DMABUF_FDS(files_lookup_fd_locked);
+		num_dmabuf_fds_check = COUNT_DMABUF_FDS(current->files, files_lookup_fd_locked);
 
 		if (num_dmabuf_fds_check > num_dmabuf_fds) {
 			spin_unlock(&my_files->file_lock);
