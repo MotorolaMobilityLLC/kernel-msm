@@ -1,0 +1,142 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2022, Motorola Mobility LLC. All rights reserved.
+ *
+ * Motorola Geneva 5G NA (genevn) device tree
+ * Based on Qualcomm SM7325 (parrot) platform
+ */
+
+/dts-v1/;
+
+/ {
+	model = "Motorola Geneva 5G NA";
+	compatible = "motorola,genevn", "qcom,sm7325";
+
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen { };
+
+	/*
+	 * The bootloader populates the actual memory size. Reserved sub-regions
+	 * are carved out via the reserved-memory node below.
+	 */
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x0>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		hyp_mem: hyp@80000000 {
+			reg = <0x0 0x80000000 0x0 0x600000>;
+			no-map;
+		};
+
+		/*
+		 * xbl_mem covers the Extensible Boot Loader (XBL/ABL)
+		 * code and data region reserved by the bootloader.
+		 */
+		xbl_mem: xbl@80600000 {
+			reg = <0x0 0x80600000 0x0 0x200000>;
+			no-map;
+		};
+
+		aop_mem: aop@80800000 {
+			reg = <0x0 0x80800000 0x0 0x60000>;
+			no-map;
+		};
+
+		aop_cmd_db_mem: aop-cmd-db@80860000 {
+			compatible = "qcom,cmd-db";
+			reg = <0x0 0x80860000 0x0 0x20000>;
+			no-map;
+		};
+
+		reserved_xbl_uefi_log: xbl-uefi-res@80884000 {
+			reg = <0x0 0x80884000 0x0 0x10000>;
+			no-map;
+		};
+
+		sec_apps_mem: sec-apps@808ff000 {
+			reg = <0x0 0x808ff000 0x0 0x1000>;
+			no-map;
+		};
+
+		smem_mem: smem@80900000 {
+			reg = <0x0 0x80900000 0x0 0x200000>;
+			no-map;
+		};
+
+		cpucp_mem: cpucp@80b00000 {
+			reg = <0x0 0x80b00000 0x0 0x100000>;
+			no-map;
+		};
+
+		wlan_fw_mem: wlan-fw@80c00000 {
+			reg = <0x0 0x80c00000 0x0 0xc00000>;
+			no-map;
+		};
+
+		/*
+		 * tz_mem covers the TrustZone (EL3 secure world) region.
+		 * This region is protected by the bootloader before Linux
+		 * boots and must not be accessed by the kernel.
+		 */
+		tz_mem: tz@81800000 {
+			reg = <0x0 0x81800000 0x0 0x3900000>;
+			no-map;
+		};
+
+		/*
+		 * tee_mem covers the Trusted Execution Environment (QTEE/QSEE)
+		 * region used for secure application execution.
+		 */
+		tee_mem: tee@85100000 {
+			reg = <0x0 0x85100000 0x0 0x1600000>;
+			no-map;
+		};
+
+		adsp_mem: adsp@86700000 {
+			reg = <0x0 0x86700000 0x0 0x2800000>;
+			no-map;
+		};
+
+		cdsp_mem: cdsp@88f00000 {
+			reg = <0x0 0x88f00000 0x0 0x1e00000>;
+			no-map;
+		};
+
+		video_mem: video@8b200000 {
+			reg = <0x0 0x8b200000 0x0 0x500000>;
+			no-map;
+		};
+
+		ipa_fw_mem: ipa-fw@8b700000 {
+			reg = <0x0 0x8b700000 0x0 0x10000>;
+			no-map;
+		};
+
+		gpu_zap_mem: zap@8b71a000 {
+			reg = <0x0 0x8b71a000 0x0 0x2000>;
+			no-map;
+		};
+
+		mpss_mem: mpss@8b800000 {
+			reg = <0x0 0x8b800000 0x0 0xf600000>;
+			no-map;
+		};
+
+		rmtfs_mem: rmtfs@9c900000 {
+			compatible = "qcom,rmtfs-mem";
+			reg = <0x0 0x9c900000 0x0 0x280000>;
+			no-map;
+
+			qcom,client-id = <1>;
+			qcom,vmid = <15>;
+		};
+	};
+};
