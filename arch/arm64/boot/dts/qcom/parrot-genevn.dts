@@ -3,14 +3,14 @@
  * Copyright (c) 2022, Motorola Mobility LLC. All rights reserved.
  *
  * Motorola Geneva 5G NA (genevn) device tree
- * Based on Qualcomm SM7325 (parrot) platform
+ * Based on Qualcomm SM6450 (parrot) platform
  */
 
 /dts-v1/;
 
 / {
 	model = "Motorola Geneva 5G NA";
-	compatible = "motorola,genevn", "qcom,sm7325";
+	compatible = "motorola,genevn", "qcom,sm6450";
 
 	#address-cells = <2>;
 	#size-cells = <2>;
