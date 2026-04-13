@@ -1541,12 +1541,14 @@ static void handle_uaudio_stream_req(struct qmi_handle *handle,
 	subs = find_substream(pcm_card_num, pcm_dev_num, direction);
 	if (!subs) {
 		uaudio_err("invalid substream\n");
+		ret = -EINVAL;
 		goto response;
 	}
 
 	chip = uadev[pcm_card_num].chip;
 	if (!chip) {
 		uaudio_err("invalid chip\n");
+		ret = -EINVAL;
 		goto response;
 	}
 
