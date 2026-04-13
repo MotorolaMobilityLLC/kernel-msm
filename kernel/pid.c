@@ -580,6 +580,7 @@ struct task_struct *pidfd_get_task(int pidfd, unsigned int *flags)
 	*flags = f_flags;
 	return task;
 }
+EXPORT_SYMBOL_GPL(pidfd_get_task);
 
 /**
  * pidfd_create() - Create a new pid file descriptor.

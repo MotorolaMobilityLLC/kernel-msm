@@ -188,6 +188,10 @@
   free_uid
   find_user
 
+#required by dynamic_readahead.ko
+  __traceiter_android_vh_page_cache_ra_order_bypass
+  __tracepoint_android_vh_page_cache_ra_order_bypass
+
 #required by mi_freqwdg.ko
   __traceiter_android_vh_freq_qos_remove_request
   __traceiter_android_vh_freq_qos_update_request
@@ -470,6 +474,8 @@
   bio_init
   __bio_add_page
   blkdev_get_by_dev
+  __traceiter_android_rvh_swap_bio_charge
+  __tracepoint_android_rvh_swap_bio_charge
 
 #required by mem_reclaim_ctl.ko
 __traceiter_android_vh_page_should_be_protected

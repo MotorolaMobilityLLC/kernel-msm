@@ -1,5 +1,6 @@
 [abi_symbol_list]
   activate_task
+  active_load_balance_cpu_stop
   add_cpu
   add_timer
   add_timer_on
@@ -225,8 +226,10 @@
   __const_udelay
   consume_skb
   contig_page_data
+  contpte_ptep_get
   _copy_from_iter
   __copy_overflow
+  copy_page
   _copy_to_iter
   __cpu_active_mask
   cpu_all_bits
@@ -383,6 +386,7 @@
   devfreq_suspend_device
   devfreq_unregister_opp_notifier
   devfreq_update_interval
+  devfreq_update_target
   __dev_fwnode
   __dev_get_by_index
   dev_get_by_index
@@ -540,6 +544,7 @@
   devm_usb_get_phy_by_phandle
   devm_watchdog_register_device
   _dev_notice
+  dev_open
   dev_pm_clear_wake_irq
   dev_pm_domain_attach
   dev_pm_domain_attach_by_id
@@ -678,6 +683,7 @@
   do_SAK
   do_send_sig_info
   do_trace_netlink_extack
+  double_rq_lock
   do_wait_intr_irq
   down
   downgrade_write
@@ -1101,6 +1107,7 @@
   get_random_u8
   get_reclaim_params
   get_sg_io_hdr
+  get_swap_device
   __get_task_comm
   get_task_cred
   get_task_mm
@@ -1218,6 +1225,7 @@
   i3c_master_register
   i3c_master_set_info
   i3c_master_unregister
+  I_BDEV
   icc_link_create
   icc_node_add
   icc_node_create
@@ -1277,6 +1285,8 @@
   init_wait_entry
   __init_waitqueue_head
   init_wait_var_entry
+  inode_owner_or_capable
+  inode_permission
   input_alloc_absinfo
   input_allocate_device
   input_close_device
@@ -1537,6 +1547,19 @@
   loops_per_jiffy
   lru_cache_disable
   lru_disable_count
+  LZ4_compress_fast
+  LZ4_compress_fast_continue
+  LZ4_compress_HC
+  LZ4_compress_HC_continue
+  LZ4_decompress_safe
+  LZ4_decompress_safe_continue
+  LZ4_loadDict
+  LZ4_loadDictHC
+  LZ4_resetStreamHC
+  LZ4_setStreamDecode
+  lzo1x_1_compress
+  lzo1x_decompress_safe
+  lzorle1x_1_compress
   mac_pton
   mas_empty_area_rev
   mas_find
@@ -1634,6 +1657,8 @@
   netdev_err
   netdev_info
   netdev_refcnt_read
+  netdev_rx_handler_register
+  netdev_rx_handler_unregister
   netdev_set_default_ethtool_ops
   netdev_state_change
   netdev_update_features
@@ -1656,6 +1681,7 @@
   netlink_unregister_notifier
   net_ns_type_operations
   net_ratelimit
+  next_arg
   nf_register_net_hooks
   nf_unregister_net_hooks
   nla_find
@@ -1672,6 +1698,7 @@
   noop_llseek
   nr_cpu_ids
   nr_irqs
+  nr_swap_pages
   ns_capable
   ns_capable_noaudit
   nsecs_to_jiffies
@@ -1897,6 +1924,7 @@
   phy_power_on
   phy_set_mode_ext
   phy_set_speed
+  pidfd_get_task
   pid_task
   pinconf_generic_dt_free_map
   pinconf_generic_dt_node_to_map
@@ -1949,6 +1977,8 @@
   platform_msi_domain_free_irqs
   __platform_register_drivers
   platform_unregister_drivers
+  plist_add
+  plist_del
   pm_genpd_add_subdomain
   pm_genpd_init
   pm_genpd_remove
@@ -2018,6 +2048,7 @@
   pskb_expand_head
   __pskb_pull_tail
   ___pskb_trim
+  __pte_offset_map_lock
   push_cpu_stop
   __put_cred
   put_device
@@ -2086,6 +2117,7 @@
   rdev_get_id
   rdev_get_regmap
   readahead_expand
+  read_comp_algo_dictionary
   reboot_mode
   refcount_dec_not_one
   refcount_warn_saturate
@@ -2227,6 +2259,7 @@
   runqueues
   sbitmap_weight
   sched_clock
+  sched_energy_present
   sched_feat_keys
   sched_setattr_nocheck
   sched_set_fifo
@@ -2549,6 +2582,7 @@
   sysfs_notify
   sysfs_remove_file_from_group
   sysfs_remove_file_ns
+  sysfs_remove_files
   sysfs_remove_group
   sysfs_remove_groups
   sysfs_remove_link
@@ -2633,6 +2667,7 @@
   trace_event_raw_init
   trace_event_reg
   trace_handle_return
+  __traceiter_android_rvh_after_enqueue_task
   __traceiter_android_rvh_attach_entity_load_avg
   __traceiter_android_rvh_can_migrate_task
   __traceiter_android_rvh_cgroup_force_kthread_migration
@@ -2646,6 +2681,7 @@
   __traceiter_android_rvh_enqueue_task
   __traceiter_android_rvh_enqueue_task_fair
   __traceiter_android_rvh_find_lowest_rq
+  __traceiter_android_rvh_gup_longterm_locked
   __traceiter_android_rvh_hw_protection_shutdown
   __traceiter_android_rvh_iommu_alloc_insert_iova
   __traceiter_android_rvh_iommu_iovad_init_alloc_algo
@@ -2698,6 +2734,7 @@
   __traceiter_android_vh_chk_task
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
+  __traceiter_android_vh_do_async_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
@@ -2726,6 +2763,7 @@
   __traceiter_android_vh_swap_writepage
   __traceiter_android_vh_sysrq_crash
   __traceiter_android_vh_timerfd_create
+  __traceiter_android_vh_try_to_freeze_todo_logging
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_typec_store_partner_src_caps
   __traceiter_android_vh_typec_tcpm_log
@@ -2779,6 +2817,7 @@
   __traceiter_workqueue_execute_end
   __traceiter_workqueue_execute_start
   trace_output_call
+  __tracepoint_android_rvh_after_enqueue_task
   __tracepoint_android_rvh_attach_entity_load_avg
   __tracepoint_android_rvh_can_migrate_task
   __tracepoint_android_rvh_cgroup_force_kthread_migration
@@ -2792,6 +2831,7 @@
   __tracepoint_android_rvh_enqueue_task
   __tracepoint_android_rvh_enqueue_task_fair
   __tracepoint_android_rvh_find_lowest_rq
+  __tracepoint_android_rvh_gup_longterm_locked
   __tracepoint_android_rvh_hw_protection_shutdown
   __tracepoint_android_rvh_iommu_alloc_insert_iova
   __tracepoint_android_rvh_iommu_iovad_init_alloc_algo
@@ -2844,6 +2884,7 @@
   __tracepoint_android_vh_chk_task
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
+  __tracepoint_android_vh_do_async_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
@@ -2872,6 +2913,7 @@
   __tracepoint_android_vh_swap_writepage
   __tracepoint_android_vh_sysrq_crash
   __tracepoint_android_vh_timerfd_create
+  __tracepoint_android_vh_try_to_freeze_todo_logging
   __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_typec_store_partner_src_caps
   __tracepoint_android_vh_typec_tcpm_log
@@ -3196,6 +3238,7 @@
   wakeup_source_unregister
   __wake_up_sync
   wake_up_var
+  walk_page_range
   __warn_printk
   watchdog_init_timeout
   watchdog_register_device
@@ -3236,13 +3279,44 @@
   xhci_set_interrupter_moderation
   xhci_stop_endpoint_sync
   xhci_suspend
+  zlib_deflate
+  zlib_deflateEnd
+  zlib_deflateInit2
+  zlib_deflateReset
+  zlib_deflate_workspacesize
+  zlib_inflate
+  zlib_inflateEnd
+  zlib_inflateInit2
+  zlib_inflateReset
+  zlib_inflate_workspacesize
   zs_compact
   zs_create_pool
   zs_destroy_pool
   zs_free
   zs_get_total_pages
   zs_huge_class_size
+  zs_lookup_class_index
   zs_malloc
   zs_map_object
   zs_pool_stats
+  zstd_cctx_workspace_bound
+  zstd_compress_cctx
+  zstd_compress_using_cdict
+  zstd_create_cctx_advanced
+  zstd_create_cdict_byreference
+  zstd_create_dctx_advanced
+  zstd_create_ddict_byreference
+  zstd_dctx_workspace_bound
+  zstd_decompress_dctx
+  zstd_decompress_using_ddict
+  zstd_default_clevel
+  zstd_free_cctx
+  zstd_free_cdict
+  zstd_free_dctx
+  zstd_free_ddict
+  zstd_get_cparams
+  zstd_get_params
+  zstd_init_cctx
+  zstd_init_dctx
+  zstd_is_error
   zs_unmap_object
