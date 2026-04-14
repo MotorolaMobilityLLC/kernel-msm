@@ -599,7 +599,7 @@ static struct task_dma_buf_info *compute_dmabuf_info(struct task_struct *task)
 
 int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
 {
-	struct task_dma_buf_info *parent_dmabuf_info = current->dmabuf_info;
+	struct task_dma_buf_info *parent_dmabuf_info;
 	struct task_dma_buf_info *child_dmabuf_info;
 	bool share_vm = clone_flags & CLONE_VM;
 	bool share_fs = clone_flags & CLONE_FILES;
@@ -626,12 +626,22 @@ int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
 		return 0;
 	}
 
-	/*
-	 * Partial sharing is not supported.
-	 * Children of such tasks are also not supported.
-	 */
-	if (share_vm != share_fs || !parent_dmabuf_info) {
+	task_lock(current);
+	parent_dmabuf_info = current->dmabuf_info;
+	if (parent_dmabuf_info)
+		get_dmabuf_info(parent_dmabuf_info);
+	task_unlock(current);
+
+	/* Children of tasks with no accounting info are not supported. */
+	if (!parent_dmabuf_info) {
 		task->dmabuf_info = NULL;
+		return 0;
+	}
+
+	/* Partial sharing is not supported. */
+	if (share_vm != share_fs) {
+		task->dmabuf_info = NULL;
+		put_dmabuf_info(parent_dmabuf_info);
 		return 0;
 	}
 
@@ -640,7 +650,7 @@ int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
 	 * the parent, so they can both share the same dmabuf_info.
 	 */
 	if (share_vm && share_fs) {
-		get_dmabuf_info(parent_dmabuf_info);
+		/* task takes the parent_dmabuf_info with the elevated refcount. */
 		task->dmabuf_info = parent_dmabuf_info;
 
 		if (task->mm) {
@@ -662,6 +672,7 @@ int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
 	 * the child. Construct the dmabuf accounting info for the child here based on what actually
 	 * made it into the child's files_struct and mm_struct.
 	 */
+	put_dmabuf_info(parent_dmabuf_info);
 	child_dmabuf_info = compute_dmabuf_info(task);
 	if (!child_dmabuf_info)
 		return -ENOMEM;
@@ -716,7 +727,7 @@ void put_dmabuf_info(struct task_dma_buf_info *dmabuf_info)
 int dma_buf_begin_new_exec(struct files_struct *old_files)
 {
 	struct task_dma_buf_info *new_dmabuf_info;
-	struct task_dma_buf_info *old_dmabuf_info = current->dmabuf_info;
+	struct task_dma_buf_info *old_dmabuf_info;
 	struct files_struct *my_files = current->files;
 
 	if (!static_key_enabled(&dmabuf_accounting_key))
@@ -794,7 +805,10 @@ retry:
 		task_dmabuf_records_preload_end();
 	}
 
+	task_lock(current);
+	old_dmabuf_info = current->dmabuf_info;
 	current->dmabuf_info = new_dmabuf_info; // refcount from alloc_task_dma_buf_info
+	task_unlock(current);
 	put_dmabuf_info(old_dmabuf_info);
 
 	return 0;
