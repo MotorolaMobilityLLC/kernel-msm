@@ -320080,6 +320080,13 @@ function {
   parameter_id: 0x6720d32f
 }
 function {
+  id: 0x30e9848a
+  return_type_id: 0x33756485
+  parameter_id: 0x078316ff
+  parameter_id: 0x2d3b4fc6
+  parameter_id: 0x4585663f
+}
+function {
   id: 0x30eb4522
   return_type_id: 0x0483e6f8
   parameter_id: 0x3b5513a7
@@ -432942,6 +432949,15 @@ elf_symbol {
   full_name: "ufshcd_mcq_poll_cqe_lock"
 }
 elf_symbol {
+  id: 0x87b913a9
+  name: "ufshcd_mcq_poll_n_cqe_lock"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xd4a51911
+  type_id: 0x30e9848a
+  full_name: "ufshcd_mcq_poll_n_cqe_lock"
+}
+elf_symbol {
   id: 0xaefd3622
   name: "ufshcd_mcq_read_cqis"
   is_defined: true
@@ -449222,6 +449238,7 @@ interface {
   symbol_id: 0x051c0489
   symbol_id: 0x562c9a11
   symbol_id: 0x56d1da85
+  symbol_id: 0x87b913a9
   symbol_id: 0xaefd3622
   symbol_id: 0x3ecd46f0
   symbol_id: 0xde541a7b
