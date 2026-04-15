@@ -3065,6 +3065,7 @@
   ufshcd_hold
   ufshcd_init_pwr_dev_param
   ufshcd_mcq_poll_cqe_lock
+  ufshcd_mcq_poll_n_cqe_lock
   ufshcd_mcq_read_cqis
   ufshcd_mcq_write_cqis
   ufshcd_pltfrm_init
