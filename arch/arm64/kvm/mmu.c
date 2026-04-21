@@ -1686,7 +1686,7 @@ static int pkvm_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t *fault_ipa,
 {
 	unsigned int flags = FOLL_HWPOISON | FOLL_LONGTERM | FOLL_WRITE;
 	struct kvm_hyp_memcache *hyp_memcache = &vcpu->arch.stage2_mc;
-	unsigned long page_size = PAGE_SIZE;
+	long page_size = PAGE_SIZE;
 	struct mm_struct *mm = current->mm;
 	struct kvm_pinned_page *ppage;
 	struct kvm *kvm = vcpu->kvm;
@@ -1750,6 +1750,12 @@ static int pkvm_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t *fault_ipa,
 	 * host_map_guest HVC
 	 */
 	read_unlock(&kvm->mmu_lock);
+
+	/* Stage-1 mapping missing. Retry the fault. */
+	if (page_size < 0) {
+		ret = page_size == -EAGAIN ? 0 : page_size;
+		goto unpin;
+	}
 
 	page = pfn_to_page(pfn);
 
