@@ -38782,6 +38782,11 @@ array {
   element_type_id: 0xe62ebf07
 }
 array {
+  id: 0x0a66722e
+  number_of_elements: 128
+  element_type_id: 0x92233392
+}
+array {
   id: 0x0aba0b5b
   number_of_elements: 48
   element_type_id: 0x6720d32f
@@ -439757,6 +439762,15 @@ elf_symbol {
   full_name: "vchan_tx_submit"
 }
 elf_symbol {
+  id: 0xe79bed4b
+  name: "vendor_data_pad"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xec915205
+  type_id: 0x0a66722e
+  full_name: "vendor_data_pad"
+}
+elf_symbol {
   id: 0x9181a5f3
   name: "verify_pkcs7_signature"
   is_defined: true
@@ -451875,6 +451889,7 @@ interface {
   symbol_id: 0xbdc38eeb
   symbol_id: 0x2e35eb72
   symbol_id: 0x2e0cfc9a
+  symbol_id: 0xe79bed4b
   symbol_id: 0x9181a5f3
   symbol_id: 0xa7ab6134
   symbol_id: 0x7b568874
