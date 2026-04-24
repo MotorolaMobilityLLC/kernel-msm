@@ -656,3 +656,4 @@ __traceiter_android_vh_mmap_lock_init
 __tracepoint_android_vh_mmap_lock_init
 __traceiter_android_vh_mmap_lock_free
 __tracepoint_android_vh_mmap_lock_free
+vendor_data_pad
