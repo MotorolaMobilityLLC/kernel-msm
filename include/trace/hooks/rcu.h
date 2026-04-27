@@ -2,6 +2,7 @@
 #undef TRACE_SYSTEM
 #define TRACE_SYSTEM rcu
 
+#undef TRACE_INCLUDE_PATH
 #define TRACE_INCLUDE_PATH trace/hooks
 
 #if !defined(_TRACE_HOOK_RCU_H) || defined(TRACE_HEADER_MULTI_READ)
