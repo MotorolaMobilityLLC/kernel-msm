@@ -2871,7 +2871,7 @@ static const struct adsp_data alor_mpss_resource = {
 	.sysmon_name = "modem",
 	.ssctl_id = 0x12,
 	.region_assign_idx = 3,
-#ifdef CONFIG_VANTAGE_DTB
+#if defined(CONFIG_VANTAGE_DTB) || defined(CONFIG_AVR_DTB)
 	.region_assign_count = 1,
 #else
 	.region_assign_count = 2,
