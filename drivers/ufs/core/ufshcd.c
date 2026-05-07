@@ -67,7 +67,11 @@ enum {
 /* Query request retries */
 #define QUERY_REQ_RETRIES 3
 /* Query request timeout */
-#define QUERY_REQ_TIMEOUT 1500 /* 1.5 seconds */
+enum {
+	QUERY_REQ_TIMEOUT_MIN     = 1,
+	QUERY_REQ_TIMEOUT_DEFAULT = 1500,
+	QUERY_REQ_TIMEOUT_MAX     = 30000
+};
 
 /* Advanced RPMB request timeout */
 #define ADVANCED_RPMB_REQ_TIMEOUT  3000 /* 3 seconds */
@@ -135,6 +139,23 @@ static const struct kernel_param_ops uic_cmd_timeout_ops = {
 module_param_cb(uic_cmd_timeout, &uic_cmd_timeout_ops, &uic_cmd_timeout, 0644);
 MODULE_PARM_DESC(uic_cmd_timeout,
 		 "UFS UIC command timeout in milliseconds. Defaults to 500ms. Supported values range from 500ms to 5 seconds inclusively");
+
+static unsigned int dev_cmd_timeout = QUERY_REQ_TIMEOUT_DEFAULT;
+
+static int dev_cmd_timeout_set(const char *val, const struct kernel_param *kp)
+{
+	return param_set_uint_minmax(val, kp, QUERY_REQ_TIMEOUT_MIN,
+				     QUERY_REQ_TIMEOUT_MAX);
+}
+
+static const struct kernel_param_ops dev_cmd_timeout_ops = {
+	.set = dev_cmd_timeout_set,
+	.get = param_get_uint,
+};
+
+module_param_cb(dev_cmd_timeout, &dev_cmd_timeout_ops, &dev_cmd_timeout, 0644);
+MODULE_PARM_DESC(dev_cmd_timeout,
+		 "UFS Device command timeout in milliseconds. Defaults to 1.5s. Supported values range from 1ms to 30 seconds inclusively");
 
 #define ufshcd_toggle_vreg(_dev, _vreg, _on)				\
 	({                                                              \
@@ -270,6 +291,7 @@ static const struct ufs_dev_quirk ufs_fixups[] = {
 	  .model = UFS_ANY_MODEL,
 	  .quirk = UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM |
 		   UFS_DEVICE_QUIRK_HOST_PA_TACTIVATE |
+		   UFS_DEVICE_QUIRK_PA_HIBER8TIME |
 		   UFS_DEVICE_QUIRK_RECOVERY_FROM_DL_NAC_ERRORS },
 	{ .wmanufacturerid = UFS_VENDOR_SKHYNIX,
 	  .model = UFS_ANY_MODEL,
@@ -301,6 +323,7 @@ static inline void ufshcd_add_delay_before_dme_cmd(struct ufs_hba *hba);
 static int ufshcd_host_reset_and_restore(struct ufs_hba *hba);
 static void ufshcd_resume_clkscaling(struct ufs_hba *hba);
 static void ufshcd_suspend_clkscaling(struct ufs_hba *hba);
+static void __ufshcd_suspend_clkscaling(struct ufs_hba *hba);
 static int ufshcd_scale_clks(struct ufs_hba *hba, bool scale_up);
 static irqreturn_t ufshcd_intr(int irq, void *__hba);
 static int ufshcd_change_power_mode(struct ufs_hba *hba,
@@ -1297,6 +1320,7 @@ static int ufshcd_clock_scaling_prepare(struct ufs_hba *hba, u64 timeout_us)
 	 * make sure that there are no outstanding requests when
 	 * clock scaling is in progress
 	 */
+	mutex_lock(&hba->host->scan_mutex);
 	blk_mq_quiesce_tagset(&hba->host->tag_set);
 	mutex_lock(&hba->wb_mutex);
 	down_write(&hba->clk_scaling_lock);
@@ -1307,6 +1331,7 @@ static int ufshcd_clock_scaling_prepare(struct ufs_hba *hba, u64 timeout_us)
 		up_write(&hba->clk_scaling_lock);
 		mutex_unlock(&hba->wb_mutex);
 		blk_mq_unquiesce_tagset(&hba->host->tag_set);
+		mutex_unlock(&hba->host->scan_mutex);
 		goto out;
 	}
 
@@ -1328,6 +1353,7 @@ static void ufshcd_clock_scaling_unprepare(struct ufs_hba *hba, int err, bool sc
 	mutex_unlock(&hba->wb_mutex);
 
 	blk_mq_unquiesce_tagset(&hba->host->tag_set);
+	mutex_unlock(&hba->host->scan_mutex);
 	ufshcd_release(hba);
 }
 
@@ -1387,10 +1413,9 @@ static void ufshcd_clk_scaling_suspend_work(struct work_struct *work)
 		return;
 	}
 	hba->clk_scaling.is_suspended = true;
-	hba->clk_scaling.window_start_t = 0;
 	spin_unlock_irqrestore(hba->host->host_lock, irq_flags);
 
-	devfreq_suspend_device(hba->devfreq);
+	__ufshcd_suspend_clkscaling(hba);
 }
 
 static void ufshcd_clk_scaling_resume_work(struct work_struct *work)
@@ -1575,6 +1600,16 @@ static void ufshcd_devfreq_remove(struct ufs_hba *hba)
 	dev_pm_opp_remove(hba->dev, clki->max_freq);
 }
 
+static void __ufshcd_suspend_clkscaling(struct ufs_hba *hba)
+{
+	unsigned long flags;
+
+	devfreq_suspend_device(hba->devfreq);
+	spin_lock_irqsave(hba->host->host_lock, flags);
+	hba->clk_scaling.window_start_t = 0;
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
+}
+
 static void ufshcd_suspend_clkscaling(struct ufs_hba *hba)
 {
 	unsigned long flags;
@@ -1587,12 +1622,11 @@ static void ufshcd_suspend_clkscaling(struct ufs_hba *hba)
 	if (!hba->clk_scaling.is_suspended) {
 		suspend = true;
 		hba->clk_scaling.is_suspended = true;
-		hba->clk_scaling.window_start_t = 0;
 	}
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
 	if (suspend)
-		devfreq_suspend_device(hba->devfreq);
+		__ufshcd_suspend_clkscaling(hba);
 }
 
 static void ufshcd_resume_clkscaling(struct ufs_hba *hba)
@@ -2759,6 +2793,8 @@ static int ufshcd_compose_devman_upiu(struct ufs_hba *hba,
  */
 static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
+	struct request *rq = scsi_cmd_to_rq(lrbp->cmd);
+	unsigned int ioprio_class = IOPRIO_PRIO_CLASS(req_get_ioprio(rq));
 	u8 upiu_flags;
 	int ret = 0;
 
@@ -2769,6 +2805,8 @@ static int ufshcd_comp_scsi_upiu(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 
 	if (likely(lrbp->cmd)) {
 		ufshcd_prepare_req_desc_hdr(lrbp, &upiu_flags, lrbp->cmd->sc_data_direction, 0);
+		if (ioprio_class == IOPRIO_CLASS_RT)
+			upiu_flags |= UPIU_CMD_FLAGS_CP;
 		ufshcd_prepare_utp_scsi_cmd_upiu(lrbp, upiu_flags);
 		if (hba->android_quirks & UFSHCD_ANDROID_QUIRK_SET_IID_TO_ONE)
 			lrbp->ucd_req_ptr->header.iid = 1;
@@ -3050,8 +3088,13 @@ ufshcd_dev_cmd_completion(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	case UPIU_TRANSACTION_QUERY_RSP: {
 		u8 response = lrbp->ucd_rsp_ptr->header.response;
 
-		if (response == 0)
+		if (response == 0) {
 			err = ufshcd_copy_query_response(hba, lrbp);
+		} else {
+			err = -EINVAL;
+			dev_err(hba->dev, "%s: unexpected response in Query RSP: %x\n",
+					__func__, response);
+		}
 		break;
 	}
 	case UPIU_TRANSACTION_REJECT_UPIU:
@@ -3257,7 +3300,7 @@ int ufshcd_query_flag(struct ufs_hba *hba, enum query_opcode opcode,
 	struct ufs_query_req *request = NULL;
 	struct ufs_query_res *response = NULL;
 	int err, selector = 0;
-	int timeout = QUERY_REQ_TIMEOUT;
+	int timeout = dev_cmd_timeout;
 
 	BUG_ON(!hba);
 
@@ -3357,7 +3400,7 @@ int ufshcd_query_attr(struct ufs_hba *hba, enum query_opcode opcode,
 		goto out_unlock;
 	}
 
-	err = ufshcd_exec_dev_cmd(hba, DEV_CMD_TYPE_QUERY, QUERY_REQ_TIMEOUT);
+	err = ufshcd_exec_dev_cmd(hba, DEV_CMD_TYPE_QUERY, dev_cmd_timeout);
 
 	if (err) {
 		dev_err(hba->dev, "%s: opcode 0x%.2x for idn %d failed, index %d, err = %d\n",
@@ -3457,7 +3500,7 @@ static int __ufshcd_query_descriptor(struct ufs_hba *hba,
 		goto out_unlock;
 	}
 
-	err = ufshcd_exec_dev_cmd(hba, DEV_CMD_TYPE_QUERY, QUERY_REQ_TIMEOUT);
+	err = ufshcd_exec_dev_cmd(hba, DEV_CMD_TYPE_QUERY, dev_cmd_timeout);
 
 	if (err) {
 		dev_err(hba->dev, "%s: opcode 0x%.2x for idn %d failed, index %d, err = %d\n",
@@ -5589,7 +5632,6 @@ static void ufshcd_mcq_compl_pending_transfer(struct ufs_hba *hba,
 	struct ufshcd_lrb *lrbp;
 	struct scsi_cmnd *cmd;
 	unsigned long flags;
-	u32 hwq_num, utag;
 	int tag;
 
 	for (tag = 0; tag < hba->nutrs; tag++) {
@@ -5599,9 +5641,9 @@ static void ufshcd_mcq_compl_pending_transfer(struct ufs_hba *hba,
 		    test_bit(SCMD_STATE_COMPLETE, &cmd->state))
 			continue;
 
-		utag = blk_mq_unique_tag(scsi_cmd_to_rq(cmd));
-		hwq_num = blk_mq_unique_tag_to_hwq(utag);
-		hwq = &hba->uhq[hwq_num];
+		hwq = ufshcd_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+		if (!hwq)
+			continue;
 
 		if (force_compl) {
 			ufshcd_mcq_compl_all_cqes_lock(hba, hwq);
@@ -6975,6 +7017,11 @@ static irqreturn_t ufshcd_intr(int irq, void *__hba)
 		if (enabled_intr_status)
 			retval |= ufshcd_sl_intr(hba, enabled_intr_status);
 
+		if (hba->android_quirks &
+			    UFSHCD_ANDROID_QUIRK_NO_IS_READ_ON_H8 &&
+		    intr_status & UIC_HIBERNATE_ENTER)
+			break;
+
 		intr_status = ufshcd_readl(hba, REG_INTERRUPT_STATUS);
 	}
 
@@ -7209,7 +7256,7 @@ static int ufshcd_issue_devman_upiu_cmd(struct ufs_hba *hba,
 	 * bound to fail since dev_cmd.query and dev_cmd.type were left empty.
 	 * read the response directly ignoring all errors.
 	 */
-	ufshcd_wait_for_dev_cmd(hba, lrbp, QUERY_REQ_TIMEOUT);
+	ufshcd_wait_for_dev_cmd(hba, lrbp, dev_cmd_timeout);
 
 	/* just copy the upiu response as it is */
 	memcpy(rsp_upiu, lrbp->ucd_rsp_ptr, sizeof(*rsp_upiu));
@@ -8461,6 +8508,31 @@ out:
 	return ret;
 }
 
+/**
+ * ufshcd_quirk_override_pa_h8time - Ensures proper adjustment of PA_HIBERN8TIME.
+ * @hba: per-adapter instance
+ *
+ * Some UFS devices require specific adjustments to the PA_HIBERN8TIME parameter
+ * to ensure proper hibernation timing. This function retrieves the current
+ * PA_HIBERN8TIME value and increments it by 100us.
+ */
+static void ufshcd_quirk_override_pa_h8time(struct ufs_hba *hba)
+{
+	u32 pa_h8time;
+	int ret;
+
+	ret = ufshcd_dme_get(hba, UIC_ARG_MIB(PA_HIBERN8TIME), &pa_h8time);
+	if (ret) {
+		dev_err(hba->dev, "Failed to get PA_HIBERN8TIME: %d\n", ret);
+		return;
+	}
+
+	/* Increment by 1 to increase hibernation time by 100 µs */
+	ret = ufshcd_dme_set(hba, UIC_ARG_MIB(PA_HIBERN8TIME), pa_h8time + 1);
+	if (ret)
+		dev_err(hba->dev, "Failed updating PA_HIBERN8TIME: %d\n", ret);
+}
+
 static void ufshcd_tune_unipro_params(struct ufs_hba *hba)
 {
 	if (ufshcd_is_unipro_pa_params_tuning_req(hba)) {
@@ -8476,6 +8548,9 @@ static void ufshcd_tune_unipro_params(struct ufs_hba *hba)
 
 	if (hba->dev_quirks & UFS_DEVICE_QUIRK_HOST_PA_TACTIVATE)
 		ufshcd_quirk_tune_host_pa_tactivate(hba);
+
+	if (hba->dev_quirks & UFS_DEVICE_QUIRK_PA_HIBER8TIME)
+		ufshcd_quirk_override_pa_h8time(hba);
 }
 
 static void ufshcd_clear_dbg_ufs_stats(struct ufs_hba *hba)
@@ -8647,7 +8722,7 @@ static void ufshcd_set_timestamp_attr(struct ufs_hba *hba)
 
 	put_unaligned_be64(ktime_get_real_ns(), &upiu_data->osf3);
 
-	err = ufshcd_exec_dev_cmd(hba, DEV_CMD_TYPE_QUERY, QUERY_REQ_TIMEOUT);
+	err = ufshcd_exec_dev_cmd(hba, DEV_CMD_TYPE_QUERY, dev_cmd_timeout);
 
 	if (err)
 		dev_err(hba->dev, "%s: failed to set timestamp %d\n",

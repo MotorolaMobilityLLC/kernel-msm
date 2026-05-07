@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitfield.h>
@@ -511,10 +511,12 @@ static const struct llcc_slice_config sm6150_data[] = {
 
 static const struct llcc_slice_config tuna_data[] = {
 	{LLCC_CPUSS,     1, 4992, 1, 0, 0xFFFFFF,
-			0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{LLCC_MDMHPFX,  24, 1024, 5, 1, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{LLCC_VIDSC0,    2,  512, 4, 1, 0xFFFFFF,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_AUDIO,    35,  512, 1, 1, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{LLCC_MDMHPGRW, 25, 1024, 5, 0, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -557,15 +559,17 @@ static const struct llcc_slice_config tuna_data[] = {
 	{LLCC_CAMSRTRF, 21, 2912, 1, 1, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 13},
 	{LLCC_CPUSSMPAM, 6, 2048, 1, 1, 0xFFFFFF,
-			0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
 
 static const struct llcc_slice_config tuna7_data[] = {
 	{LLCC_CPUSS,     1, 4992, 1, 0, 0xFFFFFF,
-			0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{LLCC_MDMHPFX,  24, 1024, 5, 1, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{LLCC_VIDSC0,    2,  512, 4, 1, 0xFFFFFF,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{LLCC_AUDIO,    35,  512, 1, 1, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{LLCC_MDMHPGRW, 25, 1024, 5, 0, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -608,7 +612,7 @@ static const struct llcc_slice_config tuna7_data[] = {
 	{LLCC_CAMSRTRF, 21, 2912, 1, 1, 0xFFFFFF,
 			0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 13},
 	{LLCC_CPUSSMPAM, 6, 2048, 1, 1, 0xFFFFFF,
-			0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 };
 
 static const struct llcc_slice_config kera_data[] = {

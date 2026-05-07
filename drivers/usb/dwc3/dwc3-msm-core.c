@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -3898,7 +3898,7 @@ static void enable_usb_pdc_interrupt(struct dwc3_msm *mdwc, bool enable)
 		else
 			configure_usb_wakeup_interrupt(mdwc,
 				&mdwc->wakeup_irq[DM_HS_PHY_IRQ],
-				IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_LEVEL_LOW, enable);
+				IRQ_TYPE_LEVEL_LOW, enable);
 
 	} else if (mdwc->hs_phy->flags & PHY_HSFS_MODE) {
 		/*
@@ -3914,7 +3914,7 @@ static void enable_usb_pdc_interrupt(struct dwc3_msm *mdwc, bool enable)
 		else
 			configure_usb_wakeup_interrupt(mdwc,
 				&mdwc->wakeup_irq[DP_HS_PHY_IRQ],
-				IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_LEVEL_LOW, enable);
+				IRQ_TYPE_LEVEL_LOW, enable);
 
 	} else {
 		/* When in host mode, with no device connected, set the HS
@@ -3925,14 +3925,12 @@ static void enable_usb_pdc_interrupt(struct dwc3_msm *mdwc, bool enable)
 		configure_usb_wakeup_interrupt(mdwc,
 			&mdwc->wakeup_irq[DP_HS_PHY_IRQ],
 			mdwc->in_host_mode ?
-			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING |
-			IRQ_TYPE_LEVEL_HIGH, true);
+			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING, true);
 
 		configure_usb_wakeup_interrupt(mdwc,
 			&mdwc->wakeup_irq[DM_HS_PHY_IRQ],
 			mdwc->in_host_mode ?
-			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING |
-			IRQ_TYPE_LEVEL_HIGH, true);
+			IRQ_TYPE_LEVEL_HIGH : IRQ_TYPE_EDGE_RISING, true);
 	}
 
 	configure_usb_wakeup_interrupt(mdwc,

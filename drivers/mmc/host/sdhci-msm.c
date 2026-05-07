@@ -3,7 +3,7 @@
  * drivers/mmc/host/sdhci-msm.c - Qualcomm SDHCI Platform driver
  *
  * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -165,7 +165,6 @@
 #define CMUX_SHIFT_PHASE_MASK	(7 << CMUX_SHIFT_PHASE_SHIFT)
 
 #define MSM_MMC_AUTOSUSPEND_DELAY_MS	10
-#define MSM_CLK_GATING_DELAY_MS		200 /* msec */
 
 /* Timeout value to avoid infinite waiting for pwr_irq */
 #define MSM_PWR_IRQ_TIMEOUT_MS 5000
@@ -515,13 +514,10 @@ struct sdhci_msm_host {
 	bool skip_bus_bw_voting;
 	struct sdhci_msm_bus_vote_data *bus_vote_data;
 	struct delayed_work bus_vote_work;
-	struct delayed_work clk_gating_work;
 	struct workqueue_struct *workq;	/* QoS work queue */
 	struct sdhci_msm_qos_req *sdhci_qos;
 	struct irq_affinity_notify affinity_notify;
-	struct device_attribute clk_gating;
 	struct device_attribute pm_qos;
-	u32 clk_gating_delay;
 	u32 pm_qos_delay;
 	bool cqhci_offset_changed;
 	bool reg_store;
@@ -3022,7 +3018,7 @@ static int sdhci_msm_ice_init(struct sdhci_msm_host *msm_host,
 	if (!(cqhci_readl(cq_host, CQHCI_CAP) & CQHCI_CAP_CS))
 		return 0;
 
-	ice = of_qcom_ice_get(dev);
+	ice = devm_of_qcom_ice_get(dev);
 	if (ice == ERR_PTR(-EOPNOTSUPP)) {
 		dev_warn(dev, "Disabling inline encryption support\n");
 		ice = NULL;
@@ -4323,20 +4319,6 @@ static inline void sdhci_msm_get_of_property(struct platform_device *pdev,
 		host->quirks2 |= SDHCI_QUIRK2_BROKEN_64_BIT_DMA;
 }
 
-static void sdhci_msm_clkgate_bus_delayed_work(struct work_struct *work)
-{
-	struct sdhci_msm_host *msm_host = container_of(work,
-			struct sdhci_msm_host, clk_gating_work.work);
-	struct sdhci_host *host = mmc_priv(msm_host->mmc);
-
-	sdhci_msm_registers_save(host);
-	dev_pm_opp_set_rate(&msm_host->pdev->dev, 0);
-	clk_bulk_disable_unprepare(ARRAY_SIZE(msm_host->bulk_clks),
-					msm_host->bulk_clks);
-	sdhci_msm_log_str(msm_host, "Clocks gated\n");
-	sdhci_msm_bus_voting(host, false);
-}
-
 /* Find cpu group qos from a given cpu */
 static struct qos_cpu_group *cpu_to_group(struct sdhci_msm_qos_req *r, int cpu)
 {
@@ -4751,32 +4733,6 @@ static int sdhci_msm_init_sysfs(struct device *dev)
 	return ret;
 }
 
-static ssize_t show_sdhci_msm_clk_gating(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct sdhci_host *host = dev_get_drvdata(dev);
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
-
-	return scnprintf(buf, PAGE_SIZE, "%u\n", msm_host->clk_gating_delay);
-}
-
-static ssize_t store_sdhci_msm_clk_gating(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct sdhci_host *host = dev_get_drvdata(dev);
-	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
-	uint32_t value;
-
-	if (!kstrtou32(buf, 0, &value)) {
-		msm_host->clk_gating_delay = value;
-		dev_info(dev, "set clk scaling work delay (%u)\n", value);
-	}
-
-	return count;
-}
-
 static ssize_t show_sdhci_msm_pm_qos(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -4809,17 +4765,6 @@ static void sdhci_msm_init_sysfs_gating_qos(struct device *dev)
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
 	int ret;
-
-	msm_host->clk_gating.show = show_sdhci_msm_clk_gating;
-	msm_host->clk_gating.store = store_sdhci_msm_clk_gating;
-	sysfs_attr_init(&msm_host->clk_gating.attr);
-	msm_host->clk_gating.attr.name = "clk_gating";
-	msm_host->clk_gating.attr.mode = 0644;
-	ret = device_create_file(dev, &msm_host->clk_gating);
-	if (ret) {
-		pr_err("%s: %s: failed creating clk gating attr: %d\n",
-				mmc_hostname(host->mmc), __func__, ret);
-	}
 
 	msm_host->pm_qos.show = show_sdhci_msm_pm_qos;
 	msm_host->pm_qos.store = store_sdhci_msm_pm_qos;
@@ -5221,9 +5166,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	if (ret)
 		goto pltfm_free;
 
-	INIT_DELAYED_WORK(&msm_host->clk_gating_work,
-			sdhci_msm_clkgate_bus_delayed_work);
-
 	/* Setup regulators */
 	ret = sdhci_msm_vreg_init(&pdev->dev, msm_host, true);
 	if (ret) {
@@ -5287,7 +5229,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	if (!msm_host->workq)
 		dev_err(&pdev->dev, "Generic swq creation failed\n");
 
-	msm_host->clk_gating_delay = MSM_CLK_GATING_DELAY_MS;
 	msm_host->pm_qos_delay = MSM_MMC_AUTOSUSPEND_DELAY_MS;
 	/* Initialize pmqos */
 	sdhci_msm_qos_init(msm_host);
@@ -5414,9 +5355,12 @@ static __maybe_unused int sdhci_msm_runtime_suspend(struct device *dev)
 	sdhci_msm_unvote_qos_all(msm_host);
 
 skip_qos:
-	queue_delayed_work(msm_host->workq,
-			&msm_host->clk_gating_work,
-			msecs_to_jiffies(msm_host->clk_gating_delay));
+	sdhci_msm_registers_save(host);
+	/* Drop the performance vote */
+	dev_pm_opp_set_rate(dev, 0);
+	clk_bulk_disable_unprepare(ARRAY_SIZE(msm_host->bulk_clks),
+			msm_host->bulk_clks);
+
 	return sdhci_msm_ice_suspend(msm_host);
 }
 
@@ -5430,27 +5374,24 @@ static __maybe_unused int sdhci_msm_runtime_resume(struct device *dev)
 	int ret;
 
 	sdhci_msm_log_str(msm_host, "Enter\n");
-	ret = cancel_delayed_work_sync(&msm_host->clk_gating_work);
-	if (!ret) {
-		sdhci_msm_bus_voting(host, true);
-		dev_pm_opp_set_rate(dev, msm_host->clk_rate);
-		ret = clk_bulk_prepare_enable(ARRAY_SIZE(msm_host->bulk_clks),
-					       msm_host->bulk_clks);
-		if (ret) {
-			dev_err(dev, "Failed to enable clocks %d\n", ret);
-			sdhci_msm_bus_voting(host, false);
-			return ret;
-		}
-
-		sdhci_msm_registers_restore(host);
-		sdhci_msm_toggle_fifo_write_clk(host);
-		/*
-		 * Whenever core-clock is gated dynamically, it's needed to
-		 * restore the SDR DLL settings when the clock is ungated.
-		 */
-		if (msm_host->restore_dll_config && msm_host->clk_rate)
-			sdhci_msm_restore_sdr_dll_config(host);
+	ret = clk_bulk_prepare_enable(ARRAY_SIZE(msm_host->bulk_clks),
+				       msm_host->bulk_clks);
+	if (ret) {
+		dev_err(dev, "Failed to enable clocks %d\n", ret);
+		sdhci_msm_bus_voting(host, false);
+		return ret;
 	}
+
+	sdhci_msm_registers_restore(host);
+	sdhci_msm_toggle_fifo_write_clk(host);
+	/*
+	 * Whenever core-clock is gated dynamically, it's needed to
+	 * restore the SDR DLL settings when the clock is ungated.
+	 */
+	if (msm_host->restore_dll_config && msm_host->clk_rate)
+		sdhci_msm_restore_sdr_dll_config(host);
+
+	dev_pm_opp_set_rate(dev, msm_host->clk_rate);
 
 	if (!qos_req)
 		return 0;
@@ -5476,9 +5417,6 @@ static int sdhci_msm_suspend_late(struct device *dev)
 	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
 
 	sdhci_msm_log_str(msm_host, "Enter\n");
-	if (flush_delayed_work(&msm_host->clk_gating_work))
-		dev_dbg(dev, "%s Waited for clk_gating_work to finish\n",
-			 __func__);
 	return 0;
 }
 

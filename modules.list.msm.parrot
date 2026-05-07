@@ -69,6 +69,7 @@ nvmem_qcom-spmi-sdam.ko
 proxy-consumer.ko
 qcom-spmi-pmic.ko
 spmi-pmic-arb.ko
+qpnp-power-on.ko
 qcom-reboot-reason.ko
 qti-regmap-debugfs.ko
 regmap-spmi.ko

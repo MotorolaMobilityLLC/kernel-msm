@@ -2084,6 +2084,23 @@
 			different crypto accelerators. This option can be used
 			to achieve best performance for particular HW.
 
+	indirect_target_selection= [X86,Intel] Mitigation control for Indirect
+			Target Selection(ITS) bug in Intel CPUs. Updated
+			microcode is also required for a fix in IBPB.
+
+			on:     Enable mitigation (default).
+			off:    Disable mitigation.
+			force:	Force the ITS bug and deploy default
+				mitigation.
+			vmexit: Only deploy mitigation if CPU is affected by
+				guest/host isolation part of ITS.
+			stuff:	Deploy RSB-fill mitigation when retpoline is
+				also deployed. Otherwise, deploy the default
+				mitigation.
+
+			For details see:
+			Documentation/admin-guide/hw-vuln/indirect-target-selection.rst
+
 	init=		[KNL]
 			Format: <full_path>
 			Run specified binary instead of /sbin/init as init
@@ -2637,6 +2654,11 @@
 			a.k.a. Two-Dimensional Page Tables. Default is 1
 			(enabled). Disable by KVM if hardware lacks support
 			for NPT.
+
+	kvm-arm.hyp_lm_size_mb=
+			[KVM,ARM,EARLY] Maximum amount of contiguous memory mappable in
+			the pKVM hypervisor linear map, in MB. Any attempt to map more
+			memory than this into pKVM stage-1 at run-time may be fatal.
 
 	kvm-arm.mode=
 			[KVM,ARM] Select one of KVM/arm64's modes of operation.
@@ -3367,6 +3389,7 @@
 				expose users to several CPU vulnerabilities.
 				Equivalent to: if nokaslr then kpti=0 [ARM64]
 					       gather_data_sampling=off [X86]
+					       indirect_target_selection=off [X86]
 					       kvm.nx_huge_pages=off [X86]
 					       l1tf=off [X86]
 					       mds=off [X86]
@@ -6478,7 +6501,7 @@
 			0: no polling (default)
 
 	thp_anon=	[KNL]
-			Format: <size>,<size>[KMG]:<state>;<size>-<size>[KMG]:<state>
+			Format: <size>[KMG],<size>[KMG]:<state>;<size>[KMG]-<size>[KMG]:<state>
 			state is one of "always", "madvise", "never" or "inherit".
 			Control the default behavior of the system with respect
 			to anonymous transparent hugepages.
@@ -6701,6 +6724,19 @@
 			- "default"
 			If not specified, "default" is used. In this case,
 			the RNG's choice is left to each individual trust source.
+
+	tsa=		[X86] Control mitigation for Transient Scheduler
+			Attacks on AMD CPUs. Search the following in your
+			favourite search engine for more details:
+
+			"Technical guidance for mitigating transient scheduler
+			attacks".
+
+			off		- disable the mitigation
+			on		- enable the mitigation (default)
+			user		- mitigate only user/kernel transitions
+			vm		- mitigate only guest/host transitions
+
 
 	tsc=		Disable clocksource stability checks for TSC.
 			Format: <string>

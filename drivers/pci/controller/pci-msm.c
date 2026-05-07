@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #include <dt-bindings/regulator/qcom,rpmh-regulator-levels.h>
 #include <dt-bindings/interconnect/qcom,icc.h>
@@ -1240,6 +1240,7 @@ struct msm_pcie_dev_t {
 	u32 clkreq_gpio;
 
 	bool fmd_enable;
+	bool no_client_based_bw_voting;
 };
 
 struct msm_root_dev_t {
@@ -4426,9 +4427,10 @@ static int msm_pcie_core_phy_reset(struct msm_pcie_dev_t *dev)
 	return rc;
 }
 
-static int msm_pcie_icc_vote(struct msm_pcie_dev_t *dev, u32 icc_ab,
-						u32 icc_ib, bool drv_state)
+static int msm_pcie_icc_vote(struct msm_pcie_dev_t *dev, u8 speed,
+						u8 width, bool drv_state)
 {
+	u32 bw;
 	int rc = 0;
 	u32 icc_tags;
 
@@ -4445,10 +4447,42 @@ static int msm_pcie_icc_vote(struct msm_pcie_dev_t *dev, u32 icc_ab,
 		if (dev->pcie_sm)
 			icc_set_tag(dev->icc_path, icc_tags);
 
-		PCIE_DBG(dev, "PCIe: RC%d: putting ICC vote ab = %d ib = %d\n",
-			dev->rc_idx, icc_ab, icc_ib);
+		switch (speed) {
+		case 1:
+			bw = 250000; /* avg bw / AB: 2.5 GBps, peak bw / IB: no vote */
+			break;
+		case 2:
+			bw = 500000; /* avg bw / AB: 5 GBps, peak bw / IB: no vote */
+			break;
+		case 3:
+			bw = 1000000; /* avg bw / AB: 8 GBps, peak bw / IB: no vote */
+			break;
+		case 4:
+			bw = 2000000; /* avg bw / AB: 16 GBps, peak bw / IB: no vote */
+			break;
+		case 5:
+			bw = 4000000; /* avg bw / AB: 32 GBps, peak bw / IB: no vote */
+			break;
+		default:
+			bw = 0;
+			break;
+		}
 
-		rc = icc_set_bw(dev->icc_path, icc_ab, icc_ib);
+		if (speed == 0) {
+			/* Speed == 0 implies to vote for '0' bandwidth. */
+			rc = icc_set_bw(dev->icc_path, 0, 0);
+		} else {
+			/*
+			 * If there is no icc voting from the client driver then vote for icc
+			 * bandwidth is based up on link speed and width or vote for average
+			 * icc bandwidth.
+			 */
+			if (dev->no_client_based_bw_voting)
+				rc = icc_set_bw(dev->icc_path, width * bw, 0);
+			else
+				rc = icc_set_bw(dev->icc_path, ICC_AVG_BW, ICC_PEAK_BW);
+		}
+
 		if (rc)
 			PCIE_ERR(dev,
 				"PCIe: RC%d: failed to put the ICC vote %d.\n",
@@ -4486,7 +4520,8 @@ static int msm_pcie_clk_init(struct msm_pcie_dev_t *dev)
 	if (dev->pipe_clk_mux && dev->pipe_clk_ext_src)
 		clk_set_parent(dev->pipe_clk_mux, dev->pipe_clk_ext_src);
 
-	rc = msm_pcie_icc_vote(dev, ICC_AVG_BW, ICC_PEAK_BW, false);
+	/* vote with GEN1x1 before link up */
+	rc = msm_pcie_icc_vote(dev, GEN1_SPEED, LINK_WIDTH_X1, false);
 	if (rc)
 		return rc;
 
@@ -6234,6 +6269,9 @@ static int msm_pcie_enable(struct msm_pcie_dev_t *dev)
 	if (ret)
 		goto link_fail;
 
+	if (dev->no_client_based_bw_voting)
+		msm_pcie_icc_vote(dev, dev->current_link_speed, dev->current_link_width, false);
+
 	if (dev->enumerated) {
 		if (!dev->lpi_enable)
 			msm_msi_config(dev_get_msi_domain(&dev->dev->dev));
@@ -6573,8 +6611,10 @@ int msm_pcie_enumerate(u32 rc_idx)
 	pci_save_state(pcidev);
 	dev->default_state = pci_store_saved_state(pcidev);
 
-	if (dev->boot_option & MSM_PCIE_NO_PROBE_ENUMERATION)
+	if (dev->boot_option & MSM_PCIE_NO_PROBE_ENUMERATION) {
 		dev_pm_syscore_device(&pcidev->dev, true);
+		dev_pm_syscore_device(&dev->pdev->dev, true);
+	}
 out:
 	mutex_unlock(&dev->enumerate_lock);
 
@@ -8198,6 +8238,9 @@ static void msm_pcie_read_dt(struct msm_pcie_dev_t *pcie_dev, int rc_idx,
 	pcie_dev->l1_1_pcipm_supported = pcie_dev->l1ss_supported;
 	pcie_dev->l1_2_pcipm_supported = pcie_dev->l1ss_supported;
 
+	pcie_dev->no_client_based_bw_voting = of_property_read_bool(of_node,
+				"qcom,no-client-based-bw-voting");
+
 	of_property_read_u32(of_node, "qcom,l1-2-th-scale",
 				&pcie_dev->l1_2_th_scale);
 	of_property_read_u32(of_node, "qcom,l1-2-th-value",
@@ -9107,6 +9150,9 @@ int msm_pcie_set_link_bandwidth(struct pci_dev *pci_dev, u16 target_link_speed,
 	if (target_link_speed < current_link_speed)
 		msm_pcie_scale_link_bandwidth(pcie_dev, target_link_speed);
 
+	msm_pcie_icc_vote(pcie_dev,
+			pcie_dev->current_link_speed, pcie_dev->current_link_width, false);
+
 	PCIE_DBG(pcie_dev, "PCIe: RC%d: successfully switched link bandwidth\n",
 		pcie_dev->rc_idx);
 out:
@@ -9162,12 +9208,20 @@ static const struct of_device_id msm_pcie_match[] = {
 	{}
 };
 
+static int msm_pcie_pm_suspend_noirq(struct device *dev);
+static int msm_pcie_pm_resume_noirq(struct device *dev);
+
+static DEFINE_NOIRQ_DEV_PM_OPS(qcom_pcie_pm_ops,
+			msm_pcie_pm_suspend_noirq,
+			msm_pcie_pm_resume_noirq);
+
 static struct platform_driver msm_pcie_driver = {
 	.probe	= msm_pcie_probe,
 	.remove	= msm_pcie_remove,
 	.driver	= {
 		.name		= "pci-msm",
 		.of_match_table	= msm_pcie_match,
+		.pm		= pm_sleep_ptr(&qcom_pcie_pm_ops),
 	},
 };
 
@@ -9774,6 +9828,28 @@ static void msm_pcie_fixup_resume_early(struct pci_dev *dev)
 DECLARE_PCI_FIXUP_RESUME_EARLY(PCIE_VENDOR_ID_QCOM, PCI_ANY_ID,
 				 msm_pcie_fixup_resume_early);
 
+static int msm_pcie_pm_suspend_noirq(struct device *dev)
+{
+	struct msm_pcie_dev_t *pcie_dev = (struct msm_pcie_dev_t *)
+					dev_get_drvdata(dev);
+
+	if (pcie_dev->enumerated && pcie_dev->power_on)
+		msm_pcie_fixup_suspend(pcie_dev->dev);
+
+	return 0;
+}
+
+static int msm_pcie_pm_resume_noirq(struct device *dev)
+{
+	struct msm_pcie_dev_t *pcie_dev = (struct msm_pcie_dev_t *)
+					dev_get_drvdata(dev);
+
+	if (pcie_dev->enumerated && !pcie_dev->power_on)
+		msm_pcie_fixup_resume(pcie_dev->dev);
+
+	return 0;
+}
+
 static int msm_pcie_drv_send_rpmsg(struct msm_pcie_dev_t *pcie_dev,
 				   struct msm_pcie_drv_msg *msg)
 {
@@ -9873,7 +9949,8 @@ static int msm_pcie_drv_resume(struct msm_pcie_dev_t *pcie_dev)
 
 	PCIE_DBG(pcie_dev, "PCIe: RC%d:set ICC path vote\n", pcie_dev->rc_idx);
 
-	ret = msm_pcie_icc_vote(pcie_dev, ICC_AVG_BW, ICC_PEAK_BW, false);
+	ret = msm_pcie_icc_vote(pcie_dev, pcie_dev->current_link_speed,
+			pcie_dev->current_link_width, false);
 	if (ret)
 		goto out;
 
@@ -10028,7 +10105,6 @@ static int msm_pcie_drv_suspend(struct msm_pcie_dev_t *pcie_dev,
 	struct msm_pcie_clk_info_t *clk_info;
 	int ret, i;
 	unsigned long irqsave_flags;
-	u32 ab = 0, ib = 0;
 
 	/* If CESTA is available then drv is always supported */
 	if (!pcie_dev->pcie_sm && !drv_info->ep_connected) {
@@ -10070,8 +10146,6 @@ static int msm_pcie_drv_suspend(struct msm_pcie_dev_t *pcie_dev,
 	if (pcie_dev->pcie_sm) {
 		msm_pcie_cesta_enable_drv(pcie_dev,
 				!(options & MSM_PCIE_CONFIG_NO_L1SS_TO));
-		ab = ICC_AVG_BW;
-		ib = ICC_PEAK_BW;
 	}
 
 	/* turn off all unsuppressible clocks */
@@ -10091,7 +10165,11 @@ static int msm_pcie_drv_suspend(struct msm_pcie_dev_t *pcie_dev,
 		msm_pcie_drv_send_rpmsg(pcie_dev,
 					&drv_info->drv_enable_l1ss_sleep);
 
-	ret = msm_pcie_icc_vote(pcie_dev, ab, ib, true);
+	if (pcie_dev->pcie_sm)
+		ret = msm_pcie_icc_vote(pcie_dev, pcie_dev->current_link_speed,
+				pcie_dev->current_link_width, true);
+	else
+		ret = msm_pcie_icc_vote(pcie_dev, 0, 0, true);
 	if (ret) {
 		mutex_unlock(&pcie_dev->setup_lock);
 		mutex_unlock(&pcie_dev->recovery_lock);

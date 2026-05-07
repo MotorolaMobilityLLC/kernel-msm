@@ -91,3 +91,8 @@
   __tracepoint_dwc3_readl
   __tracepoint_dwc3_writel
   pinctrl_gpio_set_config
+  drm_is_panel_follower
+  drm_panel_add_follower
+  drm_panel_remove_follower
+  hid_driver_reset_resume
+  hid_driver_suspend

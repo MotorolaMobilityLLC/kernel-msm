@@ -23,6 +23,8 @@
   __tracepoint_android_vh_tune_swappiness
   __traceiter_android_vh_do_shrink_slab_ex
   __tracepoint_android_vh_do_shrink_slab_ex
+  __traceiter_android_vh_migration_target_bypass
+  __tracepoint_android_vh_migration_target_bypass
 
 # required by lz4 decompress module
   __tracepoint_android_vh_lz4_decompress_bypass
@@ -194,6 +196,10 @@
   __tracepoint_android_vh_freq_qos_add_request
   __tracepoint_android_rvh_dequeue_task_fair
   __tracepoint_android_rvh_entity_tick
+
+# required by mi_damon.ko
+  folio_deactivate
+  folio_mark_accessed
 
 #required by cpq.ko
   elv_rb_former_request
@@ -537,3 +543,6 @@ __traceiter_android_vh_filemap_read
 __tracepoint_android_vh_filemap_read
 __traceiter_android_vh_filemap_map_pages_range
 __tracepoint_android_vh_filemap_map_pages_range
+
+__traceiter_android_vh_pageset_update
+__tracepoint_android_vh_pageset_update

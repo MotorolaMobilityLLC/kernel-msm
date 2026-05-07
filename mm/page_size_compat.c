@@ -345,7 +345,6 @@ free_magic:
 }
 
 #if IS_ENABLED(CONFIG_PERF_EVENTS)
-
 static int __init init_sysctl_perf_event_mlock(void)
 {
 	if (!static_branch_unlikely(&page_shift_compat_enabled))

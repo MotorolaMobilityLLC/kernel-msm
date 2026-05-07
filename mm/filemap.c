@@ -43,6 +43,7 @@
 #include <linux/psi.h>
 #include <linux/ramfs.h>
 #include <linux/page_idle.h>
+#include <linux/page_size_compat.h>
 #include <linux/migrate.h>
 #include <linux/pipe_fs_i.h>
 #include <linux/splice.h>
@@ -2033,8 +2034,19 @@ no_page:
 
 		if (err == -EEXIST)
 			goto repeat;
-		if (err)
+		if (err) {
+			/*
+			 * When NOWAIT I/O fails to allocate folios this could
+			 * be due to a nonblocking memory allocation and not
+			 * because the system actually is out of memory.
+			 * Return -EAGAIN so that there caller retries in a
+			 * blocking fashion instead of propagating -ENOMEM
+			 * to the application.
+			 */
+			if ((fgp_flags & FGP_NOWAIT) && err == -ENOMEM)
+				err = -EAGAIN;
 			return ERR_PTR(err);
+		}
 		/*
 		 * filemap_add_folio locks the page, and for mmap
 		 * we expect an unlocked page.
@@ -2302,6 +2314,7 @@ unsigned filemap_get_folios_contig(struct address_space *mapping,
 			*start = folio->index + nr;
 			goto out;
 		}
+		xas_advance(&xas, folio_next_index(folio) - 1);
 		continue;
 put_folio:
 		folio_put(folio);
@@ -3426,6 +3439,8 @@ retry_find:
 		}
 	}
 
+	trace_android_vh_filemap_fault_pre_folio_locked(folio);
+
 	if (!lock_folio_maybe_drop_mmap(vmf, folio, &fpin))
 		goto out_retry;
 
@@ -3716,6 +3731,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 		last_pgoff = xas.xa_index;
 		end = folio->index + folio_nr_pages(folio) - 1;
 		nr_pages = min(end, end_pgoff) - xas.xa_index + 1;
+		trace_android_vh_filemap_pages(folio);
 
 		if (!folio_test_large(folio))
 			ret |= filemap_map_order0_folio(vmf,
@@ -3726,6 +3742,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 					nr_pages, &mmap_miss);
 
 		folio_unlock(folio);
+		trace_android_vh_filemap_folio_mapped(folio);
 		folio_put(folio);
 	} while ((folio = next_uptodate_folio(&xas, mapping, end_pgoff)) != NULL);
 	pte_unmap_unlock(vmf->pte, vmf->ptl);
@@ -4362,6 +4379,17 @@ resched:
 		}
 	}
 	rcu_read_unlock();
+
+	/* Adjust the counts if emulating the page size */
+	if (__PAGE_SIZE > PAGE_SIZE) {
+		unsigned int nr_sub_pages = __PAGE_SIZE / PAGE_SIZE;
+
+		cs->nr_cache /= nr_sub_pages;
+		cs->nr_dirty /= nr_sub_pages;
+		cs->nr_writeback /= nr_sub_pages;
+		cs->nr_evicted /= nr_sub_pages;
+		cs->nr_recently_evicted /= nr_sub_pages;
+	}
 }
 
 /*

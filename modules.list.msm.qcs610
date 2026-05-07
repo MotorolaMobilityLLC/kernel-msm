@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0-only
 # Copyright (c) 2025, Qualcomm Innovation Center, Inc. All rights reserved.
+arm_smmu.ko
+iommu-logger.ko
+msm_dma_iommu_mapping.ko
+qcom_dma_heaps.ko
+qcom_iommu_util.ko
 clk-rpmh.ko
 clk-dummy.ko
 clk-qcom.ko
-arm_smmu.ko
-qcom_iommu_util.ko
-qcom_dma_heaps.ko
-msm_dma_iommu_mapping.ko
 mem_buf.ko
 mem_buf_dev.ko
 smem.ko
@@ -31,7 +32,6 @@ qcom_hwspinlock.ko
 nvmem_qfprom.ko
 secure_buffer.ko
 socinfo.ko
-iommu-logger.ko
 qcom_aoss.ko
 msm_qmp.ko
 qcom_ipc_logging.ko
@@ -45,6 +45,7 @@ qcom-spmi-pmic.ko
 spmi-pmic-arb.ko
 rtc-pm8xxx.ko
 ufshcd-crypto-qti.ko
+cqhci-crypto-qti.ko
 sdhci-msm.ko
 cqhci.ko
 qcom-pdc.ko
@@ -65,3 +66,4 @@ icc-debug.ko
 spi-msm-geni.ko
 qnoc-qos.ko
 qnoc-sm6150.ko
+phy-msm-qusb.ko

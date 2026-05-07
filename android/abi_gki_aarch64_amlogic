@@ -1,3 +1,5 @@
+
+
 [abi_symbol_list]
   add_cpu
   add_device_randomness
@@ -209,10 +211,12 @@
   consume_skb
   contig_page_data
   __contpte_try_unfold
+  _copy_from_iter
   copy_from_kernel_nofault
   __copy_overflow
   copy_page_from_iter_atomic
   copy_splice_read
+  _copy_to_iter
   cpu_all_bits
   cpu_bit_bitmap
   cpufreq_boost_enabled
@@ -245,10 +249,13 @@
   crypto_aead_setauthsize
   crypto_aead_setkey
   crypto_ahash_digest
+  crypto_ahash_final
+  crypto_ahash_finup
   crypto_ahash_setkey
   crypto_alloc_aead
   crypto_alloc_ahash
   crypto_alloc_base
+  crypto_alloc_rng
   crypto_alloc_shash
   crypto_alloc_skcipher
   crypto_cipher_encrypt_one
@@ -258,13 +265,17 @@
   crypto_dequeue_request
   crypto_destroy_tfm
   crypto_enqueue_request
+  crypto_get_default_null_skcipher
   crypto_has_alg
   crypto_init_queue
   __crypto_memneq
+  crypto_put_default_null_skcipher
   crypto_register_ahash
   crypto_register_alg
   crypto_register_shash
   crypto_register_skcipher
+  crypto_req_done
+  crypto_rng_reset
   crypto_sha1_finup
   crypto_sha1_update
   crypto_shash_digest
@@ -623,6 +634,7 @@
   drm_atomic_set_mode_prop_for_crtc
   drm_atomic_state_alloc
   drm_atomic_state_clear
+  drm_atomic_state_default_release
   __drm_atomic_state_free
   drm_compat_ioctl
   drm_connector_attach_content_type_property
@@ -793,6 +805,7 @@
   extcon_set_state
   extcon_set_state_sync
   extcon_unregister_notifier
+  extract_iter_to_sg
   fasync_helper
   fault_in_iov_iter_readable
   __fdget
@@ -1102,8 +1115,10 @@
   ioremap_prot
   io_schedule
   iounmap
+  iov_iter_advance
   iov_iter_alignment
   iov_iter_init
+  iov_iter_npages
   iov_iter_revert
   iov_iter_zero
   iput
@@ -1269,12 +1284,14 @@
   __local_bh_enable_ip
   __lock_buffer
   lockref_get
+  lock_sock_nested
   logfc
   log_post_read_mmio
   log_post_write_mmio
   log_read_mmio
   log_write_mmio
   lookup_bdev
+  lookup_user_key
   loops_per_jiffy
   LZ4_decompress_safe
   LZ4_decompress_safe_partial
@@ -1726,6 +1743,8 @@
   proc_mkdir
   proc_mkdir_data
   proc_remove
+  proto_register
+  proto_unregister
   __pskb_copy_fclone
   pskb_expand_head
   __pskb_pull_tail
@@ -1845,6 +1864,8 @@
   release_firmware
   __release_region
   release_resource
+  release_sock
+  release_sock
   remap_pfn_range
   remap_vmalloc_range
   remove_cpu
@@ -1940,6 +1961,8 @@
   sdio_writel
   sdio_writesb
   sdio_writew
+  security_sk_clone
+  security_sock_graft
   send_sig
   seq_list_next
   seq_list_start
@@ -2000,6 +2023,7 @@
   single_open_size
   single_release
   si_swapinfo
+  sk_alloc
   skb_add_rx_frag
   skb_checksum_help
   skb_clone
@@ -2026,6 +2050,7 @@
   skb_scrub_packet
   skb_trim
   skb_tstamp_tx
+  sk_free
   skip_spaces
   smpboot_register_percpu_thread
   smp_call_function
@@ -2046,6 +2071,7 @@
   snd_pcm_lib_preallocate_pages
   snd_pcm_period_elapsed
   snd_pcm_rate_to_rate_bit
+  snd_pcm_set_managed_buffer_all
   snd_pcm_stop
   snd_pcm_stop_xrun
   _snd_pcm_stream_lock_irqsave
@@ -2068,6 +2094,7 @@
   snd_soc_dai_set_tdm_slot
   snd_soc_dapm_get_enum_double
   snd_soc_dapm_put_enum_double
+  snd_soc_get_dai_name
   snd_soc_get_volsw
   snd_soc_get_volsw_range
   snd_soc_info_enum_double
@@ -2082,6 +2109,7 @@
   snd_soc_of_parse_audio_simple_widgets
   snd_soc_of_parse_card_name
   snd_soc_of_parse_tdm_slot
+  snd_soc_of_put_dai_link_codecs
   snd_soc_pm_ops
   snd_soc_put_volsw
   snd_soc_put_volsw_range
@@ -2090,7 +2118,25 @@
   snd_soc_unregister_component
   snprintf
   __sock_create
+  sock_init_data
+  sock_kfree_s
+  sock_kmalloc
+  sock_kzfree_s
+  sock_no_accept
+  sock_no_bind
+  sock_no_connect
+  sock_no_getname
+  sock_no_ioctl
+  sock_no_listen
+  sock_no_mmap
+  sock_no_recvmsg
+  sock_no_sendmsg
+  sock_no_shutdown
+  sock_no_socketpair
+  sock_register
   sock_release
+  sock_unregister
+  sock_wake_async
   sock_wfree
   sort
   spi_add_device
@@ -2172,6 +2218,7 @@
   sysfs_create_file_ns
   sysfs_create_files
   sysfs_create_group
+  sysfs_create_groups
   sysfs_create_link
   sysfs_emit
   __sysfs_match_string
@@ -2574,10 +2621,12 @@
   wakeup_source_register
   wakeup_source_unregister
   __wake_up_sync
+  __wake_up_sync_key
   __warn_flushing_systemwide_wq
   __warn_printk
   wireless_nlevent_flush
   wireless_send_event
+  woken_wake_function
   work_busy
   write_cache_pages
   write_inode_now

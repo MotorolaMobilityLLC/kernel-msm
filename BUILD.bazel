@@ -129,6 +129,7 @@ filegroup(
         "android/abi_gki_aarch64_mtk",
         "android/abi_gki_aarch64_mtktv",
         "android/abi_gki_aarch64_nothing",
+        "android/abi_gki_aarch64_nvidia",
         "android/abi_gki_aarch64_oplus",
         "android/abi_gki_aarch64_paragon",
         "android/abi_gki_aarch64_pixel",
@@ -143,7 +144,7 @@ filegroup(
         "android/abi_gki_aarch64_virtual_device",
         "android/abi_gki_aarch64_vivo",
         "android/abi_gki_aarch64_xiaomi",
-        "android/abi_gki_aarch64_xiaomi2",
+        "android/abi_gki_aarch64_xiaomi_xring",
     ],
     visibility = ["//visibility:public"],
 )
@@ -188,7 +189,7 @@ define_common_kernels(target_configs = {
         "protected_modules_list": ":gki_aarch64_protected_modules",
         "module_implicit_outs": get_gki_modules_list("arm64") + get_kunit_modules_list("arm64"),
         "make_goals": _GKI_AARCH64_MAKE_GOALS,
-        "clang_autofdo_profile": "//toolchain/pgo-profiles/kernel:aarch64/android15-6.6/kernel.afdo",
+        "clang_autofdo_profile": ":android/gki/aarch64/afdo/kernel.afdo",
         "defconfig_fragments": ["arch/arm64/configs/autofdo_gki.fragment"],
         "ddk_headers_archive": ":kernel_aarch64_ddk_headers_archive",
         "extra_dist": [
@@ -244,6 +245,24 @@ kernel_build(
     page_size = "16k",
 )
 
+kernel_build(
+    name = "kernel_aarch64_microdroid_minimal",
+    srcs = ["//common:kernel_aarch64_sources"],
+    outs = [
+        "Image",
+        "System.map",
+        "modules.builtin",
+        "modules.builtin.modinfo",
+        "vmlinux",
+        "vmlinux.symvers",
+    ],
+    build_config = "build.config.microdroid.aarch64",
+    defconfig_fragments = ["arch/arm64/configs/microdroid_minimal.fragment"],
+    make_goals = [
+        "Image",
+    ],
+)
+
 copy_to_dist_dir(
     name = "kernel_aarch64_microdroid_16k_dist",
     data = [
@@ -260,6 +279,16 @@ copy_to_dist_dir(
         ":kernel_aarch64_microdroid",
     ],
     dist_dir = "out/kernel_aarch64_microdroid/dist",
+    flat = True,
+    log = "info",
+)
+
+copy_to_dist_dir(
+    name = "kernel_aarch64_microdroid_minimal_dist",
+    data = [
+        ":kernel_aarch64_microdroid_minimal",
+    ],
+    dist_dir = "out/kernel_aarch64_microdroid_minimal/dist",
     flat = True,
     log = "info",
 )
@@ -608,6 +637,7 @@ copy_to_dist_dir(
         ":kernel_aarch64",
         ":kernel_aarch64_modules",
         ":kernel_aarch64_additional_artifacts",
+        ":tests_zip_arm64",
     ],
     dist_dir = "out/db845/dist",
     flat = True,
@@ -761,6 +791,7 @@ kernel_build(
     build_config = "build.config.gki.aarch64.fips140",
     kmi_symbol_list = "android/abi_gki_aarch64_fips140",
     module_outs = ["crypto/fips140.ko"],
+    strip_modules = True,
 )
 
 kernel_abi(
@@ -913,6 +944,16 @@ pkg_install(
     visibility = ["//visibility:private"],
 )
 
+py_library(
+    name = "kunit_parser",
+    srcs = [
+        "tools/testing/kunit/kunit_parser.py",
+        "tools/testing/kunit/kunit_printer.py",
+    ],
+    imports = ["tools/testing/kunit"],
+    visibility = ["//visibility:public"],
+)
+
 # DDK Headers
 # All headers. These are the public targets for DDK modules to use.
 alias(
@@ -993,10 +1034,14 @@ ddk_headers(
     name = "all_headers_allowlist_aarch64",
     hdrs = [
         "drivers/dma-buf/heaps/deferred-free-helper.h",
+        "drivers/dma/dmaengine.h",
         "drivers/extcon/extcon.h",
         "drivers/pci/controller/dwc/pcie-designware.h",
         "drivers/thermal/thermal_core.h",
         "drivers/thermal/thermal_netlink.h",
+        "drivers/ufs/core/ufshcd-crypto.h",
+        "drivers/ufs/core/ufshcd-priv.h",
+        "drivers/ufs/host/ufshcd-pltfrm.h",
         "drivers/usb/dwc3/core.h",
         "sound/usb/card.h",
         "sound/usb/usbaudio.h",
@@ -1011,9 +1056,11 @@ ddk_headers(
         "arch/arm64/include",
         "arch/arm64/include/uapi",
         "drivers/dma-buf",
+        "drivers/dma",
         "drivers/extcon",
         "drivers/pci/controller/dwc",
         "drivers/thermal",
+        "drivers/ufs",
         "drivers/usb",
         "sound/usb",
         "include",

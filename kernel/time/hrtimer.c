@@ -114,7 +114,7 @@ DEFINE_PER_CPU(struct hrtimer_cpu_base, hrtimer_bases) =
 			.clockid = CLOCK_TAI,
 			.get_time = &ktime_get_clocktai,
 		},
-	}
+	},
 };
 
 DEFINE_PER_CPU(call_single_data_t, hrtimer_base_csd) =
@@ -158,11 +158,6 @@ static struct hrtimer_cpu_base migration_cpu_base = {
 };
 
 #define migration_base	migration_cpu_base.clock_base[0]
-
-static inline bool is_migration_base(struct hrtimer_clock_base *base)
-{
-	return base == &migration_base;
-}
 
 /*
  * We are using hashed locking: holding per_cpu(hrtimer_bases)[n].lock
@@ -210,11 +205,9 @@ struct hrtimer_clock_base *lock_hrtimer_base(const struct hrtimer *timer,
  *
  * Called with cpu_base->lock of target cpu held.
  */
-static bool
-hrtimer_suitable_target(struct hrtimer *timer,
-			struct hrtimer_clock_base *new_base,
-			struct hrtimer_cpu_base *new_cpu_base,
-			struct hrtimer_cpu_base *this_cpu_base)
+static bool hrtimer_suitable_target(struct hrtimer *timer, struct hrtimer_clock_base *new_base,
+				    struct hrtimer_cpu_base *new_cpu_base,
+				    struct hrtimer_cpu_base *this_cpu_base)
 {
 	ktime_t expires;
 
@@ -239,9 +232,7 @@ hrtimer_suitable_target(struct hrtimer *timer,
 	return expires >= new_base->cpu_base->expires_next;
 }
 
-static inline
-struct hrtimer_cpu_base *get_target_base(struct hrtimer_cpu_base *base,
-					 int pinned)
+static inline struct hrtimer_cpu_base *get_target_base(struct hrtimer_cpu_base *base, int pinned)
 {
 	if (!hrtimer_base_is_online(base)) {
 		int cpu = cpumask_any_and(cpu_online_mask, housekeeping_cpumask(HK_TYPE_TIMER));
@@ -309,8 +300,7 @@ again:
 		}
 		WRITE_ONCE(timer->base, new_base);
 	} else {
-		if (!hrtimer_suitable_target(timer, new_base, new_cpu_base,
-					     this_cpu_base)) {
+		if (!hrtimer_suitable_target(timer, new_base,  new_cpu_base, this_cpu_base)) {
 			new_cpu_base = this_cpu_base;
 			goto again;
 		}
@@ -319,11 +309,6 @@ again:
 }
 
 #else /* CONFIG_SMP */
-
-static inline bool is_migration_base(struct hrtimer_clock_base *base)
-{
-	return false;
-}
 
 static inline struct hrtimer_clock_base *
 lock_hrtimer_base(const struct hrtimer *timer, unsigned long *flags)
@@ -1312,9 +1297,19 @@ static int __hrtimer_start_range_ns(struct hrtimer *timer, ktime_t tim,
 
 	first = enqueue_hrtimer(timer, new_base, mode);
 	if (!force_local) {
+		/*
+		 * If the current CPU base is online, then the timer is
+		 * never queued on a remote CPU if it would be the first
+		 * expiring timer there.
+		 */
 		if (hrtimer_base_is_online(this_cpu_base))
 			return first;
 
+		/*
+		 * Timer was enqueued remote because the current base is
+		 * already offline. If the timer is the first to expire,
+		 * kick the remote CPU to reprogram the clock event.
+		 */
 		if (first) {
 			struct hrtimer_cpu_base *new_cpu_base = new_base->cpu_base;
 			call_single_data_t *csd = per_cpu_ptr(&hrtimer_base_csd, new_cpu_base->cpu);
@@ -1440,6 +1435,18 @@ static void hrtimer_sync_wait_running(struct hrtimer_cpu_base *cpu_base,
 		raw_spin_lock_irq(&cpu_base->lock);
 	}
 }
+
+#ifdef CONFIG_SMP
+static __always_inline bool is_migration_base(struct hrtimer_clock_base *base)
+{
+	return base == &migration_base;
+}
+#else
+static __always_inline bool is_migration_base(struct hrtimer_clock_base *base)
+{
+	return false;
+}
+#endif
 
 /*
  * This function is called on PREEMPT_RT kernels when the fast path
@@ -2153,14 +2160,9 @@ long hrtimer_nanosleep(ktime_t rqtp, const enum hrtimer_mode mode,
 	struct restart_block *restart;
 	struct hrtimer_sleeper t;
 	int ret = 0;
-	u64 slack;
-
-	slack = current->timer_slack_ns;
-	if (rt_task(current))
-		slack = 0;
 
 	hrtimer_init_sleeper_on_stack(&t, clockid, mode);
-	hrtimer_set_expires_range_ns(&t.timer, rqtp, slack);
+	hrtimer_set_expires_range_ns(&t.timer, rqtp, current->timer_slack_ns);
 	ret = do_nanosleep(&t, mode);
 	if (ret != -ERESTART_RESTARTBLOCK)
 		goto out;
@@ -2343,7 +2345,7 @@ void __init hrtimers_init(void)
 /**
  * schedule_hrtimeout_range_clock - sleep until timeout
  * @expires:	timeout value (ktime_t)
- * @delta:	slack in expires timeout (ktime_t) for SCHED_OTHER tasks
+ * @delta:	slack in expires timeout (ktime_t)
  * @mode:	timer mode
  * @clock_id:	timer clock to be used
  */
@@ -2370,13 +2372,6 @@ schedule_hrtimeout_range_clock(ktime_t *expires, u64 delta,
 		return -EINTR;
 	}
 
-	/*
-	 * Override any slack passed by the user if under
-	 * rt contraints.
-	 */
-	if (rt_task(current))
-		delta = 0;
-
 	hrtimer_init_sleeper_on_stack(&t, clock_id, mode);
 	hrtimer_set_expires_range_ns(&t.timer, *expires, delta);
 	hrtimer_sleeper_start_expires(&t, mode);
@@ -2396,7 +2391,7 @@ EXPORT_SYMBOL_GPL(schedule_hrtimeout_range_clock);
 /**
  * schedule_hrtimeout_range - sleep until timeout
  * @expires:	timeout value (ktime_t)
- * @delta:	slack in expires timeout (ktime_t) for SCHED_OTHER tasks
+ * @delta:	slack in expires timeout (ktime_t)
  * @mode:	timer mode
  *
  * Make the current task sleep until the given expiry time has

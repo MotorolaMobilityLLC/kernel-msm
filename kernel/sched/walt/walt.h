@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _WALT_H
@@ -1597,6 +1597,7 @@ extern unsigned int sysctl_pipeline_non_special_task_util_thres;
 extern unsigned int sysctl_pipeline_pin_thres_low_pct;
 extern unsigned int sysctl_pipeline_pin_thres_high_pct;
 extern unsigned int sysctl_pipeline_rearrange_delay_ms[2];
+extern unsigned int min_demand_for_activity_cnt;
 DECLARE_PER_CPU(unsigned int, walt_yield_to_sleep);
 extern unsigned int walt_sched_yield_counter;
 extern unsigned int sysctl_force_frequent_yielder;

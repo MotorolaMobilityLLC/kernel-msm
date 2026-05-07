@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021, 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __QCOM_TSENS_H__
@@ -248,22 +248,6 @@ enum regfield_ids {
 	LAST_TEMP_13,
 	LAST_TEMP_14,
 	LAST_TEMP_15,
-	VALID_0,		/* VALID reading or not */
-	VALID_1,
-	VALID_2,
-	VALID_3,
-	VALID_4,
-	VALID_5,
-	VALID_6,
-	VALID_7,
-	VALID_8,
-	VALID_9,
-	VALID_10,
-	VALID_11,
-	VALID_12,
-	VALID_13,
-	VALID_14,
-	VALID_15,
 	LOWER_STATUS_0,	/* LOWER threshold violated */
 	LOWER_STATUS_1,
 	LOWER_STATUS_2,

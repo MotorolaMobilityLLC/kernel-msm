@@ -105,14 +105,15 @@ static int __init sample_trace_array_init(void)
 	 * NOTE: This function increments the reference counter
 	 * associated with the trace array - "tr".
 	 */
-	tr = trace_array_get_by_name("sample-instance");
+	tr = trace_array_get_by_name_ext("sample-instance",
+					 "sched,timer,kprobes");
 
 	if (!tr)
 		return -1;
 	/*
 	 * If context specific per-cpu buffers havent already been allocated.
 	 */
-	trace_printk_init_buffers();
+	trace_array_init_printk(tr);
 
 	simple_tsk = kthread_run(simple_thread, NULL, "sample-instance");
 	if (IS_ERR(simple_tsk)) {

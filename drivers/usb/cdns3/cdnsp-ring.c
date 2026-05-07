@@ -308,7 +308,8 @@ static bool cdnsp_ring_ep_doorbell(struct cdnsp_device *pdev,
 
 	writel(db_value, reg_addr);
 
-	cdnsp_force_l0_go(pdev);
+	if (pdev->rtl_revision < RTL_REVISION_NEW_LPM)
+		cdnsp_force_l0_go(pdev);
 
 	/* Doorbell was set. */
 	return true;
@@ -771,7 +772,9 @@ static int cdnsp_update_port_id(struct cdnsp_device *pdev, u32 port_id)
 	}
 
 	if (port_id != old_port) {
-		cdnsp_disable_slot(pdev);
+		if (pdev->slot_id)
+			cdnsp_disable_slot(pdev);
+
 		pdev->active_port = port;
 		cdnsp_enable_slot(pdev);
 	}

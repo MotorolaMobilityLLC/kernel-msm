@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _LINUX_SCHED_WALT_H
@@ -178,10 +178,9 @@ struct walt_task_struct {
 	u64				yield_ts;
 	u64				yield_total_sleep_usec;
 	s64				lst_tgt_ns;
-	u32				lst_state_counter;
-	unsigned int			continuous_active;
+	int				lst_state_counter;
 	bool				lst;
-	u32				pipeline_activity_cnt;
+	int				pipeline_activity_cnt;
 	atomic_t			event_windows;
 };
 

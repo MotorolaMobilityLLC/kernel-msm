@@ -12,6 +12,9 @@
 DECLARE_RESTRICTED_HOOK(android_rvh_set_balance_anon_file_reclaim,
 			TP_PROTO(bool *balance_anon_file_reclaim),
 			TP_ARGS(balance_anon_file_reclaim), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_kswapd_shrink_node,
+			TP_PROTO(unsigned long *nr_reclaimed),
+			TP_ARGS(nr_reclaimed), 1);
 DECLARE_HOOK(android_vh_tune_swappiness,
 	TP_PROTO(int *swappiness),
 	TP_ARGS(swappiness));
@@ -52,6 +55,15 @@ DECLARE_HOOK(android_vh_inode_lru_isolate,
 DECLARE_HOOK(android_vh_invalidate_mapping_pagevec,
 	TP_PROTO(struct address_space *mapping, bool *skip),
 	TP_ARGS(mapping, skip));
+DECLARE_HOOK(android_vh_keep_reclaimed_folio,
+	TP_PROTO(struct folio *folio, int refcount, bool *keep),
+	TP_ARGS(folio, refcount, keep));
+DECLARE_HOOK(android_vh_clear_reclaimed_folio,
+	TP_PROTO(struct folio *folio, bool reclaimed),
+	TP_ARGS(folio, reclaimed));
+DECLARE_HOOK(android_vh_evict_folios_bypass,
+	TP_PROTO(struct folio *folio, bool *bypass),
+	TP_ARGS(folio, bypass));
 
 enum scan_balance;
 DECLARE_HOOK(android_vh_tune_scan_type,
@@ -121,6 +133,17 @@ DECLARE_HOOK(android_vh_direct_reclaim_end,
 DECLARE_HOOK(android_vh_should_split_folio_to_list,
 	TP_PROTO(struct folio *folio, bool *should_split_to_list),
 	TP_ARGS(folio, should_split_to_list));
+DECLARE_HOOK(android_vh_mm_isolate_priv_lru,
+	TP_PROTO(unsigned long nr_to_scan, struct lruvec *lruvec, enum lru_list lru,
+		struct list_head *dst, int reclaim_idx, bool may_unmap,
+		unsigned long *nr_scanned, unsigned long *nr_taken),
+	TP_ARGS(nr_to_scan, lruvec, lru, dst, reclaim_idx, may_unmap, nr_scanned, nr_taken));
+DECLARE_HOOK(android_vh_mm_customize_pgdat_balanced,
+	TP_PROTO(int order, int highest_zoneidx, bool *balanced, bool *customized),
+	TP_ARGS(order, highest_zoneidx, balanced, customized));
+DECLARE_HOOK(android_vh_mm_customize_file_is_tiny,
+	TP_PROTO(unsigned int may_swap, int order, int highest_zoneidx, bool *file_is_tiny),
+	TP_ARGS(may_swap, order, highest_zoneidx, file_is_tiny));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

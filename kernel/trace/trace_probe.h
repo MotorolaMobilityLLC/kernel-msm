@@ -35,7 +35,6 @@
 #define MAX_ARG_NAME_LEN	32
 #define MAX_BTF_ARGS_LEN	128
 #define MAX_STRING_SIZE		PATH_MAX
-#define MAX_ARG_BUF_LEN		(MAX_TRACE_ARGS * MAX_ARG_NAME_LEN)
 
 /* Reserved field names */
 #define FIELD_STRING_IP		"__probe_ip"

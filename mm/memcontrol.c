@@ -33,6 +33,7 @@
 #include <linux/shmem_fs.h>
 #include <linux/hugetlb.h>
 #include <linux/pagemap.h>
+#include <linux/pagevec.h>
 #include <linux/vm_event_item.h>
 #include <linux/smp.h>
 #include <linux/page-flags.h>
@@ -52,6 +53,7 @@
 #include <linux/sort.h>
 #include <linux/fs.h>
 #include <linux/seq_file.h>
+#include <linux/parser.h>
 #include <linux/vmpressure.h>
 #include <linux/memremap.h>
 #include <linux/mm_inline.h>
@@ -94,6 +96,9 @@ static bool cgroup_memory_nokmem __ro_after_init;
 
 /* BPF memory accounting disabled? */
 static bool cgroup_memory_nobpf __ro_after_init;
+
+static struct kmem_cache *memcg_cachep;
+static struct kmem_cache *memcg_pn_cachep;
 
 #ifdef CONFIG_CGROUP_WRITEBACK
 static DECLARE_WAIT_QUEUE_HEAD(memcg_cgwb_frn_waitq);
@@ -1314,7 +1319,6 @@ void mem_cgroup_scan_tasks(struct mem_cgroup *memcg,
 {
 	struct mem_cgroup *iter;
 	int ret = 0;
-	int i = 0;
 
 	BUG_ON(mem_cgroup_is_root(memcg));
 
@@ -1324,10 +1328,9 @@ void mem_cgroup_scan_tasks(struct mem_cgroup *memcg,
 
 		css_task_iter_start(&iter->css, CSS_TASK_ITER_PROCS, &it);
 		while (!ret && (task = css_task_iter_next(&it))) {
-			/* Avoid potential softlockup warning */
-			if ((++i & 1023) == 0)
-				cond_resched();
 			ret = fn(task, arg);
+			/* Avoid potential softlockup warning */
+			cond_resched();
 		}
 		css_task_iter_end(&it);
 		if (ret) {
@@ -1434,8 +1437,16 @@ void do_traversal_all_lruvec(void)
 		memcg = mem_cgroup_iter(NULL, NULL, NULL);
 		do {
 			struct lruvec *lruvec = mem_cgroup_lruvec(memcg, pgdat);
+			bool stop = false;
 
 			trace_android_vh_do_traversal_lruvec(lruvec);
+
+			trace_android_rvh_do_traversal_lruvec_ex(memcg, lruvec,
+								 &stop);
+			if (stop) {
+				mem_cgroup_iter_break(NULL, memcg);
+				break;
+			}
 
 			memcg = mem_cgroup_iter(NULL, memcg, NULL);
 		} while (memcg);
@@ -2469,9 +2480,10 @@ static unsigned long reclaim_high(struct mem_cgroup *memcg,
 		memcg_memory_event(memcg, MEMCG_HIGH);
 
 		psi_memstall_enter(&pflags);
-		nr_reclaimed += try_to_free_mem_cgroup_pages(memcg, nr_pages,
+		nr_reclaimed += try_to_free_mem_cgroup_pages_with_swappiness(memcg, nr_pages,
 							gfp_mask,
-							MEMCG_RECLAIM_MAY_SWAP);
+							MEMCG_RECLAIM_MAY_SWAP,
+							NULL);
 		psi_memstall_leave(&pflags);
 	} while ((memcg = parent_mem_cgroup(memcg)) &&
 		 !mem_cgroup_is_root(memcg));
@@ -2761,8 +2773,8 @@ retry:
 	raised_max_event = true;
 
 	psi_memstall_enter(&pflags);
-	nr_reclaimed = try_to_free_mem_cgroup_pages(mem_over_limit, nr_pages,
-						    gfp_mask, reclaim_options);
+	nr_reclaimed = try_to_free_mem_cgroup_pages_with_swappiness(mem_over_limit, nr_pages,
+						    gfp_mask, reclaim_options, NULL);
 	psi_memstall_leave(&pflags);
 
 	if (mem_cgroup_margin(mem_over_limit) >= nr_pages)
@@ -5378,7 +5390,8 @@ static int alloc_mem_cgroup_per_node_info(struct mem_cgroup *memcg, int node)
 {
 	struct mem_cgroup_per_node *pn;
 
-	pn = kzalloc_node(sizeof(*pn), GFP_KERNEL, node);
+	pn = kmem_cache_alloc_node(memcg_pn_cachep, GFP_KERNEL | __GFP_ZERO,
+				   node);
 	if (!pn)
 		return 1;
 
@@ -5434,7 +5447,7 @@ static struct mem_cgroup *mem_cgroup_alloc(struct mem_cgroup *parent)
 	int __maybe_unused i;
 	long error = -ENOMEM;
 
-	memcg = kzalloc(struct_size(memcg, nodeinfo, nr_node_ids), GFP_KERNEL);
+	memcg = kmem_cache_zalloc(memcg_cachep, GFP_KERNEL);
 	if (!memcg)
 		return ERR_PTR(error);
 
@@ -6011,8 +6024,6 @@ int mem_cgroup_move_account(struct folio *folio,
 	css_get(&to->css);
 	css_put(&from->css);
 
-	/* Warning should never happen, so don't worry about refcount non-0 */
-	WARN_ON_ONCE(folio_unqueue_deferred_split(folio));
 	folio->memcg_data = (unsigned long)to;
 
 	__folio_memcg_unlock(from);
@@ -6383,9 +6394,7 @@ static int mem_cgroup_move_charge_pte_range(pmd_t *pmd,
 	enum mc_target_type target_type;
 	union mc_target target;
 	struct folio *folio;
-	bool tried_split_before = false;
 
-retry_pmd:
 	ptl = pmd_trans_huge_lock(pmd, vma);
 	if (ptl) {
 		if (mc.precharge < HPAGE_PMD_NR) {
@@ -6395,27 +6404,6 @@ retry_pmd:
 		target_type = get_mctgt_type_thp(vma, addr, *pmd, &target);
 		if (target_type == MC_TARGET_PAGE) {
 			folio = target.folio;
-			/*
-			 * Deferred split queue locking depends on memcg,
-			 * and unqueue is unsafe unless folio refcount is 0:
-			 * split or skip if on the queue? first try to split.
-			 */
-			if (!list_empty(&folio->_deferred_list)) {
-				spin_unlock(ptl);
-				if (!tried_split_before)
-					split_folio(folio);
-				folio_unlock(folio);
-				folio_put(folio);
-				if (tried_split_before)
-					return 0;
-				tried_split_before = true;
-				goto retry_pmd;
-			}
-			/*
-			 * So long as that pmd lock is held, the folio cannot
-			 * be racily added to the _deferred_list, because
-			 * __folio_remove_rmap() will find !partially_mapped.
-			 */
 			if (folio_isolate_lru(folio)) {
 				if (!mem_cgroup_move_account(folio, true,
 							     mc.from, mc.to)) {
@@ -6702,8 +6690,8 @@ static ssize_t memory_high_write(struct kernfs_open_file *of,
 			continue;
 		}
 
-		reclaimed = try_to_free_mem_cgroup_pages(memcg, nr_pages - high,
-					GFP_KERNEL, MEMCG_RECLAIM_MAY_SWAP);
+		reclaimed = try_to_free_mem_cgroup_pages_with_swappiness(memcg, nr_pages - high,
+					GFP_KERNEL, MEMCG_RECLAIM_MAY_SWAP, NULL);
 
 		if (!reclaimed && !nr_retries--)
 			break;
@@ -6751,8 +6739,8 @@ static ssize_t memory_max_write(struct kernfs_open_file *of,
 		}
 
 		if (nr_reclaims) {
-			if (!try_to_free_mem_cgroup_pages(memcg, nr_pages - max,
-					GFP_KERNEL, MEMCG_RECLAIM_MAY_SWAP))
+			if (!try_to_free_mem_cgroup_pages_with_swappiness(memcg, nr_pages - max,
+					GFP_KERNEL, MEMCG_RECLAIM_MAY_SWAP, NULL))
 				nr_reclaims--;
 			continue;
 		}
@@ -6877,19 +6865,50 @@ static ssize_t memory_oom_group_write(struct kernfs_open_file *of,
 	return nbytes;
 }
 
+enum {
+	MEMORY_RECLAIM_SWAPPINESS = 0,
+	MEMORY_RECLAIM_NULL,
+};
+
+static const match_table_t tokens = {
+	{ MEMORY_RECLAIM_SWAPPINESS, "swappiness=%d"},
+	{ MEMORY_RECLAIM_NULL, NULL },
+};
+
 static ssize_t memory_reclaim(struct kernfs_open_file *of, char *buf,
 			      size_t nbytes, loff_t off)
 {
 	struct mem_cgroup *memcg = mem_cgroup_from_css(of_css(of));
 	unsigned int nr_retries = MAX_RECLAIM_RETRIES;
 	unsigned long nr_to_reclaim, nr_reclaimed = 0;
+	int swappiness = -1;
 	unsigned int reclaim_options;
-	int err;
+	char *old_buf, *start;
+	substring_t args[MAX_OPT_ARGS];
 
 	buf = strstrip(buf);
-	err = page_counter_memparse(buf, "", &nr_to_reclaim);
-	if (err)
-		return err;
+
+	old_buf = buf;
+	nr_to_reclaim = memparse(buf, &buf) / PAGE_SIZE;
+	if (buf == old_buf)
+		return -EINVAL;
+
+	buf = strstrip(buf);
+
+	while ((start = strsep(&buf, " ")) != NULL) {
+		if (!strlen(start))
+			continue;
+		switch (match_token(start, tokens, args)) {
+		case MEMORY_RECLAIM_SWAPPINESS:
+			if (match_int(&args[0], &swappiness))
+				return -EINVAL;
+			if (swappiness < MIN_SWAPPINESS || swappiness > MAX_SWAPPINESS)
+				return -EINVAL;
+			break;
+		default:
+			return -EINVAL;
+		}
+	}
 
 	reclaim_options	= MEMCG_RECLAIM_MAY_SWAP | MEMCG_RECLAIM_PROACTIVE;
 	while (nr_reclaimed < nr_to_reclaim) {
@@ -6908,8 +6927,10 @@ static ssize_t memory_reclaim(struct kernfs_open_file *of, char *buf,
 		if (!nr_retries)
 			lru_add_drain_all();
 
-		reclaimed = try_to_free_mem_cgroup_pages(memcg,
-					batch_size, GFP_KERNEL, reclaim_options);
+		reclaimed = try_to_free_mem_cgroup_pages_with_swappiness(memcg,
+					batch_size, GFP_KERNEL,
+					reclaim_options,
+					swappiness == -1 ? NULL : &swappiness);
 
 		if (!reclaimed && !nr_retries--)
 			return -EAGAIN;
@@ -7412,6 +7433,18 @@ void __mem_cgroup_uncharge_list(struct list_head *page_list)
 		uncharge_batch(&ug);
 }
 
+void __mem_cgroup_uncharge_folios(struct folio_batch *folios)
+{
+	struct uncharge_gather ug;
+	unsigned int i;
+
+	uncharge_gather_clear(&ug);
+	for (i = 0; i < folios->nr; i++)
+		uncharge_folio(folios->folios[i], &ug);
+	if (ug.memcg)
+		uncharge_batch(&ug);
+}
+
 /**
  * mem_cgroup_replace_folio - Charge a folio's replacement.
  * @old: Currently circulating folio.
@@ -7600,15 +7633,16 @@ static int __init cgroup_memory(char *s)
 __setup("cgroup.memory=", cgroup_memory);
 
 /*
- * subsys_initcall() for memory controller.
+ * Memory controller init before cgroup_init() initialize root_mem_cgroup.
  *
  * Some parts like memcg_hotplug_cpu_dead() have to be initialized from this
  * context because of lock dependencies (cgroup_lock -> cpu hotplug) but
  * basically everything that doesn't depend on a specific mem_cgroup structure
  * should be initialized from here.
  */
-static int __init mem_cgroup_init(void)
+int __init mem_cgroup_init(void)
 {
+	unsigned int memcg_size;
 	int cpu, node;
 
 	/*
@@ -7626,6 +7660,13 @@ static int __init mem_cgroup_init(void)
 		INIT_WORK(&per_cpu_ptr(&memcg_stock, cpu)->work,
 			  drain_local_stock);
 
+	memcg_size = struct_size_t(struct mem_cgroup, nodeinfo, nr_node_ids);
+	memcg_cachep = kmem_cache_create("mem_cgroup", memcg_size, 0,
+					 SLAB_PANIC | SLAB_HWCACHE_ALIGN, NULL);
+
+	memcg_pn_cachep = KMEM_CACHE(mem_cgroup_per_node,
+				     SLAB_PANIC | SLAB_HWCACHE_ALIGN);
+
 	for_each_node(node) {
 		struct mem_cgroup_tree_per_node *rtpn;
 
@@ -7639,7 +7680,6 @@ static int __init mem_cgroup_init(void)
 
 	return 0;
 }
-subsys_initcall(mem_cgroup_init);
 
 #ifdef CONFIG_SWAP
 static struct mem_cgroup *mem_cgroup_id_get_online(struct mem_cgroup *memcg)

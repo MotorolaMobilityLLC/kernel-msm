@@ -39,6 +39,7 @@ struct anon_vma;
 struct anon_vma_chain;
 struct user_struct;
 struct pt_regs;
+struct folio_batch;
 
 extern int sysctl_page_lock_unfairness;
 
@@ -1539,6 +1540,8 @@ static inline void folio_put_refs(struct folio *folio, int refs)
 		__folio_put(folio);
 }
 
+void folios_put_refs(struct folio_batch *folios, unsigned int *refs);
+
 /*
  * union release_pages_arg - an array of pages or folios
  *
@@ -1561,18 +1564,19 @@ void release_pages(release_pages_arg, int nr);
 /**
  * folios_put - Decrement the reference count on an array of folios.
  * @folios: The folios.
- * @nr: How many folios there are.
  *
- * Like folio_put(), but for an array of folios.  This is more efficient
- * than writing the loop yourself as it will optimise the locks which
- * need to be taken if the folios are freed.
+ * Like folio_put(), but for a batch of folios.  This is more efficient
+ * than writing the loop yourself as it will optimise the locks which need
+ * to be taken if the folios are freed.  The folios batch is returned
+ * empty and ready to be reused for another batch; there is no need to
+ * reinitialise it.
  *
  * Context: May be called in process or interrupt context, but not in NMI
  * context.  May be called while holding a spinlock.
  */
-static inline void folios_put(struct folio **folios, unsigned int nr)
+static inline void folios_put(struct folio_batch *folios)
 {
-	release_pages(folios, nr);
+	folios_put_refs(folios, NULL);
 }
 
 static inline void put_page(struct page *page)
@@ -3757,24 +3761,22 @@ static inline bool page_is_guard(struct page *page)
 	return PageGuard(page);
 }
 
-bool __set_page_guard(struct zone *zone, struct page *page, unsigned int order,
-		      int migratetype);
+bool __set_page_guard(struct zone *zone, struct page *page, unsigned int order);
 static inline bool set_page_guard(struct zone *zone, struct page *page,
-				  unsigned int order, int migratetype)
+				  unsigned int order)
 {
 	if (!debug_guardpage_enabled())
 		return false;
-	return __set_page_guard(zone, page, order, migratetype);
+	return __set_page_guard(zone, page, order);
 }
 
-void __clear_page_guard(struct zone *zone, struct page *page, unsigned int order,
-			int migratetype);
+void __clear_page_guard(struct zone *zone, struct page *page, unsigned int order);
 static inline void clear_page_guard(struct zone *zone, struct page *page,
-				    unsigned int order, int migratetype)
+				    unsigned int order)
 {
 	if (!debug_guardpage_enabled())
 		return;
-	__clear_page_guard(zone, page, order, migratetype);
+	__clear_page_guard(zone, page, order);
 }
 
 #else	/* CONFIG_DEBUG_PAGEALLOC */
@@ -3784,9 +3786,9 @@ static inline unsigned int debug_guardpage_minorder(void) { return 0; }
 static inline bool debug_guardpage_enabled(void) { return false; }
 static inline bool page_is_guard(struct page *page) { return false; }
 static inline bool set_page_guard(struct zone *zone, struct page *page,
-			unsigned int order, int migratetype) { return false; }
+			unsigned int order) { return false; }
 static inline void clear_page_guard(struct zone *zone, struct page *page,
-				unsigned int order, int migratetype) {}
+				unsigned int order) {}
 #endif	/* CONFIG_DEBUG_PAGEALLOC */
 
 #ifdef __HAVE_ARCH_GATE_AREA

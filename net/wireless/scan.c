@@ -2139,53 +2139,34 @@ struct cfg80211_inform_single_bss_data {
 	u64 cannot_use_reasons;
 };
 
-enum ieee80211_ap_reg_power
-cfg80211_get_6ghz_power_type(const u8 *elems, size_t elems_len)
-{
-	const struct ieee80211_he_6ghz_oper *he_6ghz_oper;
-	struct ieee80211_he_operation *he_oper;
-	const struct element *tmp;
-
-	tmp = cfg80211_find_ext_elem(WLAN_EID_EXT_HE_OPERATION,
-				     elems, elems_len);
-	if (!tmp || tmp->datalen < sizeof(*he_oper) + 1 ||
-	    tmp->datalen < ieee80211_he_oper_size(tmp->data + 1))
-		return IEEE80211_REG_UNSET_AP;
-
-	he_oper = (void *)&tmp->data[1];
-	he_6ghz_oper = ieee80211_he_6ghz_oper(he_oper);
-
-	if (!he_6ghz_oper)
-		return IEEE80211_REG_UNSET_AP;
-
-	switch (u8_get_bits(he_6ghz_oper->control,
-			    IEEE80211_HE_6GHZ_OPER_CTRL_REG_INFO)) {
-	case IEEE80211_6GHZ_CTRL_REG_LPI_AP:
-	case IEEE80211_6GHZ_CTRL_REG_INDOOR_LPI_AP:
-		return IEEE80211_REG_LPI_AP;
-	case IEEE80211_6GHZ_CTRL_REG_SP_AP:
-	case IEEE80211_6GHZ_CTRL_REG_INDOOR_SP_AP:
-		return IEEE80211_REG_SP_AP;
-	case IEEE80211_6GHZ_CTRL_REG_VLP_AP:
-		return IEEE80211_REG_VLP_AP;
-	default:
-		return IEEE80211_REG_UNSET_AP;
-	}
-}
-
-static bool cfg80211_6ghz_power_type_valid(const u8 *elems, size_t elems_len,
+static bool cfg80211_6ghz_power_type_valid(const u8 *ie, size_t ielen,
 					   const u32 flags)
 {
-	switch (cfg80211_get_6ghz_power_type(elems, elems_len)) {
-	case IEEE80211_REG_LPI_AP:
-		return true;
-	case IEEE80211_REG_SP_AP:
-		return !(flags & IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT);
-	case IEEE80211_REG_VLP_AP:
-		return !(flags & IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT);
-	default:
-		return false;
+	const struct element *tmp;
+	struct ieee80211_he_operation *he_oper;
+
+	tmp = cfg80211_find_ext_elem(WLAN_EID_EXT_HE_OPERATION, ie, ielen);
+	if (tmp && tmp->datalen >= sizeof(*he_oper) + 1 &&
+	    tmp->datalen >= ieee80211_he_oper_size(tmp->data + 1)) {
+		const struct ieee80211_he_6ghz_oper *he_6ghz_oper;
+
+		he_oper = (void *)&tmp->data[1];
+		he_6ghz_oper = ieee80211_he_6ghz_oper(he_oper);
+
+		if (!he_6ghz_oper)
+			return false;
+
+		switch (u8_get_bits(he_6ghz_oper->control,
+				    IEEE80211_HE_6GHZ_OPER_CTRL_REG_INFO)) {
+		case IEEE80211_6GHZ_CTRL_REG_LPI_AP:
+			return true;
+		case IEEE80211_6GHZ_CTRL_REG_SP_AP:
+			return !(flags & IEEE80211_CHAN_NO_6GHZ_AFC_CLIENT);
+		case IEEE80211_6GHZ_CTRL_REG_VLP_AP:
+			return !(flags & IEEE80211_CHAN_NO_6GHZ_VLP_CLIENT);
+		}
 	}
+	return false;
 }
 
 /* Returned bss is reference counted and must be cleaned up appropriately. */
@@ -2626,7 +2607,7 @@ cfg80211_defrag_mle(const struct element *mle, const u8 *ie, size_t ielen,
 	/* Required length for first defragmentation */
 	buf_len = mle->datalen - 1;
 	for_each_element(elem, mle->data + mle->datalen,
-			 ielen - sizeof(*mle) + mle->datalen) {
+			 ie + ielen - mle->data - mle->datalen) {
 		if (elem->id != WLAN_EID_FRAGMENT)
 			break;
 

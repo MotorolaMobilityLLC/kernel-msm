@@ -1555,17 +1555,6 @@ static int qcom_ethqos_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id qcom_ethqos_match[] = {
-	{ .compatible = "qcom,qcs404-ethqos", .data = &emac_v2_3_0_data},
-	{ .compatible = "qcom,sa8775p-ethqos", .data = &emac_v4_0_0_data},
-	{ .compatible = "qcom,sc8280xp-ethqos", .data = &emac_v3_0_0_data},
-	{ .compatible = "qcom,sm8150-ethqos", .data = &emac_v2_1_0_data},
-	{ .compatible = "qcom,stmmac-ethqos", },
-	{ .compatible = "qcom,emac-smmu-embedded", },
-	{ }
-};
-MODULE_DEVICE_TABLE(of, qcom_ethqos_match);
-
 static int qcom_ethqos_suspend(struct device *dev)
 {
 	struct qcom_ethqos *ethqos;

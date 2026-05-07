@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  *
  */
 #ifndef _MHI_H_
@@ -299,6 +299,8 @@ struct mhi_event_config {
  * @event_cfg: Array of defined event rings
  * @use_bounce_buf: Use a bounce buffer pool due to limited DDR access
  * @m2_no_db: Host is not allowed to ring DB in M2 state
+ * @bhie_offset: Offset (in bytes) of the boot host interface extended
+ *		register from the MMIO base register
  */
 struct mhi_controller_config {
 	u32 max_channels;
@@ -310,6 +312,7 @@ struct mhi_controller_config {
 	struct mhi_event_config *event_cfg;
 	bool use_bounce_buf;
 	bool m2_no_db;
+	u32 bhie_offset;
 };
 
 /**

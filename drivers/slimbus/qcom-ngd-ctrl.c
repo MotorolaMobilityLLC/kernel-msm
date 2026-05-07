@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2011-2017, The Linux Foundation. All rights reserved.
 // Copyright (c) 2018, Linaro Limited
-// Copyright (c) 2022, 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 
 #include <linux/irq.h>
 #include <linux/kernel.h>
@@ -2132,6 +2132,7 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 		ctrl->sysfs_created = true;
 	}
 
+	ctrl->dev = dev;
 	ctrl->nb.notifier_call = qcom_slim_ngd_ssr_notify;
 	ctrl->notifier = qcom_register_ssr_notifier("lpass", &ctrl->nb);
 	if (IS_ERR(ctrl->notifier)) {
@@ -2140,7 +2141,6 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 		goto remove_ipc_sysfs;
 	}
 
-	ctrl->dev = dev;
 	ctrl->framer.rootfreq = SLIM_ROOT_FREQ >> 3;
 	ctrl->framer.superfreq =
 		ctrl->framer.rootfreq / SLIM_CL_PER_SUPERFRAME_DIV8;

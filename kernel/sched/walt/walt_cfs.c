@@ -742,12 +742,12 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 			SCHED_CAPACITY_SHIFT);
 
 	/*
-	 * The capacity of a CPU in the domain at the performance state (ps)
-	 * can be computed as:
+	 * The performance (capacity) of a CPU in the domain at the performance
+	 * state (ps) can be computed as:
 	 *
-	 *             ps->freq * scale_cpu
-	 *   ps->cap = --------------------                          (1)
-	 *                 cpu_max_freq
+	 *                     ps->freq * scale_cpu
+	 *   ps->performance = --------------------                  (1)
+	 *                         cpu_max_freq
 	 *
 	 * So, ignoring the costs of idle states (which are not available in
 	 * the EM), the energy consumed by this CPU at that performance state
@@ -755,9 +755,10 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 	 *
 	 *             ps->power * cpu_util
 	 *   cpu_nrg = --------------------                          (2)
-	 *                   ps->cap
+	 *               ps->performance
 	 *
-	 * since 'cpu_util / ps->cap' represents its percentage of busy time.
+	 * since 'cpu_util / ps->performance' represents its percentage of busy
+	 * time.
 	 *
 	 *   NOTE: Although the result of this computation actually is in
 	 *         units of power, it can be manipulated as an energy value
@@ -767,9 +768,9 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 	 * By injecting (1) in (2), 'cpu_nrg' can be re-expressed as a product
 	 * of two terms:
 	 *
-	 *             ps->power * cpu_max_freq   cpu_util
-	 *   cpu_nrg = ------------------------ * ---------          (3)
-	 *                    ps->freq            scale_cpu
+	 *             ps->power * cpu_max_freq
+	 *   cpu_nrg = ------------------------ * cpu_util           (3)
+	 *               ps->freq * scale_cpu
 	 *
 	 * The first term is static, and is stored in the em_perf_state struct
 	 * as 'ps->cost'.
@@ -779,10 +780,9 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 	 * total energy of the domain (which is the simple sum of the energy of
 	 * all of its CPUs) can be factorized as:
 	 *
-	 *            ps->cost * \Sum cpu_util
-	 *   pd_nrg = ------------------------                       (4)
-	 *                  scale_cpu
+	 *   pd_nrg = ps->cost * \Sum cpu_util                       (4)
 	 */
+
 	if (max_util >= 1024)
 		max_util = 1023;
 
@@ -793,7 +793,7 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 		output->max_util[x] = max_util;
 		output->sum_util[x] = sum_util;
 	}
-	return cost * sum_util / scale_cpu;
+	return cost * sum_util;
 }
 
 /*

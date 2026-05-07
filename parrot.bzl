@@ -1,6 +1,6 @@
-load(":target_variants.bzl", "la_variants")
-load(":msm_kernel_la.bzl", "define_msm_la")
 load(":image_opts.bzl", "boot_image_opts")
+load(":msm_kernel_la.bzl", "define_msm_la")
+load(":target_variants.bzl", "la_variants")
 
 target_name = "parrot"
 
@@ -297,7 +297,6 @@ def define_parrot():
             variant = variant,
             in_tree_module_list = mod_list,
             boot_image_opts = boot_image_opts(
-                earlycon_addr = "qcom_geni,0x0098c000",
                 kernel_vendor_cmdline_extras = kernel_vendor_cmdline_extras,
                 board_kernel_cmdline_extras = board_kernel_cmdline_extras,
                 board_bootconfig_extras = board_bootconfig_extras,
