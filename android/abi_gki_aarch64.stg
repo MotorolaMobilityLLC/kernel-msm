@@ -43550,6 +43550,11 @@ member {
   offset: 96
 }
 member {
+  id: 0x355c8e01
+  type_id: 0x5a5c7df4
+  offset: 9344
+}
+member {
   id: 0x3568359b
   type_id: 0x5a8e8177
   offset: 128
@@ -50350,12 +50355,6 @@ member {
   name: "android_backport_reserved1"
   type_id: 0x92233392
   offset: 18176
-}
-member {
-  id: 0xb26b83b7
-  name: "android_backport_reserved1"
-  type_id: 0x92233392
-  offset: 9344
 }
 member {
   id: 0xb26b8cac
@@ -83421,6 +83420,12 @@ member {
   id: 0x32b44094
   name: "dmabuf_info"
   type_id: 0x12f234f7
+}
+member {
+  id: 0x32b4483a
+  name: "dmabuf_info"
+  type_id: 0x12f234f7
+  offset: 768
 }
 member {
   id: 0x810e204c
@@ -221861,7 +221866,7 @@ struct_union {
     member_id: 0x090040f7
     member_id: 0xca4d1cc3
     member_id: 0x2d0816df
-    member_id: 0xb26b83b7
+    member_id: 0x355c8e01
   }
 }
 struct_union {
@@ -226607,6 +226612,16 @@ struct_union {
   definition {
     bytesize: 8
     member_id: 0x32c16e78
+    member_id: 0x2ef635de
+    member_id: 0x36752b74
+  }
+}
+struct_union {
+  id: 0x5a5c7df4
+  kind: UNION
+  definition {
+    bytesize: 8
+    member_id: 0x32b44094
     member_id: 0x2ef635de
     member_id: 0x36752b74
   }
@@ -243764,6 +243779,7 @@ struct_union {
     member_id: 0x3b07b402
     member_id: 0xf0dd114d
     member_id: 0x654043c9
+    member_id: 0x32b4483a
     member_id: 0xfca11463
     member_id: 0xa92fa8fd
     member_id: 0x1aac0c74
@@ -360860,6 +360876,15 @@ elf_symbol {
   full_name: "__traceiter_android_rvh_cpu_util_cfs_boost"
 }
 elf_symbol {
+  id: 0xb3da5d93
+  name: "__traceiter_android_rvh_cpufreq_create_policy"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x47e97219
+  type_id: 0x9ba9c2f7
+  full_name: "__traceiter_android_rvh_cpufreq_create_policy"
+}
+elf_symbol {
   id: 0x1baec33d
   name: "__traceiter_android_rvh_cpufreq_transition"
   is_defined: true
@@ -362028,6 +362053,15 @@ elf_symbol {
   crc: 0xf66ce6bb
   type_id: 0x9baf3eaf
   full_name: "__traceiter_android_rvh_show_max_freq"
+}
+elf_symbol {
+  id: 0x4ae52717
+  name: "__traceiter_android_rvh_swap_bio_charge"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x3f478e7d
+  type_id: 0x9bf93663
+  full_name: "__traceiter_android_rvh_swap_bio_charge"
 }
 elf_symbol {
   id: 0xb80ecc98
@@ -368078,6 +368112,15 @@ elf_symbol {
   full_name: "__tracepoint_android_rvh_cpu_util_cfs_boost"
 }
 elf_symbol {
+  id: 0xe8729b05
+  name: "__tracepoint_android_rvh_cpufreq_create_policy"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xe0c069f8
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_cpufreq_create_policy"
+}
+elf_symbol {
   id: 0x9f779ef7
   name: "__tracepoint_android_rvh_cpufreq_transition"
   is_defined: true
@@ -369246,6 +369289,15 @@ elf_symbol {
   crc: 0x69fc9f2f
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_rvh_show_max_freq"
+}
+elf_symbol {
+  id: 0x3e08e111
+  name: "__tracepoint_android_rvh_swap_bio_charge"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x9c887a20
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_rvh_swap_bio_charge"
 }
 elf_symbol {
   id: 0x64ce7cd6
@@ -438979,6 +439031,7 @@ interface {
   symbol_id: 0x6c4603a3
   symbol_id: 0x4053abff
   symbol_id: 0xcd9f9741
+  symbol_id: 0xb3da5d93
   symbol_id: 0x1baec33d
   symbol_id: 0xf5806276
   symbol_id: 0x1a7f4cf6
@@ -439109,6 +439162,7 @@ interface {
   symbol_id: 0x1228e7e9
   symbol_id: 0x73c83ef4
   symbol_id: 0x46515de8
+  symbol_id: 0x4ae52717
   symbol_id: 0xb80ecc98
   symbol_id: 0x3b650ee3
   symbol_id: 0xcf016f05
@@ -439781,6 +439835,7 @@ interface {
   symbol_id: 0xb2f08341
   symbol_id: 0x05576f29
   symbol_id: 0xa4ed84bf
+  symbol_id: 0xe8729b05
   symbol_id: 0x9f779ef7
   symbol_id: 0x331f5cf0
   symbol_id: 0xc53e6388
@@ -439911,6 +439966,7 @@ interface {
   symbol_id: 0x8a4070f7
   symbol_id: 0x00b7ed82
   symbol_id: 0xe8cacf26
+  symbol_id: 0x3e08e111
   symbol_id: 0x64ce7cd6
   symbol_id: 0x5380a8d5
   symbol_id: 0x1f12a317
