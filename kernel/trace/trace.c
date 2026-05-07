@@ -9542,19 +9542,16 @@ static int trace_array_create_dir(struct trace_array *tr)
 	return ret;
 }
 
-static struct trace_array *
-trace_array_create_systems(const char *name, const char *systems)
+static struct trace_array *trace_array_create(const char *name)
 {
-	struct trace_array_ext *tr_ext;
 	struct trace_array *tr;
 	int ret;
 
 	ret = -ENOMEM;
-	tr_ext = kzalloc(sizeof(*tr_ext), GFP_KERNEL);
-	if (!tr_ext)
+	tr = kzalloc(sizeof(*tr), GFP_KERNEL);
+	if (!tr)
 		return ERR_PTR(ret);
 
-	tr = &tr_ext->trace_array;
 	tr->name = kstrdup(name, GFP_KERNEL);
 	if (!tr->name)
 		goto out_free_tr;
@@ -9564,12 +9561,6 @@ trace_array_create_systems(const char *name, const char *systems)
 
 	if (!zalloc_cpumask_var(&tr->pipe_cpumask, GFP_KERNEL))
 		goto out_free_tr;
-
-	if (systems) {
-		tr_ext->system_names = kstrdup_const(systems, GFP_KERNEL);
-		if (!tr_ext->system_names)
-			goto out_free_tr;
-	}
 
 	tr->trace_flags = global_trace.trace_flags & ~ZEROED_TRACE_FLAGS;
 
@@ -9614,16 +9605,10 @@ trace_array_create_systems(const char *name, const char *systems)
 	free_trace_buffers(tr);
 	free_cpumask_var(tr->pipe_cpumask);
 	free_cpumask_var(tr->tracing_cpumask);
-	kfree_const(tr_ext->system_names);
 	kfree(tr->name);
-	kfree(tr_ext);
+	kfree(tr);
 
 	return ERR_PTR(ret);
-}
-
-static struct trace_array *trace_array_create(const char *name)
-{
-	return trace_array_create_systems(name, NULL);
 }
 
 static int instance_mkdir(const char *name)
@@ -9648,16 +9633,9 @@ out_unlock:
 	return ret;
 }
 
-struct trace_array *trace_array_get_by_name(const char *name)
-{
-	return trace_array_get_by_name_ext(name, NULL);
-}
-EXPORT_SYMBOL_GPL(trace_array_get_by_name);
-
 /**
- * trace_array_get_by_name_ext - Create/Lookup a trace array, given its name.
+ * trace_array_get_by_name - Create/Lookup a trace array, given its name.
  * @name: The name of the trace array to be looked up/created.
- * @systems: A list of systems to create event directories for (NULL for all)
  *
  * Returns pointer to trace array with given name.
  * NULL, if it cannot be created.
@@ -9671,8 +9649,7 @@ EXPORT_SYMBOL_GPL(trace_array_get_by_name);
  * trace_array_put() is called, user space can not delete it.
  *
  */
-struct trace_array *trace_array_get_by_name_ext(const char *name,
-						const char *systems)
+struct trace_array *trace_array_get_by_name(const char *name)
 {
 	struct trace_array *tr;
 
@@ -9684,7 +9661,7 @@ struct trace_array *trace_array_get_by_name_ext(const char *name,
 			goto out_unlock;
 	}
 
-	tr = trace_array_create_systems(name, systems);
+	tr = trace_array_create(name);
 
 	if (IS_ERR(tr))
 		tr = NULL;
@@ -9696,14 +9673,11 @@ out_unlock:
 	mutex_unlock(&event_mutex);
 	return tr;
 }
-EXPORT_SYMBOL_GPL(trace_array_get_by_name_ext);
+EXPORT_SYMBOL_GPL(trace_array_get_by_name);
 
 static int __remove_instance(struct trace_array *tr)
 {
 	int i;
-	struct trace_array_ext *tr_ext = container_of(tr,
-						      struct trace_array_ext,
-						      trace_array);
 
 	/* Reference counter for a newly created trace array = 1. */
 	if (tr->ref > 1 || (tr->current_trace && tr->trace_ref))
@@ -9734,9 +9708,8 @@ static int __remove_instance(struct trace_array *tr)
 
 	free_cpumask_var(tr->pipe_cpumask);
 	free_cpumask_var(tr->tracing_cpumask);
-	kfree_const(tr_ext->system_names);
 	kfree(tr->name);
-	kfree(tr_ext);
+	kfree(tr);
 
 	return 0;
 }

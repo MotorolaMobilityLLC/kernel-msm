@@ -105,8 +105,7 @@ static int __init sample_trace_array_init(void)
 	 * NOTE: This function increments the reference counter
 	 * associated with the trace array - "tr".
 	 */
-	tr = trace_array_get_by_name_ext("sample-instance",
-					 "sched,timer,kprobes");
+	tr = trace_array_get_by_name("sample-instance");
 
 	if (!tr)
 		return -1;
