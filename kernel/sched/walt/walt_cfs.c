@@ -794,7 +794,7 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 		output->max_util[x] = max_util;
 		output->sum_util[x] = sum_util;
 	}
-	return cost * sum_util;
+	return cost * sum_util / scale_cpu;
 }
 
 /*
