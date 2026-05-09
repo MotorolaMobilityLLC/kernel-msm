@@ -214,8 +214,14 @@ struct task_struct init_task
 	.android_vendor_data1 = {0, },
 	.android_oem_data1 = {0, },
 #endif
+	.dmabuf_info = NULL,
 };
 EXPORT_SYMBOL(init_task);
+
+#ifdef CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE
+u64 vendor_data_pad[CONFIG_GKI_TASK_STRUCT_VENDOR_SIZE_MAX / sizeof(u64)];
+EXPORT_SYMBOL_GPL(vendor_data_pad);
+#endif
 
 /*
  * Initial thread structure. Alignment of this is handled by a special

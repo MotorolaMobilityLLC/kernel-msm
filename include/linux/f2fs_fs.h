@@ -422,9 +422,6 @@ struct f2fs_sit_block {
 	struct f2fs_sit_entry entries[SIT_ENTRY_PER_BLOCK];
 } __packed;
 
-#define NAT_CACHED_ENTRY	1
-#define NAT_JOURNAL_ENTRY	2
-
 /*
  * For segment summary
  *

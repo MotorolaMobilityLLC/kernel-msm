@@ -241,6 +241,26 @@
     },
     {
       "name": "vts_kernel_net_tests"
+    },
+    {
+      "name": "CtsJobSchedulerTestCases",
+      "options": [
+        {
+          "include-filter": "android.jobscheduler.cts.ConnectivityConstraintTest#testCellularConstraintExecutedAndStopped"
+        },
+        {
+          "include-filter": "android.jobscheduler.cts.ConnectivityConstraintTest#testConnectivityConstraintExecutes_transitionNetworks"
+        },
+        {
+          "include-filter": "android.jobscheduler.cts.ConnectivityConstraintTest#testConnectivityConstraintExecutes_withMobile"
+        },
+        {
+          "include-filter": "android.jobscheduler.cts.ConnectivityConstraintTest#testEJMeteredConstraintFails_withMobile_DataSaverOn"
+        },
+        {
+          "include-filter": "android.jobscheduler.cts.ConnectivityConstraintTest#testMeteredConstraintFails_withMobile_DataSaverOn"
+        }
+      ]
     }
   ],
   "kernel-presubmit": [

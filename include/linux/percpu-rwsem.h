@@ -30,6 +30,12 @@ void _trace_android_vh_record_pcpu_rwsem_starttime(
 #define __PERCPU_RWSEM_DEP_MAP_INIT(lockname)
 #endif
 
+#ifdef CONFIG_ANDROID_VENDOR_OEM_DATA
+#define __PERCPU_RWSEM_OEM_DATA_INIT(lockname)	.android_oem_data1 = 0,
+#else
+#define __PERCPU_RWSEM_OEM_DATA_INIT(lockname)
+#endif
+
 #define __DEFINE_PERCPU_RWSEM(name, is_static)				\
 static DEFINE_PER_CPU(unsigned int, __percpu_rwsem_rc_##name);		\
 is_static struct percpu_rw_semaphore name = {				\
@@ -39,6 +45,7 @@ is_static struct percpu_rw_semaphore name = {				\
 	.waiters = __WAIT_QUEUE_HEAD_INITIALIZER(name.waiters),		\
 	.block = ATOMIC_INIT(0),					\
 	__PERCPU_RWSEM_DEP_MAP_INIT(name)				\
+	__PERCPU_RWSEM_OEM_DATA_INIT(name)				\
 }
 
 #define DEFINE_PERCPU_RWSEM(name)		\

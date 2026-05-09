@@ -40,6 +40,8 @@
 #include <uapi/linux/mount.h>
 #include "internal.h"
 
+#include <trace/hooks/fs.h>
+
 static int thaw_super_locked(struct super_block *sb, enum freeze_holder who);
 
 static LIST_HEAD(super_blocks);
@@ -692,6 +694,7 @@ void generic_shutdown_super(struct super_block *sb)
 			sb->s_dio_done_wq = NULL;
 		}
 
+		trace_android_vh_put_super(sb);
 		if (sop->put_super)
 			sop->put_super(sb);
 

@@ -2587,7 +2587,7 @@ static struct platform_driver sun_tlmm_driver = {
 		.of_match_table = sun_tlmm_of_match,
 	},
 	.probe = sun_tlmm_probe,
-	.remove = msm_pinctrl_remove,
+	.remove_new = msm_pinctrl_remove,
 };
 
 static int __init sun_tlmm_init(void)
