@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s " fmt, KBUILD_MODNAME
@@ -581,13 +581,10 @@ static irqreturn_t tcs_tx_done(int irq, void *p)
 		ipc_log_string(drv->ipc_log_ctx, "IRQ response: m=%d", i);
 #endif
 
-		/*
-		 * If wake tcs was re-purposed for sending active
-		 * votes, clear AMC trigger & enable modes and
+		/* Clear AMC trigger & enable modes and
 		 * disable interrupt for this TCS
 		 */
-		if (!drv->ch[ch].tcs[ACTIVE_TCS].num_tcs)
-			__tcs_set_trigger(drv, i, false);
+		__tcs_set_trigger(drv, i, false);
 skip:
 		/* Reclaim the TCS */
 		write_tcs_reg(drv, drv->regs[RSC_DRV_CMD_ENABLE], i, 0);
@@ -731,13 +728,17 @@ static int find_free_tcs(struct tcs_group *tcs)
 	unsigned long i;
 	unsigned long max = tcs->offset + tcs->num_tcs;
 	int timeout = 100;
+	u32 sts;
 
 	i = find_next_zero_bit(drv->tcs_in_use, max, tcs->offset);
 	if (i >= max)
 		return -EBUSY;
 
+	sts = read_tcs_reg(drv, drv->regs[RSC_DRV_STATUS], i);
+
 	while (timeout) {
-		if (read_tcs_reg(drv, drv->regs[RSC_DRV_STATUS], i))
+		sts = read_tcs_reg(drv, drv->regs[RSC_DRV_STATUS], i);
+		if (sts)
 			break;
 		timeout--;
 		udelay(1);

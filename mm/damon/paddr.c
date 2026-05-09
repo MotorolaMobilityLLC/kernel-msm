@@ -38,7 +38,6 @@ static void damon_pa_mkold(unsigned long paddr)
 		.rmap_one = __damon_pa_mkold,
 		.anon_lock = folio_lock_anon_vma_read,
 	};
-	bool need_lock;
 
 	if (!folio)
 		return;
@@ -48,14 +47,11 @@ static void damon_pa_mkold(unsigned long paddr)
 		goto out;
 	}
 
-	need_lock = !folio_test_anon(folio) || folio_test_ksm(folio);
-	if (need_lock && !folio_trylock(folio))
+	if (!folio_trylock(folio))
 		goto out;
 
 	rmap_walk(folio, &rwc);
-
-	if (need_lock)
-		folio_unlock(folio);
+	folio_unlock(folio);
 
 out:
 	folio_put(folio);
@@ -120,7 +116,6 @@ static bool damon_pa_young(unsigned long paddr, unsigned long *folio_sz)
 		.rmap_one = __damon_pa_young,
 		.anon_lock = folio_lock_anon_vma_read,
 	};
-	bool need_lock;
 
 	if (!folio)
 		return false;
@@ -133,14 +128,11 @@ static bool damon_pa_young(unsigned long paddr, unsigned long *folio_sz)
 		goto out;
 	}
 
-	need_lock = !folio_test_anon(folio) || folio_test_ksm(folio);
-	if (need_lock && !folio_trylock(folio))
+	if (!folio_trylock(folio))
 		goto out;
 
 	rmap_walk(folio, &rwc);
-
-	if (need_lock)
-		folio_unlock(folio);
+	folio_unlock(folio);
 
 out:
 	*folio_sz = folio_size(folio);
@@ -148,7 +140,8 @@ out:
 	return accessed;
 }
 
-static void __damon_pa_check_access(struct damon_region *r)
+static void __damon_pa_check_access(struct damon_region *r,
+		struct damon_attrs *attrs)
 {
 	static unsigned long last_addr;
 	static unsigned long last_folio_sz = PAGE_SIZE;
@@ -157,14 +150,12 @@ static void __damon_pa_check_access(struct damon_region *r)
 	/* If the region is in the last checked page, reuse the result */
 	if (ALIGN_DOWN(last_addr, last_folio_sz) ==
 				ALIGN_DOWN(r->sampling_addr, last_folio_sz)) {
-		if (last_accessed)
-			r->nr_accesses++;
+		damon_update_region_access_rate(r, last_accessed, attrs);
 		return;
 	}
 
 	last_accessed = damon_pa_young(r->sampling_addr, &last_folio_sz);
-	if (last_accessed)
-		r->nr_accesses++;
+	damon_update_region_access_rate(r, last_accessed, attrs);
 
 	last_addr = r->sampling_addr;
 }
@@ -177,7 +168,7 @@ static unsigned int damon_pa_check_accesses(struct damon_ctx *ctx)
 
 	damon_for_each_target(t, ctx) {
 		damon_for_each_region(r, t) {
-			__damon_pa_check_access(r);
+			__damon_pa_check_access(r, &ctx->attrs);
 			max_nr_accesses = max(r->nr_accesses, max_nr_accesses);
 		}
 	}

@@ -50,6 +50,7 @@
 #include "internal.h"
 #include "swap.h"
 #include <trace/hooks/swapfile.h>
+#include <trace/hooks/mm.h>
 
 static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
 				 unsigned char);
@@ -690,12 +691,15 @@ static bool cluster_scan_range(struct swap_info_struct *si,
 	return true;
 }
 
-static void cluster_alloc_range(struct swap_info_struct *si, struct swap_cluster_info *ci,
+static bool cluster_alloc_range(struct swap_info_struct *si, struct swap_cluster_info *ci,
 				unsigned int start, unsigned char usage,
 				unsigned int order)
 {
 	struct swap_info_ext *sie = to_swap_info_ext(si);
 	unsigned int nr_pages = 1 << order;
+
+	if (!(si->flags & SWP_WRITEOK))
+		return false;
 
 	if (cluster_is_free(ci)) {
 		if (nr_pages < SWAPFILE_CLUSTER) {
@@ -717,6 +721,8 @@ static void cluster_alloc_range(struct swap_info_struct *si, struct swap_cluster
 		list_move_tail(&ci->list, &sie->full_clusters);
 		ci->flags = CLUSTER_FLAG_FULL;
 	}
+
+	return true;
 }
 
 static unsigned int alloc_swap_scan_cluster(struct swap_info_struct *si, unsigned long offset,
@@ -740,7 +746,10 @@ static unsigned int alloc_swap_scan_cluster(struct swap_info_struct *si, unsigne
 
 	while (offset <= end) {
 		if (cluster_scan_range(si, ci, offset, nr_pages)) {
-			cluster_alloc_range(si, ci, offset, usage, order);
+			if (!cluster_alloc_range(si, ci, offset, usage, order)) {
+				offset = SWAP_NEXT_INVALID;
+				goto done;
+			}
 			*foundp = offset;
 			if (ci->count == SWAPFILE_CLUSTER) {
 				offset = SWAP_NEXT_INVALID;
@@ -836,7 +845,11 @@ new_cluster:
 	if (!list_empty(&si->free_clusters)) {
 		ci = list_first_entry(&si->free_clusters, struct swap_cluster_info, list);
 		offset = alloc_swap_scan_cluster(si, cluster_offset(si, ci), &found, order, usage);
-		VM_BUG_ON(!found);
+		/*
+		 * Either we didn't touch the cluster due to swapoff,
+		 * or the allocation must success.
+		 */
+		VM_BUG_ON((si->flags & SWP_WRITEOK) && !found);
 		goto done;
 	}
 
@@ -1060,6 +1073,8 @@ static int cluster_alloc_swap(struct swap_info_struct *si,
 
 	VM_BUG_ON(!si->cluster_info);
 
+	si->flags += SWP_SCANNING;
+
 	while (n_ret < nr) {
 		unsigned long offset = cluster_alloc_swap_entry(si, order, usage);
 
@@ -1067,6 +1082,8 @@ static int cluster_alloc_swap(struct swap_info_struct *si,
 			break;
 		slots[n_ret++] = swp_entry(si->type, offset);
 	}
+
+	si->flags -= SWP_SCANNING;
 
 	return n_ret;
 }
@@ -1515,6 +1532,7 @@ put_out:
 	percpu_ref_put(&si->users);
 	return NULL;
 }
+EXPORT_SYMBOL_GPL(get_swap_device);
 
 static unsigned char __swap_entry_free(struct swap_info_struct *p,
 				       swp_entry_t entry)
@@ -2187,6 +2205,13 @@ out:
 	}
 	return ret;
 }
+
+int unuse_swap_pte(struct vm_area_struct *vma, pmd_t *pmd,
+		unsigned long addr, swp_entry_t entry, struct folio *folio)
+{
+	return unuse_pte(vma, pmd, addr, entry, folio);
+}
+EXPORT_SYMBOL_GPL(unuse_swap_pte);
 
 static int unuse_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
 			unsigned long addr, unsigned long end,
@@ -3472,6 +3497,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 
 	if (p->bdev && bdev_synchronous(p->bdev))
 		p->flags |= SWP_SYNCHRONOUS_IO;
+
+	trace_android_vh_adjust_swap_info_flags(&p->flags);
 
 	if (p->bdev && bdev_nonrot(p->bdev)) {
 		int cpu, i;
