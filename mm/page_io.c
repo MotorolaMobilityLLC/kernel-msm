@@ -211,8 +211,10 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 static inline void count_swpout_vm_event(struct folio *folio)
 {
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-	if (unlikely(folio_test_pmd_mappable(folio)))
+	if (unlikely(folio_test_pmd_mappable(folio))) {
+		count_memcg_folio_events(folio, THP_SWPOUT, 1);
 		count_vm_event(THP_SWPOUT);
+	}
 	count_mthp_stat(folio_order(folio), MTHP_STAT_SWPOUT);
 #endif
 	count_vm_events(PSWPOUT, folio_nr_pages(folio));
@@ -282,9 +284,6 @@ static void sio_write_complete(struct kiocb *iocb, long ret)
 			set_page_dirty(page);
 			ClearPageReclaim(page);
 		}
-	} else {
-		for (p = 0; p < sio->pages; p++)
-			count_swpout_vm_event(page_folio(sio->bvec[p].bv_page));
 	}
 
 	for (p = 0; p < sio->pages; p++)
@@ -300,6 +299,7 @@ static void swap_writepage_fs(struct page *page, struct writeback_control *wbc)
 	struct file *swap_file = sis->swap_file;
 	loff_t pos = page_file_offset(page);
 
+	count_swpout_vm_event(page_folio(page));
 	set_page_writeback(page);
 	unlock_page(page);
 	if (wbc->swap_plug)
@@ -380,14 +380,14 @@ void __swap_writepage(struct page *page, struct writeback_control *wbc)
 	VM_BUG_ON_PAGE(!PageSwapCache(page), page);
 	/*
 	 * ->flags can be updated non-atomicially (scan_swap_map_slots),
-	 * but that will never affect SWP_FS_OPS, so the data_race
+	 * but that will never affect __SWP_WRITE_SYNCHRONOUS_IO, so the data_race
 	 * is safe.
 	 */
 	sis_flags = data_race(sis->flags);
 	trace_android_vh_swap_writepage(&sis_flags, page);
 	if (sis_flags & SWP_FS_OPS)
 		swap_writepage_fs(page, wbc);
-	else if (sis_flags & SWP_SYNCHRONOUS_IO)
+	else if (sis_flags & __SWP_WRITE_SYNCHRONOUS_IO)
 		swap_writepage_bdev_sync(page, wbc, sis);
 	else
 		swap_writepage_bdev_async(page, wbc, sis);
@@ -502,6 +502,7 @@ static void swap_readpage_bdev_sync(struct folio *folio,
 	get_task_struct(current);
 	count_vm_events(PSWPIN, folio_nr_pages(folio));
 	submit_bio_wait(&bio);
+	trace_android_rvh_swap_bio_charge(&bio);
 	__end_swap_bio_read(&bio);
 	put_task_struct(current);
 }

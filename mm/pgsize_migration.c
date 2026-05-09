@@ -137,10 +137,23 @@ void vma_set_pad_pages(struct vm_area_struct *vma,
 
 unsigned long vma_pad_pages(struct vm_area_struct *vma)
 {
+	int nr_pages;
+	int nr_pad;
+
 	if (!is_pgsize_migration_enabled())
 		return 0;
 
-	return (vma->vm_flags & VM_PAD_MASK) >> VM_PAD_SHIFT;
+	nr_pad = (vma->vm_flags & VM_PAD_MASK) >> VM_PAD_SHIFT;
+	if (!nr_pad)
+		return 0;
+
+	nr_pages = vma_pages(vma);
+
+	/* There must be at least 1 data page in the VMA */
+	if (WARN_ON(nr_pad >= nr_pages))
+		return 0;
+
+	return nr_pad;
 }
 
 static __always_inline bool str_has_suffix(const char *str, const char *suffix)
@@ -154,6 +167,7 @@ static __always_inline bool str_has_suffix(const char *str, const char *suffix)
 	return !strncmp(str + str_len - suffix_len, suffix, suffix_len);
 }
 
+#ifdef CONFIG_PER_VMA_LOCK
 /*
  * The dynamic linker, or interpreter, operates within the process context
  * of the binary that necessitated dynamic linking.
@@ -167,8 +181,6 @@ static __always_inline bool str_has_suffix(const char *str, const char *suffix)
  * VMAs of the current task.
  *
  * Returns true if in linker context, otherwise false.
- *
- * Caller must hold mmap lock in read mode.
  */
 static inline bool linker_ctx(void)
 {
@@ -180,14 +192,37 @@ static inline bool linker_ctx(void)
 	if (!regs)
 		return false;
 
-	vma = find_vma(mm, instruction_pointer(regs));
+	vma = lock_vma_under_rcu(mm, instruction_pointer(regs));
 
-	/* Current execution context, the VMA must be present */
-	BUG_ON(!vma);
+	/*
+	 * lock_vma_under_rcu() is a try-lock that can fail if the
+	 * VMA is already locked for modification.
+	 *
+	 * Fallback to finding the vma under mmap read lock.
+	 */
+	if (!vma) {
+		mmap_read_lock(mm);
+
+		vma = find_vma(mm, instruction_pointer(regs));
+
+		/* Current execution context, the VMA must be present */
+		BUG_ON(!vma);
+
+		/*
+		 * We cannot use vma_start_read() as it may fail due to
+		 * false locked (see comment in vma_start_read()). We
+		 * can avoid that by directly locking vm_lock under
+		 * mmap_lock, which guarantees that nobody can lock the
+		 * vma for write (vma_start_write()) under us.
+		 */
+		down_read(&vma->vm_lock->lock);
+
+		mmap_read_unlock(mm);
+	}
 
 	file = vma->vm_file;
 	if (!file)
-		return false;
+		goto out;
 
 	if ((vma->vm_flags & VM_EXEC)) {
 		char buf[64];
@@ -197,21 +232,37 @@ static inline bool linker_ctx(void)
 		memset(buf, 0, bufsize);
 		path = d_path(&file->f_path, buf, bufsize);
 
+		if (IS_ERR(path)) {
+			pgmigration_err("Unable to parse filepath");
+			goto out;
+		}
+
 		/*
 		 * Depending on interpreter requested, valid paths could be any of:
 		 *   1. /system/bin/bootstrap/linker64
 		 *   2. /system/bin/linker64
 		 *   3. /apex/com.android.runtime/bin/linker64
 		 *
-		 * Check the base name (linker64).
+		 * Check against absolute paths to ensure the dynamic loader
+		 * context is correctly identified.
 		 */
-		if (!strcmp(kbasename(path), "linker64"))
+		if (!strcmp(path, "/system/bin/bootstrap/linker64") ||
+		    !strcmp(path, "/system/bin/linker64") ||
+		    !strcmp(path, "/apex/com.android.runtime/bin/linker64")) {
+			vma_end_read(vma);
 			return true;
+		}
 	}
-
+out:
+	vma_end_read(vma);
 	return false;
 }
 
+#else /* CONFIG_PER_VMA_LOCK */
+
+static inline bool linker_ctx(void) { return false; }
+
+#endif /* CONFIG_PER_VMA_LOCK */
 /*
  * Saves the number of padding pages for an ELF segment mapping
  * in vm_flags.
@@ -240,6 +291,14 @@ void madvise_vma_pad_pages(struct vm_area_struct *vma,
 	 */
 	if (start <= vma->vm_start || end != vma->vm_end)
 		return;
+
+	/*
+	 * The only valid usecase is for madvising MAP_PRIVATE ELF mappings.
+	 */
+	if (vma->vm_flags & VM_SHARED) {
+		pgmigration_err("Invalid attempt to madvise padding on MAP_SHARED vma");
+		return;
+	}
 
 	nr_pad_pages = (end - start) >> PAGE_SHIFT;
 
@@ -271,18 +330,10 @@ static const struct vm_operations_struct pad_vma_ops = {
 };
 
 /*
- * Returns a new VMA representing the padding in @vma, if no padding
- * in @vma returns NULL.
+ * Initialize @pad VMA fields with information from the original @vma.
  */
-struct vm_area_struct *get_pad_vma(struct vm_area_struct *vma)
+static void init_pad_vma(struct vm_area_struct *vma, struct vm_area_struct *pad)
 {
-	struct vm_area_struct *pad;
-
-	if (!is_pgsize_migration_enabled() || !(vma->vm_flags & VM_PAD_MASK))
-		return NULL;
-
-	pad = kzalloc(sizeof(struct vm_area_struct), GFP_KERNEL);
-
 	memcpy(pad, vma, sizeof(struct vm_area_struct));
 
 	/* Remove file */
@@ -302,60 +353,34 @@ struct vm_area_struct *get_pad_vma(struct vm_area_struct *vma)
 	__vm_flags_mod(pad, 0, VM_READ|VM_WRITE|VM_EXEC);
 	/* Remove padding bits */
 	__vm_flags_mod(pad, 0, VM_PAD_MASK);
-
-	return pad;
 }
 
 /*
- * Returns a new VMA exclusing the padding from @vma; if no padding in
- * @vma returns @vma.
+ * Calls the show_pad_vma_fn on the @pad VMA.
  */
-struct vm_area_struct *get_data_vma(struct vm_area_struct *vma)
+void show_map_pad_vma(struct vm_area_struct *vma, struct seq_file *m,
+		      void *func, bool smaps)
 {
-	struct vm_area_struct *data;
-
 	if (!is_pgsize_migration_enabled() || !(vma->vm_flags & VM_PAD_MASK))
-		return vma;
-
-	data = kzalloc(sizeof(struct vm_area_struct), GFP_KERNEL);
-
-	memcpy(data, vma, sizeof(struct vm_area_struct));
-
-	/* Adjust the end to the start of the padding section */
-	data->vm_end = VMA_PAD_START(data);
-
-	return data;
-}
-
-/*
- * Calls the show_pad_vma_fn on the @pad VMA, and frees the copies of @vma
- * and @pad.
- */
-void show_map_pad_vma(struct vm_area_struct *vma, struct vm_area_struct *pad,
-		      struct seq_file *m, void *func, bool smaps)
-{
-	if (!pad)
 		return;
 
-	/*
-	 * This cannot happen. If @pad vma was allocated the corresponding
-	 * @vma should have the VM_PAD_MASK bit(s) set.
-	 */
-	BUG_ON(!(vma->vm_flags & VM_PAD_MASK));
+	struct vm_area_struct pad;
 
-	/*
-	 * This cannot happen. @pad is a section of the original VMA.
-	 * Therefore @vma cannot be null if @pad is not null.
-	 */
-	BUG_ON(!vma);
+	init_pad_vma(vma, &pad);
+
+	/* The pad VMA should be anonymous. */
+	BUG_ON(pad.vm_file);
+
+	/* The pad VMA should be PROT_NONE. */
+	BUG_ON(pad.vm_flags & (VM_READ|VM_WRITE|VM_EXEC));
+
+	/* The pad VMA itself cannot have padding; infinite recursion */
+	BUG_ON(pad.vm_flags & VM_PAD_MASK);
 
 	if (smaps)
-		((show_pad_smaps_fn)func)(m, pad);
+		((show_pad_smaps_fn)func)(m, &pad);
 	else
-		((show_pad_maps_fn)func)(m, pad);
-
-	kfree(pad);
-	kfree(vma);
+		((show_pad_maps_fn)func)(m, &pad);
 }
 
 /*

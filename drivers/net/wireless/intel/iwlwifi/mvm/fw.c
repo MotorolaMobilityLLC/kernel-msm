@@ -1195,11 +1195,30 @@ static u8 iwl_mvm_eval_dsm_rfi(struct iwl_mvm *mvm)
 	return DSM_VALUE_RFI_DISABLE;
 }
 
+enum iwl_dsm_unii4_bitmap {
+	DSM_VALUE_UNII4_US_OVERRIDE_MSK		= BIT(0),
+	DSM_VALUE_UNII4_US_EN_MSK		= BIT(1),
+	DSM_VALUE_UNII4_ETSI_OVERRIDE_MSK	= BIT(2),
+	DSM_VALUE_UNII4_ETSI_EN_MSK		= BIT(3),
+	DSM_VALUE_UNII4_CANADA_OVERRIDE_MSK	= BIT(4),
+	DSM_VALUE_UNII4_CANADA_EN_MSK		= BIT(5),
+};
+
+#define DSM_UNII4_ALLOW_BITMAP (DSM_VALUE_UNII4_US_OVERRIDE_MSK		|\
+				DSM_VALUE_UNII4_US_EN_MSK		|\
+				DSM_VALUE_UNII4_ETSI_OVERRIDE_MSK	|\
+				DSM_VALUE_UNII4_ETSI_EN_MSK		|\
+				DSM_VALUE_UNII4_CANADA_OVERRIDE_MSK	|\
+				DSM_VALUE_UNII4_CANADA_EN_MSK)
+
 static void iwl_mvm_lari_cfg(struct iwl_mvm *mvm)
 {
 	int ret;
 	u32 value;
 	struct iwl_lari_config_change_cmd_v6 cmd = {};
+	u8 cmd_ver = iwl_fw_lookup_cmd_ver(mvm->fw,
+					   WIDE_ID(REGULATORY_AND_NVM_GROUP,
+						   LARI_CONFIG_CHANGE), 1);
 
 	cmd.config_bitmap = iwl_acpi_get_lari_config_bitmap(&mvm->fwrt);
 
@@ -1211,8 +1230,22 @@ static void iwl_mvm_lari_cfg(struct iwl_mvm *mvm)
 	ret = iwl_acpi_get_dsm_u32(mvm->fwrt.dev, 0,
 				   DSM_FUNC_ENABLE_UNII4_CHAN,
 				   &iwl_guid, &value);
-	if (!ret)
-		cmd.oem_unii4_allow_bitmap = cpu_to_le32(value);
+	if (!ret) {
+		u32 _value = cpu_to_le32(value);
+
+		_value &= DSM_UNII4_ALLOW_BITMAP;
+
+		/* Since version 9, bits 4 and 5 are supported
+		 * regardless of this capability.
+		 */
+		if (cmd_ver < 9 &&
+		    !fw_has_capa(&mvm->fw->ucode_capa,
+				 IWL_UCODE_TLV_CAPA_BIOS_OVERRIDE_5G9_FOR_CA))
+			_value &= ~(DSM_VALUE_UNII4_CANADA_OVERRIDE_MSK |
+				   DSM_VALUE_UNII4_CANADA_EN_MSK);
+
+		cmd.oem_unii4_allow_bitmap = cpu_to_le32(_value);
+	}
 
 	ret = iwl_acpi_get_dsm_u32(mvm->fwrt.dev, 0,
 				   DSM_FUNC_ACTIVATE_CHANNEL,
