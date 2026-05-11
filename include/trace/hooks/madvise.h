@@ -11,6 +11,10 @@ DECLARE_RESTRICTED_HOOK(android_rvh_process_madvise_bypass,
 	TP_PROTO(int pidfd, const struct iovec __user *vec, size_t vlen,
 		int behavior, unsigned int flags, ssize_t *ret, bool *bypass),
 	TP_ARGS(pidfd, vec, vlen, behavior, flags, ret, bypass), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_do_madvise_bypass,
+	TP_PROTO(struct mm_struct *mm, unsigned long start,
+		size_t len_in, int behavior, int *ret, bool *bypass),
+	TP_ARGS(mm, start, len_in, behavior, ret, bypass), 1);
 struct vm_area_struct;
 DECLARE_HOOK(android_vh_update_vma_flags,
 	TP_PROTO(struct vm_area_struct *vma),
@@ -24,6 +28,10 @@ DECLARE_HOOK(android_vh_process_madvise_return_error,
 DECLARE_HOOK(android_vh_madvise_pageout_bypass,
 	TP_PROTO(struct mm_struct *mm, bool pageout, int *ret),
 	TP_ARGS(mm, pageout, ret));
+DECLARE_HOOK(android_vh_mm_do_madvise_bypass,
+	TP_PROTO(struct mm_struct *mm, unsigned long start, size_t len,
+		 int behavior, int *error, bool *bypass),
+	TP_ARGS(mm, start, len, behavior, error, bypass));
 
 #endif
 

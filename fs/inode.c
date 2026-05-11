@@ -485,6 +485,7 @@ void inode_add_lru(struct inode *inode)
 {
 	__inode_add_lru(inode, false);
 }
+EXPORT_SYMBOL(inode_add_lru);
 
 static void inode_lru_list_del(struct inode *inode)
 {

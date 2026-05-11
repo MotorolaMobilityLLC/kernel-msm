@@ -209,7 +209,7 @@ int ufshcd_mcq_memory_alloc(struct ufs_hba *hba)
 		hwq->sqe_base_addr = dmam_alloc_coherent(hba->dev, utrdl_size,
 							 &hwq->sqe_dma_addr,
 							 GFP_KERNEL);
-		if (!hwq->sqe_dma_addr) {
+		if (!hwq->sqe_base_addr) {
 			dev_err(hba->dev, "SQE allocation failed\n");
 			return -ENOMEM;
 		}
@@ -218,7 +218,7 @@ int ufshcd_mcq_memory_alloc(struct ufs_hba *hba)
 		hwq->cqe_base_addr = dmam_alloc_coherent(hba->dev, cqe_size,
 							 &hwq->cqe_dma_addr,
 							 GFP_KERNEL);
-		if (!hwq->cqe_dma_addr) {
+		if (!hwq->cqe_base_addr) {
 			dev_err(hba->dev, "CQE allocation failed\n");
 			return -ENOMEM;
 		}
@@ -302,15 +302,16 @@ void ufshcd_mcq_compl_all_cqes_lock(struct ufs_hba *hba,
 	spin_unlock_irqrestore(&hwq->cq_lock, flags);
 }
 
-unsigned long ufshcd_mcq_poll_cqe_lock(struct ufs_hba *hba,
-				       struct ufs_hw_queue *hwq)
+unsigned long ufshcd_mcq_poll_n_cqe_lock(struct ufs_hba *hba,
+					 struct ufs_hw_queue *hwq,
+					 unsigned int max_compl)
 {
 	unsigned long completed_reqs = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&hwq->cq_lock, flags);
 	ufshcd_mcq_update_cq_tail_slot(hwq);
-	while (!ufshcd_mcq_is_cq_empty(hwq)) {
+	while (!ufshcd_mcq_is_cq_empty(hwq) && completed_reqs < max_compl) {
 		ufshcd_mcq_process_cqe(hba, hwq);
 		ufshcd_mcq_inc_cq_head_slot(hwq);
 		completed_reqs++;
@@ -321,6 +322,13 @@ unsigned long ufshcd_mcq_poll_cqe_lock(struct ufs_hba *hba,
 	spin_unlock_irqrestore(&hwq->cq_lock, flags);
 
 	return completed_reqs;
+}
+EXPORT_SYMBOL_GPL(ufshcd_mcq_poll_n_cqe_lock);
+
+unsigned long ufshcd_mcq_poll_cqe_lock(struct ufs_hba *hba,
+				       struct ufs_hw_queue *hwq)
+{
+	return ufshcd_mcq_poll_n_cqe_lock(hba, hwq, hwq->max_entries);
 }
 EXPORT_SYMBOL_GPL(ufshcd_mcq_poll_cqe_lock);
 
@@ -629,15 +637,7 @@ int ufshcd_mcq_abort(struct scsi_cmnd *cmd)
 	int tag = scsi_cmd_to_rq(cmd)->tag;
 	struct ufshcd_lrb *lrbp = &hba->lrb[tag];
 	struct ufs_hw_queue *hwq;
-	unsigned long flags;
 	int err;
-
-	if (!ufshcd_cmd_inflight(lrbp->cmd)) {
-		dev_err(hba->dev,
-			"%s: skip abort. cmd at tag %d already completed.\n",
-			__func__, tag);
-		return FAILED;
-	}
 
 	/* Skip task abort in case previous aborts failed and report failure */
 	if (lrbp->req_abort_skip) {
@@ -647,6 +647,11 @@ int ufshcd_mcq_abort(struct scsi_cmnd *cmd)
 	}
 
 	hwq = ufshcd_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+	if (!hwq) {
+		dev_err(hba->dev, "%s: skip abort. cmd at tag %d already completed.\n",
+			__func__, tag);
+		return FAILED;
+	}
 
 	if (ufshcd_mcq_sqe_search(hba, hwq, tag)) {
 		/*
@@ -669,11 +674,6 @@ int ufshcd_mcq_abort(struct scsi_cmnd *cmd)
 		lrbp->req_abort_skip = true;
 		return FAILED;
 	}
-
-	spin_lock_irqsave(&hwq->cq_lock, flags);
-	if (ufshcd_cmd_inflight(lrbp->cmd))
-		ufshcd_release_scsi_cmd(hba, lrbp);
-	spin_unlock_irqrestore(&hwq->cq_lock, flags);
 
 	return SUCCESS;
 }

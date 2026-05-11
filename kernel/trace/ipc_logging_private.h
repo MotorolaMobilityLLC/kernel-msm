@@ -153,7 +153,6 @@ enum {
 
 #define IPC_LOG_CONTEXT_MAGIC_NUM 0x25874452
 #define IPC_LOGGING_MAGIC_NUM 0x52784425
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define IS_MSG_TYPE(x) (((x) > TSV_TYPE_MSG_START) && \
 			((x) < TSV_TYPE_MSG_END))
 #define MAX_MSG_DECODED_SIZE (MAX_MSG_SIZE*4)

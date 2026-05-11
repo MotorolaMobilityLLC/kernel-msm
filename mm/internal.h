@@ -470,6 +470,7 @@ pmd_t *mm_find_pmd(struct mm_struct *mm, unsigned long address);
 #define K(x) ((x) << (PAGE_SHIFT-10))
 
 extern char * const zone_names[MAX_NR_ZONES];
+extern unsigned long nr_free_highatomic[MAX_NR_ZONES];
 
 /* perform sanity checks on struct pages being allocated or freed */
 DECLARE_STATIC_KEY_MAYBE(CONFIG_DEBUG_VM, check_pages_enabled);
@@ -720,8 +721,9 @@ extern void post_alloc_hook(struct page *page, unsigned int order,
 					gfp_t gfp_flags);
 extern int user_min_free_kbytes;
 
-extern void free_unref_page(struct page *page, unsigned int order);
-extern void free_unref_page_list(struct list_head *list);
+void free_unref_page(struct page *page, unsigned int order);
+void free_unref_folios(struct folio_batch *fbatch);
+void free_unref_page_list(struct list_head *list);
 
 extern void zone_pcp_reset(struct zone *zone);
 extern void zone_pcp_disable(struct zone *zone);
@@ -734,10 +736,6 @@ extern void *memmap_alloc(phys_addr_t size, phys_addr_t align,
 
 void memmap_init_range(unsigned long, int, unsigned long, unsigned long,
 		unsigned long, enum meminit_context, struct vmem_altmap *, int);
-
-
-int split_free_page(struct page *free_page,
-			unsigned int order, unsigned long split_pfn_offset);
 
 #if defined CONFIG_COMPACTION || defined CONFIG_CMA
 
@@ -817,7 +815,7 @@ void init_cma_reserved_pageblock(struct page *page);
 #endif /* CONFIG_COMPACTION || CONFIG_CMA */
 
 int find_suitable_fallback(struct free_area *area, unsigned int order,
-			int migratetype, bool only_stealable, bool *can_steal);
+			   int migratetype, bool claimable);
 
 static inline bool free_area_empty(struct free_area *area, int migratetype)
 {
@@ -1214,11 +1212,6 @@ extern const struct trace_print_flags gfpflag_names[];
 static inline bool is_migrate_highatomic(enum migratetype migratetype)
 {
 	return migratetype == MIGRATE_HIGHATOMIC;
-}
-
-static inline bool is_migrate_highatomic_page(struct page *page)
-{
-	return get_pageblock_migratetype(page) == MIGRATE_HIGHATOMIC;
 }
 
 void setup_zone_pageset(struct zone *zone);

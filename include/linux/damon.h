@@ -40,8 +40,23 @@ struct damon_addr_range {
  * @ar:			The address range of the region.
  * @sampling_addr:	Address of the sample for the next access check.
  * @nr_accesses:	Access frequency of this region.
+ * @nr_accesses_bp:	@nr_accesses in basis point (0.01%) that updated for
+ *			each sampling interval.
  * @list:		List head for siblings.
  * @age:		Age of this region.
+ *
+ * @nr_accesses is reset to zero for every &damon_attrs->aggr_interval and be
+ * increased for every &damon_attrs->sample_interval if an access to the region
+ * during the last sampling interval is found.  The update of this field should
+ * not be done with direct access but with the helper function,
+ * damon_update_region_access_rate().
+ *
+ * @nr_accesses_bp is another representation of @nr_accesses in basis point
+ * (1 in 10,000) that updated for every &damon_attrs->sample_interval in a
+ * manner similar to moving sum.  By the algorithm, this value becomes
+ * @nr_accesses * 10000 for every &struct damon_attrs->aggr_interval.  This can
+ * be used when the aggregation interval is too huge and therefore cannot wait
+ * for it before getting the access monitoring results.
  *
  * @age is initially zero, increased for each aggregation interval, and reset
  * to zero again if the access frequency is significantly changed.  If two
@@ -52,6 +67,7 @@ struct damon_region {
 	struct damon_addr_range ar;
 	unsigned long sampling_addr;
 	unsigned int nr_accesses;
+	unsigned int nr_accesses_bp;
 	struct list_head list;
 
 	unsigned int age;
@@ -631,6 +647,8 @@ void damon_add_region(struct damon_region *r, struct damon_target *t);
 void damon_destroy_region(struct damon_region *r, struct damon_target *t);
 int damon_set_regions(struct damon_target *t, struct damon_addr_range *ranges,
 		unsigned int nr_ranges);
+void damon_update_region_access_rate(struct damon_region *r, bool accessed,
+		struct damon_attrs *attrs);
 
 struct damos_filter *damos_new_filter(enum damos_filter_type type,
 		bool matching);

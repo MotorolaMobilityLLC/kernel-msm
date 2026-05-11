@@ -43,6 +43,7 @@
 #include <linux/psi.h>
 #include <linux/ramfs.h>
 #include <linux/page_idle.h>
+#include <linux/page_size_compat.h>
 #include <linux/migrate.h>
 #include <linux/pipe_fs_i.h>
 #include <linux/splice.h>
@@ -249,6 +250,7 @@ void __filemap_remove_folio(struct folio *folio, void *shadow)
 	filemap_unaccount_folio(mapping, folio);
 	page_cache_delete(mapping, folio, shadow);
 }
+EXPORT_SYMBOL(__filemap_remove_folio);
 
 void filemap_free_folio(struct address_space *mapping, struct folio *folio)
 {
@@ -1012,6 +1014,7 @@ int filemap_add_folio(struct address_space *mapping, struct folio *folio,
 				return ret;
 			}
 		}
+		trace_android_vh_filemap_adjust_folio_flags(mapping, folio, index);
 		folio_add_lru(folio);
 	}
 	return ret;
@@ -2033,8 +2036,19 @@ no_page:
 
 		if (err == -EEXIST)
 			goto repeat;
-		if (err)
+		if (err) {
+			/*
+			 * When NOWAIT I/O fails to allocate folios this could
+			 * be due to a nonblocking memory allocation and not
+			 * because the system actually is out of memory.
+			 * Return -EAGAIN so that there caller retries in a
+			 * blocking fashion instead of propagating -ENOMEM
+			 * to the application.
+			 */
+			if ((fgp_flags & FGP_NOWAIT) && err == -ENOMEM)
+				err = -EAGAIN;
 			return ERR_PTR(err);
+		}
 		/*
 		 * filemap_add_folio locks the page, and for mmap
 		 * we expect an unlocked page.
@@ -2045,6 +2059,7 @@ no_page:
 
 	if (!folio)
 		return ERR_PTR(-ENOENT);
+	trace_android_vh_filemap_get_folio_end(mapping, folio);
 	return folio;
 }
 EXPORT_SYMBOL(__filemap_get_folio);
@@ -2302,6 +2317,7 @@ unsigned filemap_get_folios_contig(struct address_space *mapping,
 			*start = folio->index + nr;
 			goto out;
 		}
+		xas_advance(&xas, folio_next_index(folio) - 1);
 		continue;
 put_folio:
 		folio_put(folio);
@@ -2806,6 +2822,8 @@ ssize_t filemap_read(struct kiocb *iocb, struct iov_iter *iter,
 				break;
 			}
 		}
+		trace_android_vh_filemap_read_end(inode, fbatch.folios,
+				folio_batch_count(&fbatch));
 put_folios:
 		for (i = 0; i < folio_batch_count(&fbatch); i++)
 			folio_put(fbatch.folios[i]);
@@ -3246,6 +3264,11 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	struct file *fpin = NULL;
 	unsigned long vm_flags = vmf->vma->vm_flags;
 	unsigned int mmap_miss;
+	bool skip = false;
+
+	trace_android_vh_do_sync_mmap_readahead(vmf, &skip);
+	if (skip)
+		return fpin;
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	/* Use the readahead code, even if readahead is disabled */
@@ -3426,6 +3449,8 @@ retry_find:
 		}
 	}
 
+	trace_android_vh_filemap_fault_pre_folio_locked(folio);
+
 	if (!lock_folio_maybe_drop_mmap(vmf, folio, &fpin))
 		goto out_retry;
 
@@ -3480,6 +3505,7 @@ retry_find:
 	}
 
 	vmf->page = folio_file_page(folio, index);
+	trace_android_vh_filemap_fault_folio_locked(inode, folio, index);
 	return ret | VM_FAULT_LOCKED;
 
 page_not_uptodate:
@@ -3680,7 +3706,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 	struct vm_area_struct *vma = vmf->vma;
 	struct file *file = vma->vm_file;
 	struct address_space *mapping = file->f_mapping;
-	pgoff_t last_pgoff = start_pgoff;
+	pgoff_t file_end, last_pgoff = start_pgoff;
 	unsigned long addr;
 	XA_STATE(xas, &mapping->i_pages, start_pgoff);
 	struct folio *folio;
@@ -3688,6 +3714,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 	unsigned int nr_pages = 0, mmap_miss = 0, mmap_miss_saved;
 	pgoff_t first_pgoff = 0;
 	pgoff_t orig_start_pgoff = start_pgoff;
+	bool can_map_large;
 
 	rcu_read_lock();
 	folio = next_uptodate_folio(&xas, mapping, end_pgoff);
@@ -3696,7 +3723,20 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 	first_pgoff = xas.xa_index;
 	orig_start_pgoff = xas.xa_index;
 
-	if (filemap_map_pmd(vmf, folio, start_pgoff)) {
+	file_end = DIV_ROUND_UP(i_size_read(mapping->host), PAGE_SIZE) - 1;
+	end_pgoff = min(end_pgoff, file_end);
+
+	/*
+	 * Do not allow to map with PTEs beyond i_size and with PMD
+	 * across i_size to preserve SIGBUS semantics.
+	 *
+	 * Make an exception for shmem/tmpfs that for long time
+	 * intentionally mapped with PMDs across i_size.
+	 */
+	can_map_large = shmem_mapping(mapping) ||
+		file_end >= folio_next_index(folio);
+
+	if (can_map_large && filemap_map_pmd(vmf, folio, start_pgoff)) {
 		ret = VM_FAULT_NOPAGE;
 		goto out;
 	}
@@ -3708,6 +3748,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 		folio_put(folio);
 		goto out;
 	}
+
 	do {
 		unsigned long end;
 
@@ -3716,6 +3757,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 		last_pgoff = xas.xa_index;
 		end = folio->index + folio_nr_pages(folio) - 1;
 		nr_pages = min(end, end_pgoff) - xas.xa_index + 1;
+		trace_android_vh_filemap_pages(folio);
 
 		if (!folio_test_large(folio))
 			ret |= filemap_map_order0_folio(vmf,
@@ -3726,6 +3768,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 					nr_pages, &mmap_miss);
 
 		folio_unlock(folio);
+		trace_android_vh_filemap_folio_mapped(folio);
 		folio_put(folio);
 	} while ((folio = next_uptodate_folio(&xas, mapping, end_pgoff)) != NULL);
 	pte_unmap_unlock(vmf->pte, vmf->ptl);
@@ -3794,7 +3837,7 @@ int generic_file_mmap(struct file *file, struct vm_area_struct *vma)
  */
 int generic_file_readonly_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	if ((vma->vm_flags & VM_SHARED) && (vma->vm_flags & VM_MAYWRITE))
+	if (vma_is_shared_maywrite(vma))
 		return -EINVAL;
 	return generic_file_mmap(file, vma);
 }
@@ -4362,6 +4405,17 @@ resched:
 		}
 	}
 	rcu_read_unlock();
+
+	/* Adjust the counts if emulating the page size */
+	if (__PAGE_SIZE > PAGE_SIZE) {
+		unsigned int nr_sub_pages = __PAGE_SIZE / PAGE_SIZE;
+
+		cs->nr_cache /= nr_sub_pages;
+		cs->nr_dirty /= nr_sub_pages;
+		cs->nr_writeback /= nr_sub_pages;
+		cs->nr_evicted /= nr_sub_pages;
+		cs->nr_recently_evicted /= nr_sub_pages;
+	}
 }
 
 /*
