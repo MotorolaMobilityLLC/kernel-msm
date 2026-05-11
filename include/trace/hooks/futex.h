@@ -44,6 +44,11 @@ DECLARE_HOOK(android_vh_futex_wake_this,
 DECLARE_HOOK(android_vh_futex_wake_up_q_finish,
 	TP_PROTO(int nr_wake, int target_nr),
 	TP_ARGS(nr_wake, target_nr));
+DECLARE_HOOK(android_vh_futex_wait_queue_start,
+	TP_PROTO(u32 __user *uaddr,
+		 unsigned int flags,
+		 u32 bitset),
+	TP_ARGS(uaddr, flags, bitset));
 #endif /* _TRACE_HOOK_FUTEX_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

@@ -1764,6 +1764,10 @@
   unlock_page
   unregister_shrinker
 
+# required by pinctrl_bcm2835.ko
+  gpiochip_get_desc
+  gpiochip_free_own_desc
+
 # TODO: external drivers
 
 # required by nexusmem.ko

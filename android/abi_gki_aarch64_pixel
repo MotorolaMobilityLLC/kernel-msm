@@ -926,6 +926,7 @@
   frame_vector_to_pages
   free_iova_fast
   free_irq
+  freelist_task
   free_netdev
   __free_pages
   free_pages
@@ -2385,6 +2386,7 @@
   __traceiter_android_rvh_preempt_disable
   __traceiter_android_rvh_preempt_enable
   __traceiter_android_rvh_prepare_prio_fork
+  __traceiter_android_rvh_read_swap_cache_async_timeout
   __traceiter_android_rvh_reclaim_folio_list
   __traceiter_android_rvh_remove_entity_load_avg
   __traceiter_android_rvh_rtmutex_prepare_setprio
@@ -2425,6 +2427,7 @@
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
   __traceiter_android_vh_do_async_mmap_readahead
+  __traceiter_android_vh_do_sync_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
@@ -2529,6 +2532,7 @@
   __tracepoint_android_rvh_preempt_disable
   __tracepoint_android_rvh_preempt_enable
   __tracepoint_android_rvh_prepare_prio_fork
+  __tracepoint_android_rvh_read_swap_cache_async_timeout
   __tracepoint_android_rvh_reclaim_folio_list
   __tracepoint_android_rvh_remove_entity_load_avg
   __tracepoint_android_rvh_rtmutex_prepare_setprio
@@ -2569,6 +2573,7 @@
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
   __tracepoint_android_vh_do_async_mmap_readahead
+  __tracepoint_android_vh_do_sync_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
@@ -2900,6 +2905,7 @@
   ww_mutex_lock
   ww_mutex_unlock
   __xa_alloc
+  __xa_clear_mark
   xa_clear_mark
   xa_destroy
   __xa_erase

@@ -3303,10 +3303,24 @@ static int proc_stack_depth(struct seq_file *m, struct pid_namespace *ns,
 #endif /* CONFIG_STACKLEAK_METRICS */
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
+
+static struct task_dma_buf_info *get_task_dmabuf_info(struct task_struct *task)
+{
+	struct task_dma_buf_info *dmabuf_info;
+
+	task_lock(task);
+	dmabuf_info = task->dmabuf_info;
+	if (dmabuf_info)
+		get_dmabuf_info(dmabuf_info);
+	task_unlock(task);
+
+	return dmabuf_info;
+}
+
 static int proc_dmabuf_rss_show(struct seq_file *m, struct pid_namespace *ns,
 		     struct pid *pid, struct task_struct *task)
 {
-	struct task_dma_buf_info *dmabuf_info = task->dmabuf_info;
+	struct task_dma_buf_info *dmabuf_info = get_task_dmabuf_info(task);
 
 	if (dmabuf_info) {
 		unsigned long rss;
@@ -3314,6 +3328,7 @@ static int proc_dmabuf_rss_show(struct seq_file *m, struct pid_namespace *ns,
 		spin_lock(&dmabuf_info->lock);
 		rss = dmabuf_info->rss;
 		spin_unlock(&dmabuf_info->lock);
+		put_dmabuf_info(dmabuf_info);
 		seq_printf(m, "%lu\n", rss);
 	}
 
@@ -3324,18 +3339,22 @@ static int proc_dmabuf_rss_hwm_show(struct seq_file *m, void *v)
 {
 	struct inode *inode = m->private;
 	struct task_struct *task;
+	struct task_dma_buf_info *dmabuf_info;
 	int ret = 0;
 
 	task = get_proc_task(inode);
 	if (!task)
 		return -ESRCH;
 
-	if (task->dmabuf_info) {
+	dmabuf_info = get_task_dmabuf_info(task);
+
+	if (dmabuf_info) {
 		unsigned long rss_hwm;
 
-		spin_lock(&task->dmabuf_info->lock);
-		rss_hwm = task->dmabuf_info->rss_hwm;
-		spin_unlock(&task->dmabuf_info->lock);
+		spin_lock(&dmabuf_info->lock);
+		rss_hwm = dmabuf_info->rss_hwm;
+		spin_unlock(&dmabuf_info->lock);
+		put_dmabuf_info(dmabuf_info);
 		seq_printf(m, "%lu\n", rss_hwm);
 	}
 
@@ -3355,6 +3374,7 @@ proc_dmabuf_rss_hwm_write(struct file *file, const char __user *buf,
 {
 	struct inode *inode = file_inode(file);
 	struct task_struct *task;
+	struct task_dma_buf_info *dmabuf_info;
 	unsigned long long val;
 	int ret;
 
@@ -3369,12 +3389,15 @@ proc_dmabuf_rss_hwm_write(struct file *file, const char __user *buf,
 	if (!task)
 		return -ESRCH;
 
-	if (!task->dmabuf_info) {
+	dmabuf_info = get_task_dmabuf_info(task);
+
+	if (!dmabuf_info) {
 		ret = -ENOENT;
 	} else {
-		spin_lock(&task->dmabuf_info->lock);
-		task->dmabuf_info->rss_hwm = task->dmabuf_info->rss;
-		spin_unlock(&task->dmabuf_info->lock);
+		spin_lock(&dmabuf_info->lock);
+		dmabuf_info->rss_hwm = dmabuf_info->rss;
+		spin_unlock(&dmabuf_info->lock);
+		put_dmabuf_info(dmabuf_info);
 	}
 
 	put_task_struct(task);
@@ -3393,13 +3416,14 @@ static const struct file_operations proc_dmabuf_rss_hwm_operations = {
 static int proc_dmabuf_pss_show(struct seq_file *m, struct pid_namespace *ns,
 		     struct pid *pid, struct task_struct *task)
 {
+	struct task_dma_buf_info *dmabuf_info = get_task_dmabuf_info(task);
 	struct task_dma_buf_record *rec;
 
-	if (task->dmabuf_info) {
+	if (dmabuf_info) {
 		unsigned long pss = 0;
 
-		spin_lock(&task->dmabuf_info->lock);
-		list_for_each_entry(rec, &task->dmabuf_info->dmabufs, node) {
+		spin_lock(&dmabuf_info->lock);
+		list_for_each_entry(rec, &dmabuf_info->dmabufs, node) {
 			s64 refs = atomic64_read(&rec->dmabuf->nr_task_refs);
 
 			if (refs <= 0) {
@@ -3409,7 +3433,8 @@ static int proc_dmabuf_pss_show(struct seq_file *m, struct pid_namespace *ns,
 
 			pss += rec->dmabuf->size / (size_t)refs;
 		}
-		spin_unlock(&task->dmabuf_info->lock);
+		spin_unlock(&dmabuf_info->lock);
+		put_dmabuf_info(dmabuf_info);
 		seq_printf(m, "%lu\n", pss);
 	}
 

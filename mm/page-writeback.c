@@ -3031,6 +3031,7 @@ bool __folio_start_writeback(struct folio *folio, bool keep_write)
 		zone_stat_mod_folio(folio, NR_ZONE_WRITE_PENDING, nr);
 	}
 	folio_memcg_unlock(folio);
+	trace_android_vh_folio_start_writeback(folio);
 	access_ret = arch_make_folio_accessible(folio);
 	/*
 	 * If writeback has been triggered on a page that cannot be made

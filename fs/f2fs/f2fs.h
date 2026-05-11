@@ -583,6 +583,8 @@ enum {
 
 #define DEFAULT_RETRY_IO_COUNT	8	/* maximum retry read IO or flush count */
 
+#define MAX_FLUSH_RETRY_COUNT	3	/* maximum flush retry count in f2fs_enable_checkpoint() */
+
 /* congestion wait timeout value, default: 20ms */
 #define	DEFAULT_IO_TIMEOUT	(msecs_to_jiffies(20))
 
@@ -1102,6 +1104,7 @@ enum count_type {
 	F2FS_RD_META,
 	F2FS_DIO_WRITE,
 	F2FS_DIO_READ,
+	F2FS_SKIPPED_WRITE,	/* skip or fail during f2fs_enable_checkpoint() */
 	NR_COUNT_TYPE,
 };
 
@@ -1314,6 +1317,7 @@ enum {
 	SBI_IS_RESIZEFS,			/* resizefs is in process */
 	SBI_IS_FREEZING,			/* freezefs is in process */
 	SBI_IS_WRITABLE,			/* remove ro mountoption transiently */
+	SBI_ENABLE_CHECKPOINT,			/* indicate it's during f2fs_enable_checkpoint() */
 	MAX_SBI_FLAG,
 };
 

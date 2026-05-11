@@ -808,6 +808,7 @@ int is_dma_buf_file(struct file *file);
 int dma_buf_account_task(struct dma_buf *dmabuf, struct task_dma_buf_info *dmabuf_info);
 void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_dma_buf_info *dmabuf_info);
 int copy_dmabuf_info(u64 clone_flags, struct task_struct *task);
+void get_dmabuf_info(struct task_dma_buf_info *dmabuf_info);
 void put_dmabuf_info(struct task_dma_buf_info *dmabuf_info);
 int dma_buf_begin_new_exec(struct files_struct *old_files);
 
@@ -820,6 +821,7 @@ static inline void dma_buf_unaccount_task(struct dma_buf *dmabuf,
 					  struct task_dma_buf_info *dmabuf_info) {}
 static inline int copy_dmabuf_info(u64 clone_flags,
 				   struct task_struct *task) { return 0; }
+static inline void get_dmabuf_info(struct task_dma_buf_info *dmabuf_info) {}
 static inline void put_dmabuf_info(struct task_dma_buf_info *dmabuf_info) {}
 static inline int dma_buf_begin_new_exec(struct files_struct *old_files) { return 0; }
 
