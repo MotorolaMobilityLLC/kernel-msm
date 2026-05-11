@@ -2763,6 +2763,7 @@
   spi_finalize_current_transfer
   spi_get_device_id
   spi_mem_default_supports_op
+  spi_new_device
   __spi_register_driver
   spi_setup
   spi_sync

@@ -802,7 +802,7 @@ static int scmi_wait_for_message_response(struct scmi_chan_info *cinfo,
 {
 	struct scmi_info *info = handle_to_scmi_info(cinfo->handle);
 	struct device *dev = info->dev;
-	int ret = 0, timeout_ms = info->desc->max_rx_timeout_ms;
+	int ret = 0, timeout_ms = cinfo->rx_timeout_ms;
 
 	trace_scmi_xfer_response_wait(xfer->transfer_id, xfer->hdr.id,
 				      xfer->hdr.protocol_id, xfer->hdr.seq,
@@ -2059,6 +2059,14 @@ static int scmi_chan_setup(struct scmi_info *info, struct device *dev,
 
 	cinfo->dev = dev;
 	cinfo->rx_timeout_ms = info->desc->max_rx_timeout_ms;
+
+	ret = of_property_read_u32(dev->of_node, "arm,max-rx-timeout-ms",
+				   &cinfo->rx_timeout_ms);
+	if (ret && ret != -EINVAL)
+		dev_err(dev, "Malformed arm,max-rx-timeout-ms DT property.\n");
+
+	dev_info(dev, "SCMI max-rx-timeout: %dms\n",
+		 cinfo->rx_timeout_ms);
 
 	ret = info->desc->ops->chan_setup(cinfo, info->dev, tx);
 	if (ret)

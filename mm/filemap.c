@@ -995,6 +995,7 @@ int filemap_add_folio(struct address_space *mapping, struct folio *folio,
 		WARN_ON_ONCE(folio_test_active(folio));
 		if (!(gfp & __GFP_WRITE) && shadow)
 			workingset_refault(folio, shadow);
+		trace_android_vh_filemap_adjust_folio_flags(mapping, folio, index);
 		folio_add_lru(folio);
 	}
 	return ret;
@@ -1663,6 +1664,7 @@ void folio_end_writeback(struct folio *folio)
 		BUG();
 
 	smp_mb__after_atomic();
+	trace_android_vh_folio_end_writeback(folio);
 	folio_wake(folio, PG_writeback);
 	acct_reclaim_writeback(folio);
 	folio_put(folio);
@@ -2042,6 +2044,7 @@ no_page:
 			folio_unlock(folio);
 	}
 
+	trace_android_vh_filemap_get_folio_end(mapping, folio);
 	return folio;
 }
 EXPORT_SYMBOL(__filemap_get_folio);
@@ -2853,6 +2856,8 @@ ssize_t filemap_read(struct kiocb *iocb, struct iov_iter *iter,
 				break;
 			}
 		}
+		trace_android_vh_filemap_read_end(inode, fbatch.folios,
+				folio_batch_count(&fbatch));
 put_folios:
 		for (i = 0; i < folio_batch_count(&fbatch); i++)
 			folio_put(fbatch.folios[i]);
@@ -3109,6 +3114,11 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	struct file *fpin = NULL;
 	unsigned long vm_flags = vmf->vma->vm_flags;
 	unsigned int mmap_miss;
+	bool skip = false;
+
+	trace_android_vh_do_sync_mmap_readahead(vmf, &skip);
+	if (skip)
+		return fpin;
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	/* Use the readahead code, even if readahead is disabled */
@@ -3334,6 +3344,7 @@ retry_find:
 	}
 
 	vmf->page = folio_file_page(folio, index);
+	trace_android_vh_filemap_fault_folio_locked(inode, folio, index);
 	return ret | VM_FAULT_LOCKED;
 
 page_not_uptodate:

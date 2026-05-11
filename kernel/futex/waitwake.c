@@ -660,6 +660,7 @@ retry:
 	if (ret)
 		goto out;
 
+	trace_android_vh_futex_wait_queue_start(uaddr, flags, bitset);
 	/* futex_queue and wait for wakeup, timeout, or a signal. */
 	futex_wait_queue(hb, &q, to);
 
