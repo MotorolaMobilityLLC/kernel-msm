@@ -581,9 +581,7 @@ static irqreturn_t tcs_tx_done(int irq, void *p)
 		ipc_log_string(drv->ipc_log_ctx, "IRQ response: m=%d", i);
 #endif
 
-		/*
-		 * If wake tcs was re-purposed for sending active
-		 * votes, clear AMC trigger & enable modes and
+		/* Clear AMC trigger & enable modes and
 		 * disable interrupt for this TCS
 		 */
 		if (!drv->ch[ch].tcs[ACTIVE_TCS].num_tcs)
