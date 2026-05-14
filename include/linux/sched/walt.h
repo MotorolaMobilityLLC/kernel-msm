@@ -211,7 +211,11 @@ extern int set_moto_sched_enabled(int enable);
 struct msched_ops {
 	int (*task_get_mvp_prio)(struct task_struct *p, bool with_inherit);
 	unsigned int (*task_get_mvp_limit)(struct task_struct *p, int mvp_prio);
+	#if IS_ENABLED(CONFIG_SCHED_MOTO_BINDERTRANS)
+	void (*binder_inherit_ux_type)(void *bndrtrans, struct task_struct *task);
+	#else
 	void (*binder_inherit_ux_type)(struct task_struct *task);
+	#endif
 	void (*binder_clear_inherited_ux_type)(struct task_struct *task);
 	void (*binder_ux_type_set)(struct task_struct *task);
 	void (*queue_ux_task)(struct rq *rq, struct task_struct *task, int enqueue);
@@ -234,10 +238,17 @@ static inline unsigned int moto_task_get_mvp_limit(struct task_struct *p, int mv
 	return -1;
 }
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_BINDERTRANS)
+static inline void moto_binder_inherit_ux_type(void *bndrtrans, struct task_struct *task) {
+	if (moto_sched_ops != NULL && moto_sched_ops->binder_inherit_ux_type != NULL)
+		return moto_sched_ops->binder_inherit_ux_type(bndrtrans, task);
+}
+#else
 static inline void moto_binder_inherit_ux_type(struct task_struct *task) {
 	if (moto_sched_ops != NULL && moto_sched_ops->binder_inherit_ux_type != NULL)
 		return moto_sched_ops->binder_inherit_ux_type(task);
 }
+#endif
 
 static inline void moto_binder_clear_inherited_ux_type(struct task_struct *task) {
 	if (moto_sched_ops != NULL && moto_sched_ops->binder_clear_inherited_ux_type != NULL)

@@ -1221,7 +1221,11 @@ static void binder_set_priority_hook(void *data,
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	// Moto huangzq2: inherit ux type
 	if (bndrtrans && bndrtrans->need_reply) {
+		#if IS_ENABLED(CONFIG_SCHED_MOTO_BINDERTRANS)
+		moto_binder_inherit_ux_type(bndrtrans, task);
+		#else
 		moto_binder_inherit_ux_type(task);
+		#endif
 	}
 #endif
 }
