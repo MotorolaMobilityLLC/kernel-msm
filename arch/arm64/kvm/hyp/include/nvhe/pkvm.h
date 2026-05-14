@@ -12,6 +12,9 @@
 #include <nvhe/gfp.h>
 #include <nvhe/spinlock.h>
 
+/* Sentinel: distinct from NULL and any real pkvm_hyp_vcpu pointer. */
+#define PKVM_PVMFW_ENTERED ((struct pkvm_hyp_vcpu *)-1L)
+
 /*
  * Misconfiguration events that can undermine pKVM security.
  */
@@ -62,8 +65,14 @@ struct pkvm_hyp_vm {
 	struct hyp_pool pool;
 	hyp_spinlock_t lock;
 
-	/* Primary vCPU pending entry to the pvmfw */
-	struct pkvm_hyp_vcpu *pvmfw_entry_vcpu;
+	/*
+	 * Primary vCPU slot, set once at first successful init and
+	 * never cleared after the primary has entered pvmfw. Encodings:
+	 *   NULL                - no primary claimed.
+	 *   real vCPU pointer   - claimed; for pvmfw VMs, not yet entered.
+	 *   PKVM_PVMFW_ENTERED  - claimed and has entered pvmfw (sticky).
+	 */
+	struct pkvm_hyp_vcpu *primary_vcpu;
 
 	/*
 	 * The number of vcpus initialized and ready to run.
