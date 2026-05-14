@@ -1751,9 +1751,8 @@ static int do_garbage_collect(struct f2fs_sb_info *sbi,
 	unsigned int end_segno = start_segno + SEGS_PER_SEC(sbi);
 	unsigned int sec_end_segno;
 	int seg_freed = 0, migrated = 0;
-	unsigned char type = IS_DATASEG(get_seg_entry(sbi, segno)->type) ?
-						SUM_TYPE_DATA : SUM_TYPE_NODE;
-	unsigned char data_type = (type == SUM_TYPE_DATA) ? DATA : NODE;
+	unsigned char type;
+	unsigned char data_type;
 	int submitted = 0;
 
 	if (__is_large_section(sbi)) {
@@ -1834,6 +1833,12 @@ static int do_garbage_collect(struct f2fs_sb_info *sbi,
 			goto skip;
 		if (!PageUptodate(sum_page) || unlikely(f2fs_cp_error(sbi)))
 			goto skip;
+
+		if (migrated == 0) {
+			type = IS_DATASEG(get_seg_entry(sbi, segno)->type) ?
+						SUM_TYPE_DATA : SUM_TYPE_NODE;
+			data_type = (type == SUM_TYPE_DATA) ? DATA : NODE;
+		}
 
 		sum = page_address(sum_page);
 		if (type != GET_SUM_TYPE((&sum->footer))) {
