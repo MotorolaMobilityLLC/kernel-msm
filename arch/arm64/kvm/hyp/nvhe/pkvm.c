@@ -982,17 +982,45 @@ void pkvm_poison_pvmfw_pages(void)
 }
 
 /*
- * This function sets the registers on the vcpu to their architecturally defined
- * reset values.
+ * Gate entry to the vCPU; on the first entry after OFF -> ON_PENDING,
+ * reset its registers to architectural values.
  *
- * Note: Can only be called by the vcpu on itself, after it has been turned on.
+ * Returns 0 if the vCPU is runnable on return, or -ECANCELED if a
+ * concurrent rollback or unpublished reset_state cancelled this entry.
+ *
+ * Caller must be the vCPU itself.
  */
-void pkvm_reset_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu)
+int pkvm_reset_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu)
 {
 	struct vcpu_reset_state *reset_state = &hyp_vcpu->vcpu.arch.reset_state;
 	struct pkvm_hyp_vm *hyp_vm = pkvm_hyp_vcpu_to_hyp_vm(hyp_vcpu);
+	int prev;
 
-	WARN_ON(!reset_state->reset);
+	/*
+	 * Pair with smp_store_release in pvm_psci_vcpu_on() (or the
+	 * plain write under vcpus_lock in pkvm_vcpu_init_psci() for
+	 * first-run). False: source not yet published, bail.
+	 */
+	if (!smp_load_acquire(&reset_state->reset))
+		return -ECANCELED;
+
+	/*
+	 * Commit ON_PENDING -> ON before any side effect: a concurrent
+	 * rollback may race and advance power_state to OFF. Relaxed:
+	 * atomic transition + observe prior is the contract; reset_state
+	 * publication is the release/acquire pair above.
+	 */
+	prev = cmpxchg_relaxed(&hyp_vcpu->power_state,
+			       PSCI_0_2_AFFINITY_LEVEL_ON_PENDING,
+			       PSCI_0_2_AFFINITY_LEVEL_ON);
+	if (prev != PSCI_0_2_AFFINITY_LEVEL_ON_PENDING) {
+		/*
+		 * Only a concurrent rollback (ON_PENDING -> OFF) can race us
+		 * here.
+		 */
+		WARN_ON(prev != PSCI_0_2_AFFINITY_LEVEL_OFF);
+		return -ECANCELED;
+	}
 
 	pkvm_vcpu_init_ptrauth(hyp_vcpu);
 	kvm_reset_vcpu_core(&hyp_vcpu->vcpu);
@@ -1027,8 +1055,7 @@ void pkvm_reset_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu)
 
 	hyp_vcpu->exit_code = 0;
 
-	WARN_ON(hyp_vcpu->power_state != PSCI_0_2_AFFINITY_LEVEL_ON_PENDING);
-	WRITE_ONCE(hyp_vcpu->power_state, PSCI_0_2_AFFINITY_LEVEL_ON);
+	return 0;
 }
 
 struct pkvm_hyp_vcpu *pkvm_mpidr_to_hyp_vcpu(struct pkvm_hyp_vm *hyp_vm,
@@ -1075,11 +1102,14 @@ static bool pvm_psci_vcpu_on(struct pkvm_hyp_vcpu *hyp_vcpu)
 
 	/*
 	 * Make sure the requested vcpu is not on to begin with.
-	 * Atomic to avoid race between vcpus trying to power on the same vcpu.
+	 * Atomic to avoid race between vcpus powering on the same vcpu.
+	 * Relaxed: atomic transition + observe prior is the contract;
+	 * publication of the reset_state writes below is the
+	 * smp_store_release on reset_state->reset.
 	 */
-	power_state = cmpxchg(&target->power_state,
-			      PSCI_0_2_AFFINITY_LEVEL_OFF,
-			      PSCI_0_2_AFFINITY_LEVEL_ON_PENDING);
+	power_state = cmpxchg_relaxed(&target->power_state,
+				      PSCI_0_2_AFFINITY_LEVEL_OFF,
+				      PSCI_0_2_AFFINITY_LEVEL_ON_PENDING);
 	switch (power_state) {
 	case PSCI_0_2_AFFINITY_LEVEL_ON_PENDING:
 		ret = PSCI_RET_ON_PENDING;
@@ -1099,7 +1129,8 @@ static bool pvm_psci_vcpu_on(struct pkvm_hyp_vcpu *hyp_vcpu)
 	reset_state->r0 = smccc_get_arg3(&hyp_vcpu->vcpu);
 	/* Propagate caller endianness */
 	reset_state->be = kvm_vcpu_is_be(&hyp_vcpu->vcpu);
-	reset_state->reset = true;
+	/* Pair with smp_load_acquire in pkvm_reset_vcpu(). */
+	smp_store_release(&reset_state->reset, true);
 
 	/*
 	 * Return to the host, which should make the KVM_REQ_VCPU_RESET request

@@ -843,12 +843,6 @@ static struct kvm_vcpu *__get_host_hyp_vcpus(struct kvm_vcpu *arg,
 		__get_host_hyp_vcpus(__vcpu, hyp_vcpup);			\
 	})
 
-static bool is_vcpu_runnable(struct pkvm_hyp_vcpu *hyp_vcpu)
-{
-	return (!pkvm_hyp_vcpu_is_protected(hyp_vcpu) ||
-		hyp_vcpu->power_state == PSCI_0_2_AFFINITY_LEVEL_ON);
-}
-
 static void handle___kvm_vcpu_run(struct kvm_cpu_context *host_ctxt)
 {
 	struct pkvm_hyp_vcpu *hyp_vcpu;
@@ -860,11 +854,16 @@ static void handle___kvm_vcpu_run(struct kvm_cpu_context *host_ctxt)
 		goto out;
 
 	if (unlikely(hyp_vcpu)) {
-		if (hyp_vcpu->power_state == PSCI_0_2_AFFINITY_LEVEL_ON_PENDING)
-			pkvm_reset_vcpu(hyp_vcpu);
-
-		if (unlikely(!is_vcpu_runnable(hyp_vcpu)))
+		switch (READ_ONCE(hyp_vcpu->power_state)) {
+		case PSCI_0_2_AFFINITY_LEVEL_ON:
+			break;
+		case PSCI_0_2_AFFINITY_LEVEL_ON_PENDING:
+			if (pkvm_reset_vcpu(hyp_vcpu))
+				goto out;
+			break;
+		default:
 			goto out;
+		}
 
 		flush_hyp_vcpu(hyp_vcpu);
 		ret = __kvm_vcpu_run(&hyp_vcpu->vcpu);
