@@ -98,8 +98,21 @@ static void handle_pvm_entry_psci(struct pkvm_hyp_vcpu *hyp_vcpu)
 			hyp_vm = pkvm_hyp_vcpu_to_hyp_vm(hyp_vcpu);
 			target_vcpu = pkvm_mpidr_to_hyp_vcpu(hyp_vm, cpu_id);
 
-			if (target_vcpu && READ_ONCE(target_vcpu->power_state) == PSCI_0_2_AFFINITY_LEVEL_ON_PENDING)
-				WRITE_ONCE(target_vcpu->power_state, PSCI_0_2_AFFINITY_LEVEL_OFF);
+			if (target_vcpu) {
+				int prev;
+
+				prev = cmpxchg_relaxed(&target_vcpu->power_state,
+						       PSCI_0_2_AFFINITY_LEVEL_ON_PENDING,
+						       PSCI_0_2_AFFINITY_LEVEL_OFF);
+				/*
+				 * On rollback win, clear reset_state->reset so
+				 * a future smp_load_acquire doesn't pair with
+				 * this cancelled cycle's release.
+				 */
+				if (prev == PSCI_0_2_AFFINITY_LEVEL_ON_PENDING)
+					WRITE_ONCE(target_vcpu->vcpu.arch.reset_state.reset,
+						   false);
+			}
 
 			ret = PSCI_RET_INTERNAL_FAILURE;
 		}
