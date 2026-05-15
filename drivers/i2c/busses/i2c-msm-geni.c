@@ -1998,6 +1998,7 @@ static int geni_i2c_gsi_write(struct geni_i2c_dev *gi2c, struct i2c_msg msgs[],
 			gsi_bei = false;
 	}
 
+	*wr_index = (msg_index + 1) % MAX_NUM_TRE_MSGS;
 	gi2c->tx_desc = geni_i2c_prep_desc(gi2c, gi2c->tx_c, segs, true);
 	if (!gi2c->tx_desc) {
 		gi2c->err = -ENOMEM;
@@ -2014,9 +2015,8 @@ static int geni_i2c_gsi_write(struct geni_i2c_dev *gi2c, struct i2c_msg msgs[],
 		gi2c->tx_desc->callback_param = NULL;
 	}
 	gi2c->gsi_tx.msg_cnt++;
-	*wr_index = (msg_index + 1) % MAX_NUM_TRE_MSGS;
 	I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
-		    "tx_cnt:%d", gi2c->gsi_tx.msg_cnt);
+		    "tx_cnt:%d wr_index: %d\n", gi2c->gsi_tx.msg_cnt, *wr_index);
 	/* Issue TX */
 	tx_cookie = dmaengine_submit(gi2c->tx_desc);
 	if (dma_submit_error(tx_cookie)) {
@@ -3388,17 +3388,12 @@ static int geni_i2c_runtime_resume(struct device *dev)
 			return ret;
 		}
 
-		ret = geni_icc_set_bw(&gi2c->i2c_rsc);
+		ret = geni_common_icc_set_bw(&gi2c->i2c_rsc, gi2c->ipcl);
 		if (ret) {
 			I2C_LOG_ERR(gi2c->ipcl, true, gi2c->dev,
 			"%s failing at icc set bw ret=%d\n", __func__, ret);
 			return ret;
 		}
-		I2C_LOG_DBG(gi2c->ipcl, false, gi2c->dev,
-			"%s: GENI_TO_CORE:%d CPU_TO_GENI:%d GENI_TO_DDR:%d\n",
-			__func__, gi2c->i2c_rsc.icc_paths[GENI_TO_CORE].avg_bw,
-			gi2c->i2c_rsc.icc_paths[CPU_TO_GENI].avg_bw,
-			gi2c->i2c_rsc.icc_paths[GENI_TO_DDR].avg_bw);
 
 skip_bw_vote:
 		if (gi2c->is_i2c_hub) {

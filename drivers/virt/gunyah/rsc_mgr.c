@@ -17,6 +17,7 @@
 #include <linux/gunyah_rsc_mgr.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
+#include <linux/suspend.h>
 
 #include <asm/gunyah.h>
 
@@ -38,6 +39,37 @@
 
 #define GH_RM_MAX_NUM_FRAGMENTS		62
 #define RM_RPC_FRAGMENTS_MASK		GENMASK(7, 2)
+
+
+struct gh_info_desc {
+	__le16 id;
+	__le16 owner;
+	__le32 size;
+	__le32 offset;
+#define INFO_DESC_VALID		BIT(31)
+	__le32 flags;
+} __packed;
+
+struct gh_rm_info {
+	__le64 tx_msgq_cap;
+	__le64 rx_msgq_cap;
+	__le32 tx_msgq_irq;
+	__le32 rx_msgq_irq;
+	__le32 tx_msgq_queue_depth;
+	__le32 tx_msgq_max_msg_size;
+	__le32 rx_msgq_queue_depth;
+	__le32 rx_msgq_max_msg_size;
+} __packed;
+
+enum gh_info_owner {
+	/* clang-format off */
+	GH_INFO_OWNER_INVALID	= 0,
+	GH_INFO_OWNER_HYP	= 1,
+	GH_INFO_OWNER_ROOTVM	= 2,
+	GH_INFO_OWNER_RM	= 3,
+	GH_INFO_OWNER_QCRM	= 16,
+	/* clang-format on */
+};
 
 struct gh_rm_rpc_hdr {
 	u8 api;
@@ -157,6 +189,8 @@ struct gh_rm {
 	struct auxiliary_device adev;
 	struct miscdevice miscdev;
 	struct irq_domain *irq_domain;
+
+	struct notifier_block pm_nb;
 };
 
 /**
@@ -200,6 +234,8 @@ static inline int gh_rm_error_remap(enum gh_rm_error rm_error)
 struct gh_irq_chip_data {
 	u32 gh_virq;
 };
+
+static void *info_area;
 
 static struct irq_chip gh_rm_irq_chip = {
 	.name			= "Gunyah",
@@ -822,12 +858,110 @@ static int gh_identify(void)
 	return 0;
 }
 
+static void *gh_rm_get_info(enum gh_info_owner owner, u16 id, size_t *size)
+{
+	struct gh_info_desc *desc = info_area;
+	__le16 le_owner = cpu_to_le16(owner);
+	__le16 le_id = cpu_to_le16(id);
+
+	if (!desc)
+		return ERR_PTR(-ENOENT);
+	for (desc = info_area; le32_to_cpu(desc->offset); desc++) {
+		if (!(le32_to_cpu(desc->flags) & INFO_DESC_VALID))
+			continue;
+
+		/* No speculative reads to owner and id unless the descriptor is valid */
+		mb();
+
+		if (le_owner == desc->owner && le_id == desc->id) {
+			if (size)
+				*size = le32_to_cpu(desc->size);
+			return info_area + le32_to_cpu(desc->offset);
+		}
+	}
+	return ERR_PTR(-ENOENT);
+}
+
+static int gh_rm_hibernation_restore(struct notifier_block *nb,
+				     unsigned long action, void *data)
+{
+	struct gh_rm *rm;
+	struct gh_rm_info *info;
+	size_t info_size;
+	unsigned long info_ipa;
+	struct gh_irq_chip_data irq_data;
+	int ret;
+
+	rm = container_of(nb, struct gh_rm, pm_nb);
+
+	switch (action) {
+	case PM_HIBERNATION_PREPARE:
+		/* Cleanup stale data from pre-hibernation */
+		gh_msgq_remove(&rm->msgq);
+		irq_dispose_mapping(rm->tx_ghrsc.irq);
+		irq_dispose_mapping(rm->rx_ghrsc.irq);
+		break;
+	case PM_POST_HIBERNATION:
+		/* Fetch the latest RM info from addrspace info area */
+		ret = gh_hypercall_addrspace_find_info_area(&info_ipa, &info_size);
+		if (gh_error_remap(ret)) {
+			dev_info(rm->dev, "Failed to find addrspace info area\n");
+			return NOTIFY_BAD;
+		}
+
+		info_area = memremap(info_ipa, info_size, MEMREMAP_WB);
+		if (!info_area) {
+			dev_err(rm->dev, "Failed to map addrspace info area\n");
+			return NOTIFY_BAD;
+		}
+
+		info = gh_rm_get_info(GH_INFO_OWNER_RM, 0, &info_size);
+		if (IS_ERR_OR_NULL(info) || info_size != sizeof(*info))
+			goto err;
+
+		/* Reinitialize with the fresh RM information */
+		rm->tx_ghrsc.type = GH_RESOURCE_TYPE_MSGQ_TX;
+		rm->tx_ghrsc.capid = le64_to_cpu(info->tx_msgq_cap);
+		irq_data.gh_virq = le32_to_cpu(info->tx_msgq_irq);
+		ret = irq_domain_alloc_irqs(rm->irq_domain, 1, NUMA_NO_NODE, &irq_data);
+		if (ret <= 0)
+			goto err;
+		rm->tx_ghrsc.irq = ret;
+
+		rm->rx_ghrsc.type = GH_RESOURCE_TYPE_MSGQ_RX;
+		rm->rx_ghrsc.capid = le64_to_cpu(info->rx_msgq_cap);
+		irq_data.gh_virq = le32_to_cpu(info->rx_msgq_irq);
+		ret = irq_domain_alloc_irqs(rm->irq_domain, 1, NUMA_NO_NODE, &irq_data);
+		if (ret <= 0)
+			goto err;
+		rm->rx_ghrsc.irq = ret;
+
+		ret = gh_msgq_init(rm->dev, &rm->msgq, &rm->msgq_client,
+				   &rm->tx_ghrsc, &rm->rx_ghrsc);
+		if (ret)
+			goto err;
+
+		memunmap(info_area);
+		break;
+	default:
+		return NOTIFY_DONE;
+	}
+
+	return NOTIFY_OK;
+
+err:
+	memunmap(info_area);
+	return NOTIFY_BAD;
+}
+
 static int gh_rm_drv_probe(struct platform_device *pdev)
 {
 	struct irq_domain *parent_irq_domain;
 	struct device_node *parent_irq_node;
 	struct gh_msgq_tx_data *msg;
 	struct gh_rm *rm;
+	unsigned long info_ipa;
+	size_t info_size;
 	int ret;
 
 	ret = gh_identify();
@@ -840,6 +974,17 @@ static int gh_rm_drv_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, rm);
 	rm->dev = &pdev->dev;
+
+	ret = gh_hypercall_addrspace_find_info_area(&info_ipa, &info_size);
+	if (!gh_error_remap(ret)) {
+		/* Addrspace info area is supported by Gunyah Hypervisor */
+		rm->pm_nb.notifier_call = gh_rm_hibernation_restore;
+		ret = register_pm_notifier(&rm->pm_nb);
+		if (ret)
+			dev_err(&pdev->dev, "Failed to register pm notifier\n");
+	} else {
+		dev_info(rm->dev, "Addrspace info area is not supported\n");
+	}
 
 	mutex_init(&rm->send_lock);
 	BLOCKING_INIT_NOTIFIER_HEAD(&rm->nh);
@@ -914,6 +1059,7 @@ err_msgq:
 	gh_msgq_remove(&rm->msgq);
 err_cache:
 	kmem_cache_destroy(rm->cache);
+	unregister_pm_notifier(&rm->pm_nb);
 	return ret;
 }
 

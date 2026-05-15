@@ -244,7 +244,11 @@ ld_flags       = $(KBUILD_LDFLAGS) $(ldflags-y) $(LDFLAGS_$(@F))
 
 # ANDROID: Allow DTC_INCLUDE to be set by the BUILD_CONFIG. This allows one to
 # compile an out-of-tree device tree.
+ifndef CONFIG_ARCH_MXR
 DTC_INCLUDE    += $(srctree)/scripts/dtc/include-prefixes $(KBUILD_DTC_INCLUDE)
+else
+DTC_INCLUDE    += $(srctree)/scripts/dtc/include-prefixes
+endif
 
 dtc_cpp_flags  = -Wp,-MMD,$(depfile).pre.tmp -nostdinc                    \
 		 $(addprefix -I,$(DTC_INCLUDE))                          \
@@ -265,7 +269,7 @@ objtool-args-$(CONFIG_SLS)				+= --sls
 objtool-args-$(CONFIG_STACK_VALIDATION)			+= --stackval
 objtool-args-$(CONFIG_HAVE_STATIC_CALL_INLINE)		+= --static-call
 objtool-args-$(CONFIG_HAVE_UACCESS_VALIDATION)		+= --uaccess
-objtool-args-$(CONFIG_GCOV_KERNEL)			+= --no-unreachable
+objtool-args-$(or $(CONFIG_GCOV_KERNEL),$(CONFIG_KCOV))	+= --no-unreachable
 
 objtool-args = $(objtool-args-y)					\
 	$(if $(delay-objtool), --link)					\

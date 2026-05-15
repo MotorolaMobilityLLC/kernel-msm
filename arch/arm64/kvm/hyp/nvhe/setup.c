@@ -29,6 +29,8 @@ phys_addr_t pvmfw_size;
 #define hyp_percpu_size ((unsigned long)__per_cpu_end - \
 			 (unsigned long)__per_cpu_start)
 
+u64 hyp_lm_size_mb;
+
 static void *vmemmap_base;
 static void *vm_table_base;
 static void *hyp_pgt_base;

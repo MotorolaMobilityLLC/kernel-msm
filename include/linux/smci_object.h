@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __SMCI_OBJECT_H
@@ -181,7 +181,14 @@ struct smci_drv_ops {
 /* An API to map smci proxy driver with smci driver */
 int32_t provide_smci_kernel_fun_ops(const struct smci_drv_ops *ops);
 
+#if IS_ENABLED(CONFIG_QCOM_SMCI_PROXY) || IS_ENABLED(CONFIG_QCOM_SI_CORE)
 /* A public API exposed for Kernel client to get environment object */
 int32_t smci_get_client_env_object(struct smci_object *client_env_obj);
+#else
+static inline int32_t smci_get_client_env_object(struct smci_object *client_env_obj)
+{
+	return 0;
+}
+#endif
 
 #endif /* __SMCI_OBJECT_H */

@@ -154,6 +154,7 @@
   __devm_regmap_init_i2c
   __devm_regmap_init_mmio_clk
   devm_regulator_bulk_get
+  devm_regulator_bulk_get_enable
   devm_regulator_get
   devm_regulator_get_optional
   devm_regulator_register
@@ -268,6 +269,7 @@
   flush_work
   __flush_workqueue
   fortify_panic
+  fput
   free_io_pgtable_ops
   free_irq
   fwnode_handle_put
@@ -1574,6 +1576,7 @@
   vsnprintf
   ww_mutex_lock
   ww_mutex_lock_interruptible
+  ww_mutex_trylock
   ww_mutex_unlock
 
 # required by msm_serial.ko

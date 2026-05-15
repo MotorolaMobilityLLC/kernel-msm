@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
-// Copyright (c) 2024-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+/*
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ */
 
 #include <linux/clk.h>
 #include <linux/dmaengine.h>
@@ -17,6 +19,7 @@
 #include <linux/soc/qcom/geni-se.h>
 #include <linux/spi/spi.h>
 #include <linux/spinlock.h>
+#include <linux/suspend.h>
 
 /* SPI SE specific registers and respective register fields */
 #define SE_SPI_CPHA		0x224
@@ -75,6 +78,23 @@
 #define GSI_CS_TOGGLE		BIT(3)
 #define GSI_CPHA		BIT(4)
 #define GSI_CPOL		BIT(5)
+
+#define CREATE_TRACE_POINTS
+#include <trace/events/qup_spi_trace.h>
+
+void spi_trace_log(struct device *dev, const char *fmt, ...)
+{
+	struct va_format vaf = {
+		.fmt = fmt,
+	};
+
+	va_list args;
+
+	va_start(args, fmt);
+	vaf.va = &args;
+	trace_spi_log_info(dev_name(dev), &vaf);
+	va_end(args);
+}
 
 #define DOMAIN_IDX_POWER	0
 #define DOMAIN_IDX_PERF		1
@@ -148,6 +168,8 @@ static void spi_geni_rx_init_dma(struct geni_se *se, dma_addr_t iova, size_t len
 {
 	u32 val;
 
+	spi_trace_log(se->dev, "RX DMA init: iova=0x%llx len=%zu\n", (unsigned long long)iova, len);
+
 	val = GENI_SE_DMA_DONE_EN;
 	val |= GENI_SE_DMA_EOT_EN;
 	val |= GENI_SE_DMA_AHB_ERR_EN;
@@ -162,6 +184,8 @@ static void spi_geni_rx_init_dma(struct geni_se *se, dma_addr_t iova, size_t len
 static void spi_geni_tx_init_dma(struct geni_se *se, dma_addr_t iova, size_t len)
 {
 	u32 val;
+
+	spi_trace_log(se->dev, "TX DMA init: iova=0x%llx len=%zu\n", (unsigned long long)iova, len);
 
 	val = GENI_SE_DMA_DONE_EN;
 	val |= GENI_SE_DMA_EOT_EN;
@@ -192,6 +216,8 @@ static int get_spi_clk_cfg(unsigned int speed_hz,
 	unsigned int actual_hz;
 	int ret;
 
+	spi_trace_log(mas->dev, "%s: requested speed=%u Hz\n", __func__, speed_hz);
+
 	ret = geni_se_clk_freq_match(&mas->se,
 				speed_hz * mas->oversampling,
 				clk_idx, &sclk_freq, false);
@@ -203,6 +229,9 @@ static int get_spi_clk_cfg(unsigned int speed_hz,
 
 	*clk_div = DIV_ROUND_UP(sclk_freq, mas->oversampling * speed_hz);
 	actual_hz = sclk_freq / (mas->oversampling * *clk_div);
+
+	spi_trace_log(mas->dev, "clk_cfg: req=%u actual=%u sclk=%lu idx=%d div=%d\n",
+		      speed_hz, actual_hz, sclk_freq, *clk_idx, *clk_div);
 
 	dev_dbg(mas->dev, "req %u=>%u sclk %lu, idx %d, div %d\n", speed_hz,
 				actual_hz, sclk_freq, *clk_idx, *clk_div);
@@ -222,6 +251,8 @@ static void handle_se_timeout(struct spi_master *spi,
 	unsigned long time_left;
 	struct geni_se *se = &mas->se;
 	const struct spi_transfer *xfer;
+
+	spi_trace_log(mas->dev, "%s: mode=%d\n", __func__, mas->cur_xfer_mode);
 
 	spin_lock_irq(&mas->lock);
 	if (mas->cur_xfer_mode == GENI_SE_FIFO)
@@ -472,6 +503,9 @@ static int setup_fifo_params(struct spi_device *spi_slv,
 	struct geni_se *se = &mas->se;
 	u32 loopback_cfg = 0, cpol = 0, cpha = 0, demux_output_inv = 0;
 	u32 demux_sel;
+
+	spi_trace_log(mas->dev, "%s: mode=0x%x bpw=%d speed=%u\n", __func__,
+		      spi_slv->mode, spi_slv->bits_per_word, spi_slv->max_speed_hz);
 
 	if (mas->last_mode != spi_slv->mode) {
 		if (spi_slv->mode & SPI_LOOP)
@@ -724,6 +758,9 @@ static int spi_geni_init(struct spi_geni_master *mas)
 	u32 spi_tx_cfg, fifo_disable;
 	int ret = -ENXIO;
 
+	if (mas->cur_xfer_mode != GENI_SE_INVALID)
+		return 0;
+
 	pm_runtime_get_sync(mas->dev);
 
 	proto = geni_se_read_proto(se);
@@ -774,7 +811,6 @@ static int spi_geni_init(struct spi_geni_master *mas)
 
 		dev_warn(mas->dev, "FIFO mode disabled, but couldn't get DMA, fall back to FIFO mode\n");
 		fallthrough;
-
 	case 0:
 		mas->cur_xfer_mode = GENI_SE_FIFO;
 		geni_se_select_mode(se, GENI_SE_FIFO);
@@ -899,6 +935,10 @@ static int setup_se_xfer(struct spi_transfer *xfer,
 	struct geni_se *se = &mas->se;
 	int ret;
 
+	spi_trace_log(mas->dev, "%s: len=%u bpw=%d speed=%u tx_buf=%p rx_buf=%p\n",
+		      __func__, xfer->len, xfer->bits_per_word, xfer->speed_hz,
+		      xfer->tx_buf, xfer->rx_buf);
+
 	/*
 	 * Ensure that our interrupt handler isn't still running from some
 	 * prior command before we start messing with the hardware behind
@@ -956,6 +996,11 @@ static int setup_se_xfer(struct spi_transfer *xfer,
 		mas->cur_xfer_mode = GENI_SE_FIFO;
 	} else
 		mas->cur_xfer_mode = GENI_SE_DMA;
+
+	spi_trace_log(mas->dev, "xfer_mode selected: %s (tx_nents=%d rx_nents=%d)\n",
+		      mas->cur_xfer_mode == GENI_SE_FIFO ? "FIFO" : "DMA",
+		      xfer->tx_sg.nents, xfer->rx_sg.nents);
+
 	geni_se_select_mode(se, mas->cur_xfer_mode);
 
 	/*
@@ -987,6 +1032,9 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 {
 	struct spi_geni_master *mas = spi_master_get_devdata(spi);
 	int ret;
+
+	spi_trace_log(mas->dev, "transfer_one: start len=%u mode=%d\n",
+		      xfer->len, mas->cur_xfer_mode);
 
 	if (spi_geni_is_abort_still_pending(mas))
 		return -EBUSY;
@@ -1240,10 +1288,15 @@ static int geni_spi_power_state(struct device *dev, bool power_on)
 	struct device *pwr_dev = mas->pd_list->pd_devs[DOMAIN_IDX_POWER];
 	int ret;
 
-	if (power_on)
+	if (power_on) {
 		ret = pm_runtime_resume_and_get(pwr_dev);
-	else
+	} else {
+		ret = mas->dev_data->geni_spi_set_rate(mas->se.dev, 1000);
+		if (ret)
+			return ret;
+
 		ret = pm_runtime_put_sync(pwr_dev);
+	}
 
 	if (ret)
 		dev_err(mas->se.dev, "failed to switch power state(high=%d) ret=%d\n",
@@ -1406,6 +1459,7 @@ static int spi_geni_probe(struct platform_device *pdev)
 	if (device_property_read_bool(&pdev->dev, "spi-slave"))
 		spi->slave = true;
 
+	mas->cur_xfer_mode = GENI_SE_INVALID;
 	ret = spi_geni_init(mas);
 	if (ret)
 		goto spi_geni_probe_runtime_disable;
@@ -1493,11 +1547,25 @@ static int __maybe_unused spi_geni_suspend(struct device *dev)
 static int __maybe_unused spi_geni_resume(struct device *dev)
 {
 	struct spi_master *spi = dev_get_drvdata(dev);
+	struct spi_geni_master *mas = spi_master_get_devdata(spi);
 	int ret;
 
 	ret = pm_runtime_force_resume(dev);
 	if (ret)
 		return ret;
+	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
+		/*
+		 * Initialize last_mode to 0xFF during system resume
+		 * to force hardware reconfiguration after DSQB.
+		 */
+		mas->last_mode = 0xFF;
+		mas->cur_xfer_mode = GENI_SE_INVALID;
+		ret = spi_geni_init(mas);
+		if (ret) {
+			dev_err(dev, "Failed to re-initialize SPI after suspend: %d\n", ret);
+			return ret;
+		}
+	}
 
 	ret = spi_master_resume(spi);
 	if (ret)

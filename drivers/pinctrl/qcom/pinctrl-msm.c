@@ -1386,6 +1386,25 @@ static void msm_dirconn_cfg_reg(struct irq_data *d, u32 offset)
 	raw_spin_unlock_irqrestore(&pctrl->lock, flags);
 }
 
+static void msm_gpio_irq_init_valid_mask(struct gpio_chip *gc,
+					 unsigned long *valid_mask,
+					 unsigned int ngpios)
+{
+	struct msm_pinctrl *pctrl = gpiochip_get_data(gc);
+	const struct msm_pingroup *g;
+	int i;
+
+	bitmap_fill(valid_mask, ngpios);
+
+	for (i = 0; i < ngpios; i++) {
+		g = &pctrl->soc->groups[i];
+
+		if (g->intr_detection_width != 1 &&
+		    g->intr_detection_width != 2)
+			clear_bit(i, valid_mask);
+	}
+}
+
 static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
@@ -1395,8 +1414,7 @@ static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	u32 intr_target_mask = GENMASK(2, 0);
 	unsigned long flags;
 	u32 offset = 0;
-	bool was_enabled;
-	u32 val;
+	u32 val, oldval;
 
 	if (msm_gpio_needs_dual_edge_parent_workaround(d, type)) {
 		set_bit(d->hwirq, pctrl->dual_edge_irqs);
@@ -1466,8 +1484,7 @@ static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	 * internal circuitry of TLMM, toggling the RAW_STATUS
 	 * could cause the INTR_STATUS to be set for EDGE interrupts.
 	 */
-	val = msm_readl_intr_cfg(pctrl, g);
-	was_enabled = val & BIT(g->intr_raw_status_bit);
+	val = oldval = msm_readl_intr_cfg(pctrl, g);
 	val |= BIT(g->intr_raw_status_bit);
 	if (g->intr_detection_width == 2) {
 		val &= ~(3 << g->intr_detection_bit);
@@ -1520,9 +1537,11 @@ static int msm_gpio_irq_set_type(struct irq_data *d, unsigned int type)
 	/*
 	 * The first time we set RAW_STATUS_EN it could trigger an interrupt.
 	 * Clear the interrupt.  This is safe because we have
-	 * IRQCHIP_SET_TYPE_MASKED.
+	 * IRQCHIP_SET_TYPE_MASKED. When changing the interrupt type, we could
+	 * also still have a non-matching interrupt latched, so clear whenever
+	 * making changes to the interrupt configuration.
 	 */
-	if (!was_enabled)
+	if (val != oldval)
 		msm_ack_intr_status(pctrl, g);
 
 	if (test_bit(d->hwirq, pctrl->dual_edge_irqs))
@@ -1838,6 +1857,7 @@ static int msm_gpio_init(struct msm_pinctrl *pctrl)
 	girq->default_type = IRQ_TYPE_NONE;
 	girq->handler = handle_bad_irq;
 	girq->parents[0] = pctrl->irq;
+	girq->init_valid_mask = msm_gpio_irq_init_valid_mask;
 
 	ret = gpiochip_add_data(&pctrl->chip, pctrl);
 	if (ret) {
@@ -1938,27 +1958,10 @@ static int pinctrl_hibernation_notifier(struct notifier_block *nb,
 								unsigned long event, void *dummy)
 {
 	struct msm_pinctrl *pctrl = msm_pinctrl_data;
-	const struct msm_pinctrl_soc_data *soc = pctrl->soc;
 
 	if (event == PM_HIBERNATION_PREPARE) {
-		pctrl->gpio_regs = kcalloc(soc->ngroups,
-			sizeof(*pctrl->gpio_regs), GFP_KERNEL);
-		if (pctrl->gpio_regs == NULL)
-			return -ENOMEM;
-		if (soc->ntiles) {
-			pctrl->msm_tile_regs = kcalloc(soc->ntiles,
-				sizeof(*pctrl->msm_tile_regs), GFP_KERNEL);
-			if (pctrl->msm_tile_regs == NULL) {
-				kfree(pctrl->gpio_regs);
-				return -ENOMEM;
-			}
-		}
 		pctrl->hibernation = true;
 	} else if (event == PM_POST_HIBERNATION) {
-		kfree(pctrl->gpio_regs);
-		kfree(pctrl->msm_tile_regs);
-		pctrl->gpio_regs = NULL;
-		pctrl->msm_tile_regs = NULL;
 		pctrl->hibernation = false;
 	}
 	return NOTIFY_OK;
@@ -1977,8 +1980,23 @@ static int msm_pinctrl_hibernation_suspend(void)
 	void __iomem *tile_addr = NULL;
 	u32 i, j;
 
-	if (likely(!pctrl->hibernation))
+	if (likely(!pctrl->hibernation) && (pm_suspend_target_state != PM_SUSPEND_MEM ||
+						!IS_ENABLED(CONFIG_DEEPSLEEP)))
 		return 0;
+
+	pctrl->gpio_regs = kcalloc(soc->ngroups,
+		sizeof(*pctrl->gpio_regs), GFP_KERNEL);
+	if (!pctrl->gpio_regs)
+		return -ENOMEM;
+
+	if (soc->ntiles) {
+		pctrl->msm_tile_regs = kcalloc(soc->ntiles,
+			sizeof(*pctrl->msm_tile_regs), GFP_KERNEL);
+		if (!pctrl->msm_tile_regs) {
+			kfree(pctrl->gpio_regs);
+			return -ENOMEM;
+		}
+	}
 
     /* Save direction conn registers for hmss */
 
@@ -2084,6 +2102,11 @@ static void msm_pinctrl_hibernation_resume(void)
 			msm_writel_io(pctrl->gpio_regs[i].io_reg,
 					pctrl, pgroup);
 	}
+
+	kfree(pctrl->gpio_regs);
+	kfree(pctrl->msm_tile_regs);
+	pctrl->gpio_regs = NULL;
+	pctrl->msm_tile_regs = NULL;
 }
 
 static struct syscore_ops msm_pinctrl_pm_ops = {

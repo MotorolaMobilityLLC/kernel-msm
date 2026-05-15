@@ -374,7 +374,7 @@ mlxbf2_gpio_probe(struct platform_device *pdev)
 	gc->ngpio = npins;
 	gc->owner = THIS_MODULE;
 
-	irq = platform_get_irq(pdev, 0);
+	irq = platform_get_irq_optional(pdev, 0);
 	if (irq >= 0) {
 		gs->irq_chip.name = name;
 		gs->irq_chip.irq_set_type = mlxbf2_gpio_irq_set_type;

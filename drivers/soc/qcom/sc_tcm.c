@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/of_reserved_mem.h>
 
+#include <linux/soc/qcom/llcc-qcom.h>
 #include "sc_tcm_internal.h"
 
 struct sc_tcm_device {
@@ -143,37 +144,19 @@ err_sc_tcm_add:
 	return ret;
 }
 
-static int sc_tcm_region(phys_addr_t *base, size_t *size)
+static int sc_tcm_region_llcc(phys_addr_t *base, size_t *size)
 {
-	struct device_node *node;
-	struct device_node *mem_node;
-	struct reserved_mem *rmem;
-	int ret = 0;
+	struct llcc_tcm_data *data;
 
-	node = of_find_compatible_node(NULL, NULL, "qcom,seraph-llcc");
-	if (!node)
-		return -EINVAL;
+	data = llcc_tcm_activate();
+	if (!IS_ERR_OR_NULL(data)) {
+		*base = data->phys_addr;
+		*size = data->mem_size;
 
-	mem_node = of_parse_phandle(node, "memory-region", 0);
-	if (!mem_node) {
-		ret = -EINVAL;
-		goto of_node_put;
+		return 0;
 	}
 
-	rmem = of_reserved_mem_lookup(mem_node);
-	if (!rmem) {
-		ret = -EINVAL;
-		goto mem_node_put;
-	}
-
-	*base = rmem->base;
-	*size = rmem->size;
-mem_node_put:
-	of_node_put(mem_node);
-of_node_put:
-	of_node_put(node);
-	return ret;
-
+	return -EINVAL;
 }
 
 static int __init sc_tcm_module_init(void)
@@ -182,7 +165,7 @@ static int __init sc_tcm_module_init(void)
 	phys_addr_t base;
 	size_t size;
 
-	ret = sc_tcm_region(&base, &size);
+	ret = sc_tcm_region_llcc(&base, &size);
 	if (ret) {
 		pr_err("SC TCM region is not defined\n");
 		return ret;

@@ -156,7 +156,6 @@ struct hv_netvsc_packet {
 	u8 cp_partial; /* partial copy into send buffer */
 
 	u8 rmsg_size; /* RNDIS header and PPI size */
-	u8 rmsg_pgcnt; /* page count of RNDIS header and PPI */
 	u8 page_buf_cnt;
 
 	u16 q_idx;
@@ -891,6 +890,18 @@ struct nvsp_message {
 				 sizeof(struct nvsp_message))
 #define NETVSC_MIN_IN_MSG_SIZE sizeof(struct vmpacket_descriptor)
 
+/* Maximum # of contiguous data ranges that can make up a trasmitted packet.
+ * Typically it's the max SKB fragments plus 2 for the rndis packet and the
+ * linear portion of the SKB. But if MAX_SKB_FRAGS is large, the value may
+ * need to be limited to MAX_PAGE_BUFFER_COUNT, which is the max # of entries
+ * in a GPA direct packet sent to netvsp over VMBus.
+ */
+#if MAX_SKB_FRAGS + 2 < MAX_PAGE_BUFFER_COUNT
+#define MAX_DATA_RANGES (MAX_SKB_FRAGS + 2)
+#else
+#define MAX_DATA_RANGES MAX_PAGE_BUFFER_COUNT
+#endif
+
 /* Estimated requestor size:
  * out_ring_size/min_out_msg_size + in_ring_size/min_in_msg_size
  */
@@ -1046,6 +1057,7 @@ struct net_device_context {
 	struct net_device __rcu *vf_netdev;
 	struct netvsc_vf_pcpu_stats __percpu *vf_stats;
 	struct delayed_work vf_takeover;
+	struct delayed_work vfns_work;
 
 	/* 1: allocated, serial number is valid. 0: not allocated */
 	u32 vf_alloc;
@@ -1059,6 +1071,8 @@ struct net_device_context {
 	/* Used to temporarily save the config info across hibernation */
 	struct netvsc_device_info *saved_netvsc_dev_info;
 };
+
+void netvsc_vfns_work(struct work_struct *w);
 
 /* Azure hosts don't support non-TCP port numbers in hashing for fragmented
  * packets. We can use ethtool to change UDP hash level when necessary.

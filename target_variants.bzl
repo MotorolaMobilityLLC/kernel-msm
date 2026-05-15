@@ -45,6 +45,7 @@ le_32_variants = [
 
 le_64_targets = [
     # keep sorted
+    "neo-le",
     "pineapple-le",
 ]
 
@@ -81,6 +82,7 @@ vm_target_bases = {
     "pineapple": vm_types,
     "niobe": niobe_vm_types,
     "seraph": vm_type_opt1,
+    "neo": vm_type_opt1,
 }
 
 vm_targets = ["{}-{}".format(t, vt) for t in vm_target_bases.keys() for vt in vm_target_bases[t]]

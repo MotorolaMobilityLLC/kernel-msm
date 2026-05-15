@@ -14,6 +14,10 @@ DECLARE_HOOK(android_vh_wq_lockup_pool,
 	TP_PROTO(int cpu, unsigned long pool_ts),
 	TP_ARGS(cpu, pool_ts));
 
+DECLARE_RESTRICTED_HOOK(android_rvh_create_worker,
+	TP_PROTO(struct task_struct *p, struct workqueue_attrs *attrs),
+	TP_ARGS(p, attrs), 1);
+
 #endif /* _TRACE_HOOK_WQLOCKUP_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

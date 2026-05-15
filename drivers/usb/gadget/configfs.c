@@ -19,6 +19,11 @@
 extern int acc_ctrlrequest_composite(struct usb_composite_dev *cdev,
 				const struct usb_ctrlrequest *ctrl);
 void acc_disconnect(void);
+
+static bool android_kernel_aoa_enabled = true;
+module_param(android_kernel_aoa_enabled, bool, 0644);
+MODULE_PARM_DESC(android_kernel_aoa_enabled,
+		"Enable in-kernel AOA driver support (1=enabled, 0=disabled)");
 #endif
 static struct class *android_class;
 static struct device *android_device;
@@ -894,6 +899,8 @@ static ssize_t os_desc_qw_sign_store(struct config_item *item, const char *page,
 	struct gadget_info *gi = os_desc_item_to_gadget_info(item);
 	int res, l;
 
+	if (!len)
+		return len;
 	l = min((int)len, OS_STRING_QW_SIGN_LEN >> 1);
 	if (page[l - 1] == '\n')
 		--l;
@@ -1386,6 +1393,8 @@ static int configfs_composite_bind(struct usb_gadget *gadget,
 		cdev->use_os_string = true;
 		cdev->b_vendor_code = gi->b_vendor_code;
 		memcpy(cdev->qw_sign, gi->qw_sign, OS_STRING_QW_SIGN_LEN);
+	} else {
+		cdev->use_os_string = false;
 	}
 
 	if (gadget_is_otg(gadget) && !otg_desc[0]) {
@@ -1562,7 +1571,7 @@ static int android_setup(struct usb_gadget *gadget,
 	}
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
-	if (value < 0)
+	if (value < 0 && android_kernel_aoa_enabled)
 		value = acc_ctrlrequest_composite(cdev, c);
 #endif
 

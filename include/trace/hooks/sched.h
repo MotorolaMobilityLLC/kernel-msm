@@ -466,6 +466,24 @@ DECLARE_HOOK(android_vh_set_task_comm,
 	TP_PROTO(struct task_struct *p),
 	TP_ARGS(p));
 
+DECLARE_HOOK(android_vh_reweight_entity,
+	TP_PROTO(struct sched_entity *se),
+	TP_ARGS(se));
+
+struct cgroup_subsys_state;
+DECLARE_HOOK(android_vh_sched_move_task,
+	TP_PROTO(struct task_struct *tsk),
+	TP_ARGS(tsk));
+DECLARE_HOOK(android_vh_cpu_cgroup_css_alloc,
+	TP_PROTO(struct task_group *tg, struct cgroup_subsys_state *parent_css),
+	TP_ARGS(tg, parent_css));
+DECLARE_HOOK(android_vh_cpu_cgroup_css_alloc_early,
+	TP_PROTO(struct task_group *parent),
+	TP_ARGS(parent));
+DECLARE_HOOK(android_vh_cpu_cgroup_css_free,
+	TP_PROTO(struct cgroup_subsys_state *css),
+	TP_ARGS(css));
+
 #endif /* _TRACE_HOOK_SCHED_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

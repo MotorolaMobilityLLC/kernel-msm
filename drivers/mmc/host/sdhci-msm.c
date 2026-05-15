@@ -2057,11 +2057,11 @@ static void sdhci_msm_check_power_status(struct sdhci_host *host, u32 req_type)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
+	struct mmc_host *mmc = host->mmc;
 	bool done = false;
 	u32 val = SWITCHABLE_SIGNALING_VOLTAGE;
 	const struct sdhci_msm_offset *msm_offset =
 					msm_host->offset;
-	struct mmc_host *mmc = host->mmc;
 
 	pr_debug("%s: %s: request %d curr_pwr_state %x curr_io_level %x\n",
 			mmc_hostname(host->mmc), __func__, req_type,
@@ -2602,6 +2602,7 @@ static void sdhci_msm_handle_pwr_irq(struct sdhci_host *host, int irq)
 				msm_offset->core_pwrctl_ctl);
 		return;
 	}
+
 	/* Handle BUS ON/OFF*/
 	if (irq_status & CORE_PWRCTL_BUS_ON) {
 		ret = sdhci_msm_setup_vreg(msm_host, true, false);
@@ -4653,6 +4654,7 @@ static unsigned int sdhci_msm_get_sup_clk_rate(struct sdhci_host *host,
 	return sup_clk;
 }
 
+#ifdef CONFIG_SMP
 /**
  * sdhci_msm_irq_affinity_notify - Callback for affinity changes
  * @notify: context as to what irq was changed
@@ -4694,7 +4696,7 @@ sdhci_msm_irq_affinity_notify(struct irq_affinity_notify *notify,
 	sdhci_msm_vote_pmqos(msm_host->mmc,
 			msm_host->sdhci_qos->active_mask);
 }
-
+#endif
 /**
  * sdhci_msm_irq_affinity_release - Callback for affinity notifier release
  * @ref: internal core kernel usage
@@ -4713,13 +4715,14 @@ static int sdhci_msm_setup_qos(struct sdhci_msm_host *msm_host)
 	struct platform_device *pdev = msm_host->pdev;
 	struct sdhci_msm_qos_req *qr = msm_host->sdhci_qos;
 	struct qos_cpu_group *qcg = qr->qcg;
-	struct mmc_host *mmc = msm_host->mmc;
-	struct sdhci_host *host = mmc_priv(mmc);
 	int i, err;
 
 	if (!msm_host->sdhci_qos)
 		return 0;
 
+#ifdef CONFIG_SMP
+	struct mmc_host *mmc = msm_host->mmc;
+	struct sdhci_host *host = mmc_priv(mmc);
 	/* Affine irq to first set of mask */
 	WARN_ON(irq_set_affinity_hint(host->irq, &qcg->mask));
 
@@ -4727,6 +4730,7 @@ static int sdhci_msm_setup_qos(struct sdhci_msm_host *msm_host)
 	msm_host->affinity_notify.notify = sdhci_msm_irq_affinity_notify;
 	msm_host->affinity_notify.release = sdhci_msm_irq_affinity_release;
 	irq_set_affinity_notifier(host->irq, &msm_host->affinity_notify);
+#endif
 
 	for (i = 0; i < qr->num_groups; i++, qcg++) {
 		qcg->qos_req = kcalloc(cpumask_weight(&qcg->mask),
