@@ -1058,7 +1058,6 @@ static ssize_t perfmon_scid_status_show(struct device *dev, struct device_attrib
 
 	for (i = 0; i < SCID_MAX(llcc_priv->drv_ver); i++) {
 		total = 0;
-		offset = TRP_SCID_n_STATUS(i);
 
 		/* For LLCC_VER5_1 capacity field width is increased to 19 bits
 		 * to incorporate large capacity for any SCID
@@ -1079,6 +1078,7 @@ static ssize_t perfmon_scid_status_show(struct device *dev, struct device_attrib
 			total += val;
 		}
 
+		offset = TRP_SCID_n_STATUS(i);
 		llcc_bcast_read(llcc_priv, offset, &val);
 		if (val & TRP_SCID_STATUS_ACTIVE_MASK)
 			cnt += scnprintf(buf + cnt, PAGE_SIZE - cnt, "SCID %02d %10s", i, "ACTIVE");
@@ -2177,6 +2177,18 @@ static int llcc_perfmon_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(llcc_priv->clock)) {
 		pr_warn("failed to get qdss clock node\n");
 		llcc_priv->clock = NULL;
+	}
+
+	/* Enable legacy mode for LLCC_VER_5_1*/
+	if (llcc_priv->drv_ver == LLCC_VER5_1) {
+		offset = LLCC_COMMON_PROF_FILTERS_FEATURE_CFG;
+		result = regmap_write(llcc_priv->llcc_bcast_map, offset,
+			LLCC_PROF_FILTERS_LEGACY_MODE);
+		if (result) {
+			pr_err("Failed to enable legacy mode for LLCC_VER5_1: %d\n", result);
+			return result;
+		}
+		pr_debug("Legacy mode enabled for LLCC_VER5_1\n");
 	}
 
 	result = sysfs_create_group(&pdev->dev.kobj, &llcc_perfmon_group);

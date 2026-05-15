@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -25,6 +25,7 @@ int32_t provide_smci_kernel_fun_ops(const struct smci_drv_ops *ops)
 }
 EXPORT_SYMBOL_GPL(provide_smci_kernel_fun_ops);
 
+#if IS_ENABLED(CONFIG_QCOM_SMCI_PROXY)
 int32_t smci_get_client_env_object(struct smci_object *client_env_obj)
 {
 	int32_t ret = -EAGAIN;
@@ -40,7 +41,7 @@ int32_t smci_get_client_env_object(struct smci_object *client_env_obj)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(smci_get_client_env_object);
-
+#endif
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("SMCI proxy driver");

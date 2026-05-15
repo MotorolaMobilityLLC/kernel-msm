@@ -4231,8 +4231,6 @@ static void lan78xx_disconnect(struct usb_interface *intf)
 
 	set_bit(EVENT_DEV_DISCONNECT, &dev->flags);
 
-	netif_napi_del(&dev->napi);
-
 	udev = interface_to_usbdev(intf);
 	net = dev->net;
 

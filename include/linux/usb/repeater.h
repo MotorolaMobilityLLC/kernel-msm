@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __LINUX_USB_REPEATER_H
 #define __LINUX_USB_REPEATER_H
@@ -28,6 +28,8 @@ struct usb_repeater  {
 #if IS_ENABLED(CONFIG_USB_REPEATER)
 struct usb_repeater *devm_usb_get_repeater_by_phandle(struct device *dev,
 		const char *phandle, u8 index);
+struct usb_repeater *devm_usb_get_optional_repeater_by_phandle(
+	       struct device *dev, const char *phandle, u8 index);
 struct usb_repeater *devm_usb_get_repeater_by_node(struct device *dev,
 		struct device_node *node);
 struct usb_repeater *usb_get_repeater_by_phandle(struct device *dev,
@@ -40,6 +42,10 @@ void usb_remove_repeater_dev(struct usb_repeater *r);
 static inline struct usb_repeater *devm_usb_get_repeater_by_phandle(
 		struct device *d, const char *phandle, u8 index)
 { return ERR_PTR(-ENXIO); }
+
+static inline struct usb_repeater *devm_usb_get_optional_repeater_by_phandle(
+		struct device *dev, const char *phandle, u8 index)
+{ return NULL; }
 
 static inline struct usb_repeater *devm_usb_get_repeater_by_node(
 		struct device *dev, struct device_node *node)

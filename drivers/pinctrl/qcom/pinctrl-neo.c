@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -24,6 +24,18 @@ static const struct msm_pinctrl_soc_data neo_pinctrl = {
 	.nqup_regs = ARRAY_SIZE(neo_qup_regs),
 	.wakeirq_map = neo_pdc_map,
 	.nwakeirq_map = ARRAY_SIZE(neo_pdc_map),
+	.egpio_func = 11,
+};
+
+static const struct msm_pinctrl_soc_data neo_vm_pinctrl = {
+	.pins = neo_pins,
+	.npins = ARRAY_SIZE(neo_pins),
+	.functions = neo_functions,
+	.nfunctions = ARRAY_SIZE(neo_functions),
+	.groups = neo_groups,
+	.ngroups = ARRAY_SIZE(neo_groups),
+	.ngpios = 156,
+	.egpio_func = 11,
 };
 
 static int neo_pinctrl_probe(struct platform_device *pdev)
@@ -39,6 +51,7 @@ static int neo_pinctrl_probe(struct platform_device *pdev)
 
 static const struct of_device_id neo_pinctrl_of_match[] = {
 	{ .compatible = "qcom,neo-pinctrl", .data = &neo_pinctrl},
+	{ .compatible = "qcom,neo-vm-pinctrl", .data = &neo_vm_pinctrl},
 	{ },
 };
 

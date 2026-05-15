@@ -22,7 +22,7 @@ config QCOM_MEM_BUF_GH
 	  If unsure, say N.
 
 config QCOM_MEM_BUF_DEV
-	tristate
+	tristate "Qualcomm Technologies, Inc. Memory Buffer Sharing Driver device"
 
 config QCOM_MEM_BUF_DEV_GH
 	bool
@@ -37,3 +37,20 @@ config QCOM_MEM_BUF_MSGQ
 	  between VMs, and relinquished when a VM is finished with the memory that it
 	  requested from another VM.
 	  If unsure, say N.
+
+config MEM_BUF_RM_TRANS_LEND
+    bool "Use LEND for mem_buf RM transfers by default"
+    help
+      Enable this to make mem_buf-to-RM memory transfers use
+      LEND instead of DONATE. This improves
+      reclaim behavior on QTVM crashes and aligns with RM auto-release
+      semantics.
+      If disabled, the default remains SHARE (or DONATE, based on legacy).
+
+config CONFIG_RECLAIM_LENT_MEMORY
+	bool "Qualcomm Technologies, Inc. Reclaim lent memory"
+	help
+	 The lent memory can be reclaimed
+	 when VM shutdown or crash which can be known by registering a new
+	 notifier with gh_register_vm_notifier(). Also add a debugfs node to
+	 show the total size of lent memory from PVM to TVM.

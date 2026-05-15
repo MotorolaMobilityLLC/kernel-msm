@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __SOC_QCOM_HIBERNATION_H__
@@ -41,5 +41,26 @@ struct hib_bio_batch {
 };
 
 extern struct block_device *hiber_bdev;
+
+#if IS_ENABLED(CONFIG_QCOM_SECURE_HIBERNATION)
+extern int get_key_for_hib(void);
+#else
+static inline int get_key_for_hib(void)
+{
+	return 0;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_QCOM_KERNEL_BASED_RESTORE)
+int kernel_based_restore = 1;
+#else
+int kernel_based_restore;
+#endif
+
+#if !IS_ENABLED(CONFIG_QCOM_HIB_SEC_KEY)
+int ta_based_key = 1;
+#else
+int ta_based_key;
+#endif
 
 #endif /* __SOC_QCOM_HIBERNATION_H__ */

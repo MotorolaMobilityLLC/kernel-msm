@@ -169,7 +169,7 @@ void rtw_tx_report_purge_timer(struct timer_list *t)
 	rtw_warn(rtwdev, "failed to get tx report from firmware\n");
 
 	spin_lock_irqsave(&tx_report->q_lock, flags);
-	skb_queue_purge(&tx_report->queue);
+	ieee80211_purge_tx_queue(rtwdev->hw, &tx_report->queue);
 	spin_unlock_irqrestore(&tx_report->q_lock, flags);
 }
 

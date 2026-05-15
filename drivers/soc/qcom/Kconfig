@@ -240,6 +240,17 @@ config QCOM_CRM
 	  of hardware components aggregate requests for these resources and
 	  help apply the aggregated power state on the resource.
 
+config QCOM_CRM_V2
+	tristate "Qualcomm Technologies, Inc. (QTI) CRM-V2 driver"
+	depends on QCOM_RPMH && (ARCH_QCOM || COMPILE_TEST)
+	help
+	  Support for communication with the hardened-CRM blocks in
+	  Qualcomm Technologies, Inc. (QTI) SoCs. CRM-V2 provides interface
+	  to vote desired power state of resources local to a subsystem. A set
+	  of hardware components aggregate requests for these resources and
+	  help apply the aggregated power state on the resource.
+
+
 config QCOM_DCC_V2
        tristate "Qualcomm Technologies Data Capture and Compare enigne support for V2"
        help
@@ -406,6 +417,15 @@ config QCOM_LLCC
 	  SDM845. This provides interfaces to clients that use the LLCC.
 	  Say yes here to enable LLCC slice driver.
 
+config QCOM_LLCC_DEBUG
+	tristate "Qualcomm Technologies,Inc. LLCC perf debug driver"
+	depends on DEBUG_FS
+	help
+	  This driver will expose debugfs nodes to show the status of
+	  PCB & configure sleep or wakeup as per ADR feature by reading
+	  the information through hardware. Debugfs interface is used to
+	  configure the PCBs in LLCC.
+
 config QCOM_KRYO_L2_ACCESSORS
 	bool
 	depends on ARCH_QCOM && ARM64 || COMPILE_TEST
@@ -445,7 +465,7 @@ config QCOM_OCMEM
 
 config QCOM_PCIE_PDC
 	tristate "Qualcomm Technologies, Inc. (QTI) PCIe PDC driver"
-	depends on QCOM_CRM && (ARCH_QCOM || COMPILE_TEST)
+	depends on (QCOM_CRM || QCOM_CRM_V2) && (ARCH_QCOM || COMPILE_TEST)
 	help
 	  Support for enabling PCIe PDC interrupts in Qualcomm Technologies, Inc.
 	  (QTI) SoCs. PCIe PDC driver provides interfaces to configure PDC interrupt
@@ -553,6 +573,15 @@ config QCOM_RPMH
 	  internal bus to transmit state requests for shared resources. A set
 	  of hardware components aggregate requests for these resources and
 	  help apply the aggregated state on the resource.
+
+config QCOM_RPMH_TIMEOUT
+	int "Timeout for RPMH and CRM communication"
+	default 5000
+	depends on QCOM_RPMH
+	help
+	  The amount of time, in milliseconds, that should be sufficient to
+	  receive a response from RPMh for the resource request from APSS.
+	  Wait for this duration before emitting a warning.
 
 config QCOM_RPMHPD
 	tristate "Qualcomm RPMh Power domain driver"
@@ -1347,6 +1376,14 @@ config QCOM_VM_ALIVE_LOG_ENCRYPT
 	  wrapping. This needs to be enabled on both Primary VM and the other VM
 	  whose kmsg is desired.
 
+config QCOM_VM_CRASH_DMESG_DUMP
+	bool "Enable crash log access from VM to PVM"
+	depends on QCOM_VM_DMESG_DUMPER
+	help
+	  Enable support for accessing crash logs from VM to PVM.
+	  This is useful for debugging and post-mortem analysis of VM crashes.
+	  If not sure, say N.
+
 config MSM_SYSTEM_HEALTH_MONITOR
 	tristate "System Health Monitor"
 	help
@@ -1450,4 +1487,24 @@ config QCOM_SC_TCM_MEM
 	  registered SC TCM memory in granularity of the
 	  PAGE_SIZE bytes.
           If not sure, say N.
+
+config QCOM_HIB_SEC_KEY
+	tristate "SOC supports Qcom Hib Secure Key"
+	depends on HIBERNATION
+	help
+	  SOC supports Qcom Secure Kernel Key
+	  Enable support for Qualcomm Secure Kernel Key feature.
+	  Used for secure key handling during hibernation resume.
+	  Requires hibernation to be enabled in the kernel.
+	  If not sure, say N.
+
+config QCOM_KERNEL_BASED_RESTORE
+	tristate "Denotes Kernel based restore"
+	depends on HIBERNATION
+	help
+	  Select if qcom chipsets are equipped with Kernel based restore.
+	  Kernel assists in restoring system state after hibernation.
+	  Requires hibernation support in the kernel.
+	  If not sure, say N.
+
 endmenu

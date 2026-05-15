@@ -199,4 +199,13 @@ config PTP_QCOM_CLOCK_TSC
 	  To compile this driver as a module, choose M here: the module
 	  will be called ptp_qcom_tsc.
 
+config PTP_QCOM_CLOCK_TSC_VM
+	tristate "QCOM TSC virtual PTP clock"
+	help
+	  This driver adds support for reading the TSC timestamp using the
+	  PTP clock gettime operation on a virtual machine(VM).
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called ptp_qcom_tsc_vm.
+
 endmenu

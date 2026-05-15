@@ -7,6 +7,7 @@ qcom-dcvs-y := dcvs.o dcvs_icc.o dcvs_epss.o trace-dcvs.o
 obj-$(CONFIG_QCOM_MEMLAT) += memlat.o
 obj-$(CONFIG_QCOM_BWMON) += bwmon.o
 obj-$(CONFIG_QCOM_BWPROF) += bwprof.o
+obj-$(CONFIG_QCOM_BWPROF_SCMI) += bwprof_scmi.o
 obj-$(CONFIG_QCOM_BUS_PROF) += trace-bus-prof.o
 obj-$(CONFIG_QCOM_LLCC_MISS) += llcc_miss.o
 obj-$(CONFIG_QCOM_LLCC_OCCUPANCY) += llcc_occ.o

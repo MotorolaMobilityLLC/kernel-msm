@@ -297,6 +297,18 @@ static char *uof_get_name(struct adf_accel_dev *accel_dev, u32 obj_num)
 	return NULL;
 }
 
+static u16 get_ring_to_svc_map(struct adf_accel_dev *accel_dev)
+{
+	switch (get_service_enabled(accel_dev)) {
+	case SVC_CY:
+		return ADF_GEN4_DEFAULT_RING_TO_SRV_MAP;
+	case SVC_DC:
+		return ADF_GEN4_DEFAULT_RING_TO_SRV_MAP_DC;
+	}
+
+	return 0;
+}
+
 static u32 uof_get_ae_mask(struct adf_accel_dev *accel_dev, u32 obj_num)
 {
 	switch (get_service_enabled(accel_dev)) {
@@ -353,6 +365,7 @@ void adf_init_hw_data_4xxx(struct adf_hw_device_data *hw_data)
 	hw_data->uof_get_ae_mask = uof_get_ae_mask;
 	hw_data->set_msix_rttable = set_msix_default_rttable;
 	hw_data->set_ssm_wdtimer = adf_gen4_set_ssm_wdtimer;
+	hw_data->get_ring_to_svc_map = get_ring_to_svc_map;
 	hw_data->disable_iov = adf_disable_sriov;
 	hw_data->ring_pair_reset = adf_gen4_ring_pair_reset;
 	hw_data->enable_pm = adf_gen4_enable_pm;

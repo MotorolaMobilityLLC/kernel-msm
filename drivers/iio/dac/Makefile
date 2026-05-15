@@ -48,3 +48,4 @@ obj-$(CONFIG_TI_DAC5571) += ti-dac5571.o
 obj-$(CONFIG_TI_DAC7311) += ti-dac7311.o
 obj-$(CONFIG_TI_DAC7612) += ti-dac7612.o
 obj-$(CONFIG_VF610_DAC) += vf610_dac.o
+obj-$(CONFIG_QCOM_SPMI_VDAC) += qcom-spmi-vdac.o

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+
+config PCI_MSM_EOM
+	tristate "MSM PCIE EOM driver"
+	depends on PCI_MSM && EOM_MSM
+	help
+	  This option enables the EOM for PCIe for MSM platforms.
+	  This will enable the pcie phy access driver which is a
+	  interface to access PCIe PHYs through the EOM framework.
+	  Enable this if you are using EOM for PCIe PHY.

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  *  Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- *  Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ *  Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _MEM_BUF_H
@@ -118,6 +118,13 @@ void *mem_buf_alloc(struct mem_buf_allocation_data *alloc_data);
 void mem_buf_free(void *membuf);
 struct gh_sgl_desc *mem_buf_get_sgl(void *membuf);
 int mem_buf_current_vmid(void);
+
+static inline u32 gh_rm_default_trans_type(void)
+{
+	return IS_ENABLED(CONFIG_MEM_BUF_RM_TRANS_LEND)
+		? GH_RM_TRANS_TYPE_LEND
+		: GH_RM_TRANS_TYPE_DONATE;
+}
 #else
 
 static inline void *mem_buf_alloc(struct mem_buf_allocation_data *alloc_data)
@@ -134,6 +141,11 @@ static inline struct gh_sgl_desc *mem_buf_get_sgl(void *membuf)
 static inline int mem_buf_current_vmid(void)
 {
 	return -EINVAL;
+}
+
+static inline u32 gh_rm_default_trans_type(void)
+{
+	return GH_RM_TRANS_TYPE_DONATE;
 }
 #endif /* CONFIG_QCOM_MEM_BUF */
 

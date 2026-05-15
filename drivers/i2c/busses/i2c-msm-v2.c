@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2014-2019, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 /*
@@ -1554,8 +1554,8 @@ poll_active_end:
 static void i2c_msm_clk_path_vote(struct i2c_msm_ctrl *ctrl)
 {
 	if (ctrl->rsrcs.icc_path)
-		icc_set_bw(ctrl->rsrcs.icc_path,
-		I2C_MSM_CLK_PATH_AVRG_BW(ctrl), I2C_MSM_CLK_PATH_BRST_BW(ctrl));
+		icc_set_bw(ctrl->rsrcs.icc_path, Bps_to_icc(I2C_MSM_CLK_PATH_AVRG_BW(ctrl)),
+			   Bps_to_icc(I2C_MSM_CLK_PATH_BRST_BW(ctrl)));
 }
 
 static void i2c_msm_clk_path_unvote(struct i2c_msm_ctrl *ctrl)

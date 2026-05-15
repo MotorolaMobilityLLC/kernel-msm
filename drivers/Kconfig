@@ -119,6 +119,8 @@ source "drivers/infiniband/Kconfig"
 
 source "drivers/edac/Kconfig"
 
+source "drivers/eom/Kconfig"
+
 source "drivers/rtc/Kconfig"
 
 source "drivers/dma/Kconfig"

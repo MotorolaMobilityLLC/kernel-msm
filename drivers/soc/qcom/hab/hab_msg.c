@@ -552,10 +552,6 @@ static int hab_receive_export_desc(struct physical_channel *pchan,
 	export->pchan = pchan;
 	export->vchan = vchan;
 
-	if (pchan->mem_proto == 1) {
-		export->vcid_remote = export->vcid_local;
-		export->vcid_local = vchan->id;
-	}
 	*exp_desc = &exp_desc_super->exp;
 
 	return 0;
@@ -577,6 +573,7 @@ static int hab_recv_and_enqueue_export_desc(struct physical_channel *pchan,
 		return ret;
 
 	if (likely(!is_lb)) {
+		/* vcid_remote is from remote POV, expect same with local vcid */
 		if (vchan->id != exp_desc->vcid_remote) {
 			pr_err("exp_desc received on vc %x, not expected vc %x\n",
 				vchan->id, exp_desc->vcid_remote);
@@ -590,6 +587,10 @@ static int hab_recv_and_enqueue_export_desc(struct physical_channel *pchan,
 	exp_desc_super->is_loopback = is_lb;
 
 	if (pchan->mem_proto == 1) {
+		/* switch vcid local and remote before assigning to ack */
+		exp_desc->vcid_remote = exp_desc->vcid_local;
+		exp_desc->vcid_local = vchan->id;
+
 		ack_recvd = kzalloc(sizeof(*ack_recvd), GFP_ATOMIC);
 		if (!ack_recvd) {
 			ret = -ENOMEM;

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #if !defined(_TRACE_DCVS_H) || defined(TRACE_HEADER_MULTI_READ)
@@ -294,6 +294,43 @@ TRACE_EVENT(bwprof_last_sample,
 		__entry->mem_freq)
 );
 
+TRACE_EVENT(bwprof_last_sample_meas,
+
+	TP_PROTO(const char *name, u64 ts, u32 meas_mbps_0, u32 meas_mbps_1,
+			u32 meas_mbps_2, u32 max_mbps, u32 mem_freq),
+
+	TP_ARGS(name, ts, meas_mbps_0, meas_mbps_1, meas_mbps_2, max_mbps,
+				mem_freq),
+
+	TP_STRUCT__entry(
+		__string(name, name)
+		__field(u64, ts)
+		__field(u32, meas_mbps_0)
+		__field(u32, meas_mbps_1)
+		__field(u32, meas_mbps_2)
+		__field(u32, max_mbps)
+		__field(u32, mem_freq)
+	),
+
+	TP_fast_assign(
+		__assign_str(name, name);
+		__entry->ts = ts;
+		__entry->meas_mbps_0 = meas_mbps_0;
+		__entry->meas_mbps_1 = meas_mbps_1;
+		__entry->meas_mbps_2 = meas_mbps_2;
+		__entry->max_mbps = max_mbps;
+		__entry->mem_freq = mem_freq;
+	),
+
+	TP_printk("dev=%s ts=%llu meas_mbps_0=%u meas_mbps_1=%u meas_mbps_2=%u max_mbps=%u mem_freq=%u",
+		__get_str(name),
+		__entry->ts,
+		__entry->meas_mbps_0,
+		__entry->meas_mbps_1,
+		__entry->meas_mbps_2,
+		__entry->max_mbps,
+		__entry->mem_freq)
+);
 
 #endif /* _TRACE_DCVS_H */
 

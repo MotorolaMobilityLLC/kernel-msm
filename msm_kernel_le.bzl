@@ -20,6 +20,8 @@ load(
     "kernel_modules_install",
     "kernel_uapi_headers_cc_library",
     "merged_kernel_uapi_headers",
+    "super_image",
+    "unsparsed_image",
 )
 load(":allyes_images.bzl", "gen_allyes_files")
 load(":image_opts.bzl", "boot_image_opts")
@@ -63,9 +65,10 @@ def _define_build_config(
             "ABL_SRC=bootable/bootloader/edk2",
             "BOOT_IMAGE_HEADER_VERSION={}".format(boot_image_opts.boot_image_header_version),
             "BASE_ADDRESS=0x%X" % boot_image_opts.base_address,
+            "SUPER_IMAGE_SIZE=0x%X" % boot_image_opts.super_image_size,
             "PAGE_SIZE={}".format(boot_image_opts.page_size),
             "TARGET_HAS_SEPARATE_RD=1",
-            "PREFERRED_USERSPACE=le",
+            '[ $MSM_ARCH != "neo" ] && PREFERRED_USERSPACE=le',
             "BUILD_BOOT_IMG=1",
             "BUILD_INITRAMFS=1",
             '[ -z "$DT_OVERLAY_SUPPORT" ] && DT_OVERLAY_SUPPORT=1',
@@ -189,9 +192,13 @@ def _define_kernel_dist(target, msm_target, variant):
         ":{}_build_config".format(target),
     ]
 
-    if msm_target == "mdm9607" or target.split("_")[0] == "pineapple-le" or target.split("_")[0] == "neo-le":
+    if msm_target == "mdm9607" or target.split("_")[0] == "pineapple-le":
         msm_dist_targets += [
             ":verity_key",
+        ]
+    elif target.split("_")[0] == "neo-le":
+        msm_dist_targets += [
+            ":{}_super_image".format(target),
         ]
     else:
         msm_dist_targets += [
@@ -255,8 +262,8 @@ def _define_image_build(
         vendor_dlkm_modules_blocklist = "modules.vendor_blocklist.msm.{}".format(msm_target),
         dtbo_srcs = [":{}/".format(target) + d for d in dtbo_list] if dtbo_list else None,
         vendor_ramdisk_binaries = vendor_ramdisk_binaries,
-        gki_ramdisk_prebuilt_binary = get_gki_ramdisk_prebuilt_binary(),
-        boot_image_outs = ["boot.img", "init_boot.img", "dtb.img", "vendor_boot.img"],
+        gki_ramdisk_prebuilt_binary = None,
+        boot_image_outs = ["boot.img", "dtb.img", "vendor_boot.img"],
         deps = [
             "modules.list.msm.{}".format(msm_target),
             "modules.vendor_blocklist.msm.{}".format(msm_target),
@@ -298,6 +305,16 @@ def _define_image_build(
         name = "{}_vendor_dlkm_image_file".format(target),
         srcs = [":{}_images".format(target)],
         output_group = "vendor_dlkm.img",
+    )
+    super_image(
+        name = "{}_super_image".format(target),
+        system_dlkm_image = ":{}_system_dlkm_image_file".format(target),
+        vendor_dlkm_image = ":{}_vendor_dlkm_image_file".format(target),
+    )
+    unsparsed_image(
+        name = "{}_unsparsed_image".format(target),
+        src = "{}_super_image".format(target),
+        out = "super_unsparsed.img",
     )
 
 def define_msm_le(
@@ -356,7 +373,7 @@ def define_msm_le(
         target_arch,
     )
 
-    if msm_target != "neo" or msm_target != "neo-le":
+    if msm_target != "neo" and msm_target != "neo-le":
         kernel_images(
             name = "{}_images".format(target),
             kernel_modules_install = ":{}_modules_install".format(target),

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __SOC_QCOM_CRM_H__
@@ -76,10 +76,12 @@ struct crm_cmd {
 	bool wait;
 };
 
-#if IS_ENABLED(CONFIG_QCOM_CRM)
+#if IS_ENABLED(CONFIG_QCOM_CRM) || IS_ENABLED(CONFIG_QCOM_CRM_V2)
 int crm_write_perf_ol(const struct device *dev, enum crm_drv_type drv,
 		      u32 drv_id, const struct crm_cmd *cmd);
 int crm_write_bw_vote(const struct device *dev, enum crm_drv_type drv,
+		      u32 drv_id, const struct crm_cmd *cmd);
+int crm_write_bw_pt_vote(const struct device *dev, enum crm_drv_type drv,
 		      u32 drv_id, const struct crm_cmd *cmd);
 int crm_write_pwr_states(const struct device *dev, u32 drv_id);
 int crm_dump_drv_regs(const char *name, u32 drv_id);
@@ -101,6 +103,12 @@ static inline int crm_write_bw_vote(const struct device *dev,
 				    const struct crm_cmd *cmd)
 { return -ENODEV; }
 
+static inline int crm_write_bw_pt_vote(const struct device *dev,
+					enum crm_drv_type drv,
+					u32 drv_id,
+					const struct crm_cmd *cmd)
+{ return -ENODEV; }
+
 static inline int crm_write_pwr_states(const struct device *dev, u32 drv_id)
 { return -ENODEV; }
 
@@ -115,6 +123,6 @@ static inline int crm_read_curr_perf_ol(const char *name, int vcd_idx, u32 *data
 
 static inline const struct device *crm_get_device(const char *name)
 { return ERR_PTR(-ENODEV); }
-#endif /* CONFIG_QCOM_CRM */
+#endif /* CONFIG_QCOM_CRM || CONFIG_QCOM_CRM_V2 */
 
 #endif /* __SOC_QCOM_CRM_H__ */

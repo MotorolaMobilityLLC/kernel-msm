@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _DMESG_DUMPER_PRIVATE_H
@@ -84,6 +84,9 @@ struct qcom_dmesg_dumper {
 	struct notifier_block gh_panic_nb;
 	struct md_region md_entry;
 	bool is_static;
+#ifdef CONFIG_QCOM_VM_CRASH_DMESG_DUMP
+	struct notifier_block vm_nb;
+#endif
 };
 
 #if IS_ENABLED(CONFIG_QCOM_VM_ALIVE_LOG_ENCRYPT)

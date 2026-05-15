@@ -1273,6 +1273,7 @@
   bpf_prog_add
   bpf_prog_put
   bpf_prog_sub
+  bpf_redirect_info
   bpf_stats_enabled_key
   bpf_warn_invalid_xdp_action
   __cpuhp_remove_state

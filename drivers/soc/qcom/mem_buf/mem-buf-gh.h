@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef MEM_BUF_GH_H
@@ -31,6 +31,10 @@ int mem_buf_alloc_fd(struct mem_buf_alloc_ioctl_arg *allocation_args);
 int mem_buf_retrieve_user(struct mem_buf_retrieve_ioctl_arg *uarg);
 int mem_buf_msgq_alloc(struct device *dev);
 void mem_buf_msgq_free(struct device *dev);
+#ifdef CONFIG_RECLAIM_LENT_MEMORY
+void mem_buf_relinquish_all_mem(gh_vmid_t vmid);
+u64 mem_buf_account_all_mem(void);
+#endif /*CONFIG_RECLAIM_LENT_MEMORY*/
 #else
 static inline int mem_buf_alloc_fd(struct mem_buf_alloc_ioctl_arg *allocation_args)
 {
@@ -50,5 +54,16 @@ static inline int mem_buf_msgq_alloc(struct device *dev)
 static inline void mem_buf_msgq_free(struct device *dev)
 {
 }
+
+#ifdef CONFIG_RECLAIM_LENT_MEMORY
+static inline void mem_buf_relinquish_all_mem(gh_vmid_t vmid)
+{
+}
+
+static inline u64 mem_buf_account_all_mem(void)
+{
+	return 0;
+}
+#endif /*CONFIG_RECLAIM_LENT_MEMORY*/
 #endif
 #endif

@@ -2038,6 +2038,9 @@ static int iqs7222_parse_chan(struct iqs7222_private *iqs7222,
 		if (error)
 			return error;
 
+		if (!iqs7222->kp_type[chan_index][i])
+			continue;
+
 		if (!dev_desc->event_offset)
 			continue;
 

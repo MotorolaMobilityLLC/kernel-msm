@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/err.h>
@@ -162,10 +162,21 @@ static const struct pdc_match_data cliffs_pdc_match_data = {
 	.size = ARRAY_SIZE(cliffs_irq_map),
 };
 
+static const struct irq_map seraph_irq_map[] = {
+	{ 38, 11, 10 },
+	{ 40, 12, 11 },
+};
+
+static const struct pdc_match_data seraph_pdc_match_data = {
+	.map = seraph_irq_map,
+	.size = ARRAY_SIZE(seraph_irq_map),
+};
+
 static const struct of_device_id qcom_pcie_pdc_match_table[] = {
 	{ .compatible = "qcom,pineapple-pcie-pdc", .data = &pineapple_pdc_match_data },
 	{ .compatible = "qcom,cliffs-pcie-pdc", .data = &cliffs_pdc_match_data },
 	{ .compatible = "qcom,niobe-pcie-pdc", .data = &niobe_pdc_match_data },
+	{ .compatible = "qcom,seraph-pcie-pdc", .data = &seraph_pdc_match_data },
 	{}
 };
 MODULE_DEVICE_TABLE(of, qcom_pcie_pdc_match_table);

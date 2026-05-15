@@ -81,8 +81,10 @@ static int smb2_compound_op(const unsigned int xid, struct cifs_tcon *tcon,
 	int len;
 
 	vars = kzalloc(sizeof(*vars), GFP_ATOMIC);
-	if (vars == NULL)
-		return -ENOMEM;
+	if (vars == NULL) {
+		rc = -ENOMEM;
+		goto out;
+	}
 	rqst = &vars->rqst[0];
 	rsp_iov = &vars->rsp_iov[0];
 
@@ -510,6 +512,7 @@ static int smb2_compound_op(const unsigned int xid, struct cifs_tcon *tcon,
 		break;
 	}
 
+out:
 	if (cfile)
 		cifsFileInfo_put(cfile);
 

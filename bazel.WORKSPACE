@@ -29,3 +29,8 @@ new_local_repository(
     path = "external/dtc",
     build_file = "msm-kernel/BUILD.dtc",
 )
+
+local_repository(
+    name = "rules_pkg",
+    path = "external/bazelbuild-rules_pkg",
+)
