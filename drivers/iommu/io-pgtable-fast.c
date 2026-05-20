@@ -139,18 +139,15 @@ static inline dma_addr_t av8l_dma_addr(void *addr)
 static void __av8l_clean_range(struct device *dev, void *start, void *end)
 {
 	size_t size;
-	void *region_end;
-	unsigned long page_end;
 
 	if (is_vmalloc_addr(start)) {
 		while (start < end) {
-			page_end = round_down((unsigned long)start + PAGE_SIZE,
-					      PAGE_SIZE);
-			region_end = min_t(void *, end, page_end);
-			size = region_end - start;
+			unsigned long offset = offset_in_page(start);
+
+			size = min_t(size_t, end - start, PAGE_SIZE - offset);
 			dma_sync_single_for_device(dev, av8l_dma_addr(start),
 						   size, DMA_TO_DEVICE);
-			start = region_end;
+			start += size;
 		}
 	} else {
 		size = end - start;

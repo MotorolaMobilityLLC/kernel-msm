@@ -9,6 +9,8 @@
 
 #include <linux/lockdep.h>
 
+#include <trace/hooks/rcu.h>
+
 static void rcu_exp_handler(void *unused);
 static int rcu_print_task_exp_stall(struct rcu_node *rnp);
 static void rcu_exp_print_detail_task_stall_rnp(struct rcu_node *rnp);
@@ -1016,8 +1018,10 @@ void synchronize_rcu_expedited(void)
 
 	/* Wait for expedited grace period to complete. */
 	rnp = rcu_get_root();
+	trace_android_vh_sync_rcu_wait_start(current);
 	wait_event(rnp->exp_wq[rcu_seq_ctr(s) & 0x3],
 		   sync_exp_work_done(s));
+	trace_android_vh_sync_rcu_wait_end(current);
 	smp_mb(); /* Work actions happen before return. */
 
 	/* Let the next expedited grace period start. */
