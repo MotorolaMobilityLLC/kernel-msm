@@ -113,7 +113,13 @@ int __pkvm_create_private_mapping(phys_addr_t phys, size_t size,
 
 int __hyp_allocator_map(unsigned long va, phys_addr_t phys)
 {
-	return __pkvm_create_mappings(va, PAGE_SIZE, phys, PAGE_HYP);
+	int ret = __pkvm_create_mappings(va, PAGE_SIZE, phys, PAGE_HYP);
+
+	/* Let's not confuse the hyp_alloc callers who will try to top-up pointlessly on -ENOMEM */
+	if (ret == -ENOMEM)
+		ret = -EBUSY;
+
+	return ret;
 }
 
 #ifdef CONFIG_NVHE_EL2_DEBUG
