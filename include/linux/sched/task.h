@@ -54,6 +54,9 @@ extern spinlock_t mmlist_lock;
 
 extern union thread_union init_thread_union;
 extern struct task_struct init_task;
+#ifdef CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE
+extern u64 vendor_data_pad[CONFIG_GKI_TASK_STRUCT_VENDOR_SIZE_MAX / sizeof(u64)];
+#endif
 
 extern int lockdep_tasklist_lock_is_held(void);
 
@@ -225,5 +228,24 @@ static inline void task_unlock(struct task_struct *p)
 {
 	spin_unlock(&p->alloc_lock);
 }
+
+#ifdef CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE
+static inline void *android_task_vendor_data(struct task_struct *p)
+{
+	if (p == &init_task)
+		return &vendor_data_pad[0];
+
+	return p + 1;
+}
+
+static inline void android_init_dynamic_vendor_data(struct task_struct *p)
+{
+	if (arch_task_struct_size > sizeof(struct task_struct))
+		memset((void *)android_task_vendor_data(p), 0x0,
+		       arch_task_struct_size - sizeof(struct task_struct));
+}
+#else /* !CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE */
+static inline void android_init_dynamic_vendor_data(struct task_struct *p) {}
+#endif /* CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE */
 
 #endif /* _LINUX_SCHED_TASK_H */
