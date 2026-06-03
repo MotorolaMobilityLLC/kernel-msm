@@ -469,7 +469,7 @@ static void mt_get_feature(struct hid_device *hdev, struct hid_report *report)
 			 report->id);
 	} else {
 		ret = hid_report_raw_event(hdev, HID_FEATURE_REPORT, buf,
-					   size, 0);
+					   size, size, 0);
 		if (ret)
 			dev_warn(&hdev->dev, "failed to report feature\n");
 	}
