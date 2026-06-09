@@ -420,6 +420,16 @@
   __tracepoint_android_rvh_update_cpus_allowed
   __traceiter_android_rvh_update_cpus_allowed
 
+#required by bcmdhd.ko
+  vfs_fsync
+  kern_path
+  dget_parent
+  vfs_unlink
+  path_put
+  nla_append
+  sdio_writew
+  sdio_readw
+
 #required by brcm_xgbe.ko
   cpumask_local_spread
   udp_tunnel_nic_ops
