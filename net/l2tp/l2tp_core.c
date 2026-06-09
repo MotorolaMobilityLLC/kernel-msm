@@ -194,6 +194,30 @@ void l2tp_session_put(struct l2tp_session *session)
 }
 EXPORT_SYMBOL_GPL(l2tp_session_put);
 
+void l2tp_tunnel_inc_refcount(struct l2tp_tunnel *tunnel)
+{
+	refcount_inc(&tunnel->ref_count);
+}
+EXPORT_SYMBOL_GPL(l2tp_tunnel_inc_refcount);
+
+void l2tp_tunnel_dec_refcount(struct l2tp_tunnel *tunnel)
+{
+	l2tp_tunnel_put(tunnel);
+}
+EXPORT_SYMBOL_GPL(l2tp_tunnel_dec_refcount);
+
+void l2tp_session_inc_refcount(struct l2tp_session *session)
+{
+	refcount_inc(&session->ref_count);
+}
+EXPORT_SYMBOL_GPL(l2tp_session_inc_refcount);
+
+void l2tp_session_dec_refcount(struct l2tp_session *session)
+{
+	l2tp_session_put(session);
+}
+EXPORT_SYMBOL_GPL(l2tp_session_dec_refcount);
+
 /* Lookup a tunnel. A new reference is held on the returned tunnel. */
 struct l2tp_tunnel *l2tp_tunnel_get(const struct net *net, u32 tunnel_id)
 {
