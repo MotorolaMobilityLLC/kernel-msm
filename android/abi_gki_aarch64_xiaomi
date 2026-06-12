@@ -652,3 +652,7 @@ __tracepoint_android_vh_alloc_pages_slowpath_start
 __traceiter_android_vh_alloc_pages_slowpath_end
 __tracepoint_android_vh_alloc_pages_slowpath_end
 
+# required by custom memory policy
+__filemap_remove_folio
+inode_add_lru
+prep_new_page
