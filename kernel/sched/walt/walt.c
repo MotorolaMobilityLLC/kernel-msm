@@ -2380,11 +2380,18 @@ static void walt_update_task_ravg(struct task_struct *p, struct rq *rq, int even
 	if (unlikely(!raw_spin_is_locked(&rq->__lock))) {
 		smp_mb();
 		if (unlikely(!raw_spin_is_locked(&rq->__lock)))
+#if 0
 			WALT_BUG(WALT_BUG_WALT, p,
 				"on CPU%d: %s task %s(%d) unlocked access for cpu=%d suspende=%d last_clk=%llu stack[%pS <== %pS <== %pS]\n",
 				raw_smp_processor_id(), __func__, p->comm, p->pid, rq->cpu,
 				walt_clock_suspended, sched_clock_last,
 				(void *)CALLER_ADDR0, (void *)CALLER_ADDR1, (void *)CALLER_ADDR2);
+#else
+			pr_err("on CPU%d: %s task %s(%d) unlocked access for cpu=%d suspende=%d last_clk=%llu stack[%pS <== %pS <== %pS]\n",
+				raw_smp_processor_id(), __func__, p->comm, p->pid, rq->cpu,
+				walt_clock_suspended, sched_clock_last,
+				(void *)CALLER_ADDR0, (void *)CALLER_ADDR1, (void *)CALLER_ADDR2);
+#endif
 	}
 
 	walt_lockdep_assert_rq(rq, p);
@@ -4300,6 +4307,7 @@ static inline void __walt_irq_work_locked(bool is_migration, bool is_asym_migrat
 					if (unlikely(!raw_spin_is_locked(&rq->__lock))) {
 						smp_mb();
 						if (unlikely(!raw_spin_is_locked(&rq->__lock)))
+#if 0
 							WALT_BUG(WALT_BUG_WALT, NULL,
 							"WALT-BUG %s unlocked cpu=%d is_migration=%d is_asym_migration=%d is_shared_rail_migration=%d lock_cpus=%*pbl suspended=%d last_clk=%llu stack[%pS <= %pS <= %pS]\n",
 							__func__, rq->cpu, is_migration, is_asym_migration,
@@ -4307,6 +4315,14 @@ static inline void __walt_irq_work_locked(bool is_migration, bool is_asym_migrat
 							cpumask_pr_args(lock_cpus), walt_clock_suspended,
 							sched_clock_last, (void *)CALLER_ADDR0,
 							(void *)CALLER_ADDR1, (void *)CALLER_ADDR2);
+#else
+							pr_err("WALT-BUG %s unlocked cpu=%d is_migration=%d is_asym_migration=%d is_shared_rail_migration=%d lock_cpus=%*pbl suspended=%d last_clk=%llu stack[%pS <= %pS <= %pS]\n",
+							__func__, rq->cpu, is_migration, is_asym_migration,
+							is_shared_rail_migration,
+							cpumask_pr_args(lock_cpus), walt_clock_suspended,
+							sched_clock_last, (void *)CALLER_ADDR0,
+							(void *)CALLER_ADDR1, (void *)CALLER_ADDR2);
+#endif
 					}
 					walt_update_task_ravg(rq->curr, rq,
 							      TASK_UPDATE, wc, 0);
