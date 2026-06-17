@@ -816,7 +816,7 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *ctxt, u32 func_id)
 	DECLARE_REG(u64, arg2, ctxt, 2);
 	DECLARE_REG(u64, arg3, ctxt, 3);
 	DECLARE_REG(u64, arg4, ctxt, 4);
-	struct arm_smccc_res res;
+	struct arm_smccc_res res = {0};
 	bool handled = true;
 	int err = 0;
 
