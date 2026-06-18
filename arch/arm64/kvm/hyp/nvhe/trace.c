@@ -491,7 +491,7 @@ int __pkvm_load_tracing(unsigned long desc_hva, size_t desc_size)
 		unsigned int cpu;
 
 		ret = -EINVAL;
-		if (!rb_cpu_fits_desc(pdesc, desc_hva + desc_size))
+		if (!rb_cpu_fits_desc(pdesc, (unsigned long)desc + desc_size))
 			break;
 
 		cpu = pdesc->cpu;

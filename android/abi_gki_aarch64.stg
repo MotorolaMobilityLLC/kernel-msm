@@ -366728,6 +366728,15 @@ elf_symbol {
   full_name: "__traceiter_android_vh_folio_add_lru_folio_activate"
 }
 elf_symbol {
+  id: 0x0cf4533d
+  name: "__traceiter_android_vh_folio_end_writeback"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xd51bc80a
+  type_id: 0x9b2a7922
+  full_name: "__traceiter_android_vh_folio_end_writeback"
+}
+elf_symbol {
   id: 0x37c66367
   name: "__traceiter_android_vh_folio_remove_rmap"
   is_defined: true
@@ -366753,6 +366762,15 @@ elf_symbol {
   crc: 0x3f6640fc
   type_id: 0x9b2e0ad9
   full_name: "__traceiter_android_vh_folio_skip_activate"
+}
+elf_symbol {
+  id: 0x1ef2821b
+  name: "__traceiter_android_vh_folio_start_writeback"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x2be7727d
+  type_id: 0x9b2a7922
+  full_name: "__traceiter_android_vh_folio_start_writeback"
 }
 elf_symbol {
   id: 0x1fca37bf
@@ -374558,6 +374576,15 @@ elf_symbol {
   full_name: "__tracepoint_android_vh_folio_add_lru_folio_activate"
 }
 elf_symbol {
+  id: 0xbacafe87
+  name: "__tracepoint_android_vh_folio_end_writeback"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xf964c234
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_folio_end_writeback"
+}
+elf_symbol {
   id: 0x136a16c5
   name: "__tracepoint_android_vh_folio_remove_rmap"
   is_defined: true
@@ -374583,6 +374610,15 @@ elf_symbol {
   crc: 0x5a857fed
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_folio_skip_activate"
+}
+elf_symbol {
+  id: 0x8536afa9
+  name: "__tracepoint_android_vh_folio_start_writeback"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x5df20b4c
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_folio_start_writeback"
 }
 elf_symbol {
   id: 0xa3ede5d5
@@ -443784,9 +443820,11 @@ interface {
   symbol_id: 0x306fa992
   symbol_id: 0xfaa99ddb
   symbol_id: 0x5dd57eff
+  symbol_id: 0x0cf4533d
   symbol_id: 0x37c66367
   symbol_id: 0xef70c295
   symbol_id: 0xb079e2fd
+  symbol_id: 0x1ef2821b
   symbol_id: 0x1fca37bf
   symbol_id: 0xa157ce59
   symbol_id: 0xe6702595
@@ -444654,9 +444692,11 @@ interface {
   symbol_id: 0x58b7f538
   symbol_id: 0xc09285c1
   symbol_id: 0x5027d955
+  symbol_id: 0xbacafe87
   symbol_id: 0x136a16c5
   symbol_id: 0xb2684007
   symbol_id: 0x616c8f3b
+  symbol_id: 0x8536afa9
   symbol_id: 0xa3ede5d5
   symbol_id: 0xfdfb5a53
   symbol_id: 0x539bf337
