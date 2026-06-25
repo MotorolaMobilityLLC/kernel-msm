@@ -199,9 +199,9 @@ static void gb_hid_init_report(struct gb_hid *ghid, struct hid_report *report)
 	/*
 	 * hid->driver_lock is held as we are in probe function,
 	 * we just need to setup the input fields, so using
-	 * hid_report_raw_event is safe.
+	 * __hid_report_raw_event is safe.
 	 */
-	hid_report_raw_event(ghid->hid, report->type, ghid->inbuf, ghid->bufsize, size, 1);
+	__hid_report_raw_event(ghid->hid, report->type, ghid->inbuf, ghid->bufsize, size, 1);
 }
 
 static void gb_hid_init_reports(struct gb_hid *ghid)
