@@ -342544,6 +342544,12 @@ function {
   parameter_id: 0xc9082b19
 }
 function {
+  id: 0x9b4a4e61
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x397d00ab
+}
+function {
   id: 0x9b4a7bac
   return_type_id: 0x6720d32f
   parameter_id: 0x1a8d1bcb
@@ -343470,6 +343476,13 @@ function {
   parameter_id: 0x3399c453
   parameter_id: 0x33d0e528
   parameter_id: 0xc9082b19
+}
+function {
+  id: 0x9b6e1777
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x36194830
+  parameter_id: 0x6720d32f
 }
 function {
   id: 0x9b6e1aa4
@@ -367979,6 +367992,33 @@ elf_symbol {
   full_name: "__traceiter_android_vh_mmap_region"
 }
 elf_symbol {
+  id: 0xb6126b05
+  name: "__traceiter_android_vh_mmc_attach_sd"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x1e99068f
+  type_id: 0x9b6e1777
+  full_name: "__traceiter_android_vh_mmc_attach_sd"
+}
+elf_symbol {
+  id: 0x6ac4216b
+  name: "__traceiter_android_vh_mmc_blk_reset"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0xdfe3cadf
+  type_id: 0x9b6e1777
+  full_name: "__traceiter_android_vh_mmc_blk_reset"
+}
+elf_symbol {
+  id: 0xabd010ba
+  name: "__traceiter_android_vh_mmc_gpio_cd_irqt"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x4020fa69
+  type_id: 0x9b77df43
+  full_name: "__traceiter_android_vh_mmc_gpio_cd_irqt"
+}
+elf_symbol {
   id: 0xab76d6cc
   name: "__traceiter_android_vh_mmc_sdio_pm_flag_set"
   is_defined: true
@@ -369192,6 +369232,15 @@ elf_symbol {
   crc: 0xf39cfeeb
   type_id: 0x9b50c8eb
   full_name: "__traceiter_android_vh_sd_setup_unmap_multi_segment"
+}
+elf_symbol {
+  id: 0xf302c041
+  name: "__traceiter_android_vh_sdhci_get_cd"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x0ea66add
+  type_id: 0x9b4a4e61
+  full_name: "__traceiter_android_vh_sdhci_get_cd"
 }
 elf_symbol {
   id: 0xe1a703df
@@ -375881,6 +375930,33 @@ elf_symbol {
   full_name: "__tracepoint_android_vh_mmap_region"
 }
 elf_symbol {
+  id: 0xa1c3d037
+  name: "__tracepoint_android_vh_mmc_attach_sd"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x64f9bba3
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_mmc_attach_sd"
+}
+elf_symbol {
+  id: 0xb9d48f4d
+  name: "__tracepoint_android_vh_mmc_blk_reset"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xd3ed60c4
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_mmc_blk_reset"
+}
+elf_symbol {
+  id: 0x9e78b2f8
+  name: "__tracepoint_android_vh_mmc_gpio_cd_irqt"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x18bc81b8
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_mmc_gpio_cd_irqt"
+}
+elf_symbol {
   id: 0x0403b7c6
   name: "__tracepoint_android_vh_mmc_sdio_pm_flag_set"
   is_defined: true
@@ -377094,6 +377170,15 @@ elf_symbol {
   crc: 0x1682165e
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_sd_setup_unmap_multi_segment"
+}
+elf_symbol {
+  id: 0x5f4d0d53
+  name: "__tracepoint_android_vh_sdhci_get_cd"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x2f7abf95
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_sdhci_get_cd"
 }
 elf_symbol {
   id: 0x3894e481
@@ -444108,6 +444193,9 @@ interface {
   symbol_id: 0x01554a41
   symbol_id: 0x9b40ad23
   symbol_id: 0xe44dacb1
+  symbol_id: 0xb6126b05
+  symbol_id: 0x6ac4216b
+  symbol_id: 0xabd010ba
   symbol_id: 0xab76d6cc
   symbol_id: 0xc168df93
   symbol_id: 0x5612c9d1
@@ -444243,6 +444331,7 @@ interface {
   symbol_id: 0xb841c45e
   symbol_id: 0xe3b923c8
   symbol_id: 0x8a2c7656
+  symbol_id: 0xf302c041
   symbol_id: 0xe1a703df
   symbol_id: 0xa3c925f8
   symbol_id: 0xdb84678c
@@ -444986,6 +445075,9 @@ interface {
   symbol_id: 0x32e11a2b
   symbol_id: 0xab985ad9
   symbol_id: 0xb6da564f
+  symbol_id: 0xa1c3d037
+  symbol_id: 0xb9d48f4d
+  symbol_id: 0x9e78b2f8
   symbol_id: 0x0403b7c6
   symbol_id: 0x3c1c2029
   symbol_id: 0x41c8d09b
@@ -445121,6 +445213,7 @@ interface {
   symbol_id: 0xff2bccb8
   symbol_id: 0x5d163d02
   symbol_id: 0x5294a07c
+  symbol_id: 0x5f4d0d53
   symbol_id: 0x3894e481
   symbol_id: 0x3fb97a6a
   symbol_id: 0x6ccc064e
