@@ -42,6 +42,7 @@ static struct poweroff_reason pon_reasons[] = {
 	{ "dm-verity enforcing",	0x05, 0x1 },
 	{ "keys clear",			0x06, 0x1 },
 	{ "shipmode",			0x20, 0x2 },
+	{ "mmi_reboot_exception",	0x22, 0x1 },
 	{}
 };
 
