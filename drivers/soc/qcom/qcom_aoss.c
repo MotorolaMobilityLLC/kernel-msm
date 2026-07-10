@@ -90,6 +90,7 @@ struct qmp {
 	struct dentry *debugfs_file;
 #endif /* CONFIG_DEBUG_FS */
 	bool ds_entry;
+	bool moto_aoss_sysfs_created;
 };
 
 /* IPC Logging helpers */
@@ -529,6 +530,32 @@ static const struct file_operations aoss_dbg_fops = {
 };
 #endif /* CONFIG_DEBUG_FS */
 
+static ssize_t aoss_send_message_store(struct device *dev,
+                        struct device_attribute *attr,
+                        const char *buf, size_t count)
+{
+    struct qmp *qmp = dev_get_drvdata(dev);
+    char msg[QMP_MSG_LEN] = {};
+    int ret;
+
+    if (!count || count >= QMP_MSG_LEN)
+        return -EINVAL;
+
+    memcpy(msg, buf, count);
+    msg[count] = '\0';
+
+    dev_err(dev, "AOSS_SYSFS: writing message: %s\n", strim(msg));
+
+    ret = qmp_send(qmp, strim(msg), QMP_MSG_LEN);
+    if (ret)
+        dev_err(dev, "AOSS_SYSFS: qmp_send failed with ret=%d\n", ret);
+    else
+        dev_err(dev, "AOSS_SYSFS: qmp_send successfully acked!\n");
+
+    return ret ? ret : count;
+}
+static DEVICE_ATTR_WO(aoss_send_message);
+
 static int qmp_probe(struct platform_device *pdev)
 {
 	struct qmp *qmp;
@@ -580,6 +607,14 @@ static int qmp_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, qmp);
 	dev_set_drvdata(&pdev->dev, qmp);
 
+	if (of_property_read_bool(pdev->dev.of_node, "moto_aoss_enable")) {
+		ret = device_create_file(qmp->dev, &dev_attr_aoss_send_message);
+		if (ret)
+			dev_err(qmp->dev, "failed to create sysfs node aoss_send_message: %d\n", ret);
+		else
+			qmp->moto_aoss_sysfs_created = true;
+	}
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	qmp->debugfs_file = debugfs_create_file("aoss_send_message", 0220, NULL,
 						qmp, &aoss_dbg_fops);
@@ -598,6 +633,9 @@ err_free_mbox:
 static int qmp_remove(struct platform_device *pdev)
 {
 	struct qmp *qmp = platform_get_drvdata(pdev);
+
+	if (qmp->moto_aoss_sysfs_created)
+		device_remove_file(qmp->dev, &dev_attr_aoss_send_message);
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	debugfs_remove(qmp->debugfs_file);
