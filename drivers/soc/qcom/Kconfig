@@ -1251,4 +1251,10 @@ config QTI_FCTL_SCMI
 	  userspace and relays them to CPUCP via SCMI communication.
 	  It is intended to be used by clients familiar with modifying
 	  the feature control settings.
+
+config WLC_OVERHEAT_PROTECT
+	bool "Enable wlc overheating protection"
+	help
+	  Say Y here if enable wlc overheating protection
+
 endmenu
