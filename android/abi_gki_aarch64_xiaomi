@@ -677,3 +677,6 @@ __tracepoint_android_vh_alloc_pages_slowpath_end
 __filemap_remove_folio
 inode_add_lru
 prep_new_page
+
+# required by xiaomi new symbols
+memory_cgrp_subsys_on_dfl_key

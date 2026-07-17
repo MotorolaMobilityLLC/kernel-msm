@@ -392074,6 +392074,15 @@ elf_symbol {
   full_name: "memory_cgrp_subsys_enabled_key"
 }
 elf_symbol {
+  id: 0xe8a0a1cd
+  name: "memory_cgrp_subsys_on_dfl_key"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xf2b33cb7
+  type_id: 0xd2755d5f
+  full_name: "memory_cgrp_subsys_on_dfl_key"
+}
+elf_symbol {
   id: 0x433c572b
   name: "memory_read_from_buffer"
   is_defined: true
@@ -429808,6 +429817,7 @@ interface {
   symbol_id: 0x08fd5f0f
   symbol_id: 0xcd17d380
   symbol_id: 0x4a3fbd55
+  symbol_id: 0xe8a0a1cd
   symbol_id: 0x433c572b
   symbol_id: 0xdf190787
   symbol_id: 0xfd2dc160
