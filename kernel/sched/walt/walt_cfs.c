@@ -1565,6 +1565,9 @@ void walt_cfs_enqueue_task(struct rq *rq, struct task_struct *p)
 	moto_queue_ux_task(rq, p, 1);
 #endif
 }
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+EXPORT_SYMBOL(walt_cfs_enqueue_task);
+#endif
 
 void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
 {
@@ -1592,6 +1595,9 @@ void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
 	moto_queue_ux_task(rq, p, 0);
 #endif
 }
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+EXPORT_SYMBOL(walt_cfs_dequeue_task);
+#endif
 
 void walt_cfs_tick(struct rq *rq)
 {
