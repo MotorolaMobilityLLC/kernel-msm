@@ -443,6 +443,12 @@
 # required by shrink memory module
   shrink_slab
 
+#required by iostat.ko
+  __traceiter_android_vh_erofs_iostat_submit
+  __traceiter_android_vh_erofs_iostat_update
+  __tracepoint_android_vh_erofs_iostat_submit
+  __tracepoint_android_vh_erofs_iostat_update
+
 # required by mi_mem_engine.ko
   __traceiter_android_vh_tune_swappiness
   __tracepoint_android_vh_tune_swappiness
