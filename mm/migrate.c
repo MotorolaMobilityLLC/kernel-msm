@@ -334,6 +334,8 @@ void migration_entry_wait(struct mm_struct *mm, pmd_t *pmd,
 	pte_t *ptep;
 	pte_t pte;
 	swp_entry_t entry;
+	int zonenum = -1;
+	u64 time = 0;
 
 	ptep = pte_offset_map_lock(mm, pmd, address, &ptl);
 	if (!ptep)
@@ -349,7 +351,9 @@ void migration_entry_wait(struct mm_struct *mm, pmd_t *pmd,
 	if (!is_migration_entry(entry))
 		goto out;
 
+	trace_android_vh_migration_entry_wait_enter(entry, &time, &zonenum);
 	migration_entry_wait_on_locked(entry, ptl);
+	trace_android_vh_migration_entry_wait_exit(time, zonenum);
 	return;
 out:
 	spin_unlock(ptl);
@@ -1698,6 +1702,8 @@ static int migrate_pages_batch(struct list_head *from,
 	LIST_HEAD(unmap_folios);
 	LIST_HEAD(dst_folios);
 	bool nosplit = (reason == MR_NUMA_MISPLACED);
+	bool migrate_break;
+	int nr_left;
 
 	VM_WARN_ON_ONCE(mode != MIGRATE_ASYNC &&
 			!list_empty(from) && !list_is_singular(from));
@@ -1706,6 +1712,7 @@ static int migrate_pages_batch(struct list_head *from,
 		retry = 0;
 		thp_retry = 0;
 		nr_retry_pages = 0;
+		migrate_break = false;
 
 		list_for_each_entry_safe(folio, folio2, from, lru) {
 			is_large = folio_test_large(folio);
@@ -1830,6 +1837,12 @@ static int migrate_pages_batch(struct list_head *from,
 			case MIGRATEPAGE_UNMAP:
 				list_move_tail(&folio->lru, &unmap_folios);
 				list_add_tail(&dst->lru, &dst_folios);
+				trace_android_vh_migrate_pages_batch_break(folio, from,
+						reason, &migrate_break, &nr_left);
+				if (migrate_break) {
+					nr_failed += nr_left;
+					goto batch_break;
+				}
 				break;
 			default:
 				/*
@@ -1845,6 +1858,7 @@ static int migrate_pages_batch(struct list_head *from,
 			}
 		}
 	}
+batch_break:
 	nr_failed += retry;
 	stats->nr_thp_failed += thp_retry;
 	stats->nr_failed_pages += nr_retry_pages;
@@ -2008,6 +2022,7 @@ int migrate_pages(struct list_head *from, new_folio_t get_new_folio,
 	LIST_HEAD(ret_folios);
 	LIST_HEAD(split_folios);
 	struct migrate_pages_stats stats;
+	int nr_batch_pages = NR_MAX_BATCHED_MIGRATION;
 
 	trace_mm_migrate_pages_start(mode, reason);
 
@@ -2020,6 +2035,7 @@ int migrate_pages(struct list_head *from, new_folio_t get_new_folio,
 
 again:
 	nr_pages = 0;
+	trace_android_vh_migrate_batch_nr_pages(from, &nr_batch_pages);
 	list_for_each_entry_safe(folio, folio2, from, lru) {
 		/* Retried hugetlb folios will be kept in list  */
 		if (folio_test_hugetlb(folio)) {
@@ -2028,10 +2044,10 @@ again:
 		}
 
 		nr_pages += folio_nr_pages(folio);
-		if (nr_pages >= NR_MAX_BATCHED_MIGRATION)
+		if (nr_pages >= nr_batch_pages)
 			break;
 	}
-	if (nr_pages >= NR_MAX_BATCHED_MIGRATION)
+	if (nr_pages >= nr_batch_pages)
 		list_cut_before(&folios, from, &folio2->lru);
 	else
 		list_splice_init(from, &folios);
