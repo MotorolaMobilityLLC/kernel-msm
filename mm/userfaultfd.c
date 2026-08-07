@@ -1271,20 +1271,6 @@ retry:
 				goto out;
 			}
 
-			locked = folio_trylock(folio);
-			/*
-			 * We avoid waiting for folio lock with a raised
-			 * refcount for large folios because extra refcounts
-			 * will result in split_folio() failing later and
-			 * retrying.  If multiple tasks are trying to move a
-			 * large folio we can end up livelocking.
-			 */
-			if (!locked && folio_test_large(folio)) {
-				spin_unlock(src_ptl);
-				ret = -EAGAIN;
-				goto out;
-			}
-
 			folio_get(folio);
 			src_folio = folio;
 			src_folio_pte = orig_src_pte;

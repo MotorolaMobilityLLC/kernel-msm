@@ -3350,6 +3350,7 @@
 					       srbds=off [X86,INTEL]
 					       ssbd=force-off [ARM64]
 					       tsx_async_abort=off [X86]
+					       vmscape=off [X86]
 
 				Exceptions:
 					       This does not have any effect on
@@ -5518,6 +5519,9 @@
 
 	rootflags=	[KNL] Set root filesystem mount option string
 
+	initramfs_options= [KNL]
+                        Specify mount options for for the initramfs mount.
+
 	rootfstype=	[KNL] Set root filesystem type
 
 	rootwait	[KNL] Wait (indefinitely) for root device to show up.
@@ -6889,6 +6893,16 @@
 	vmpoff=		[KNL,S390] Perform z/VM CP command after power off.
 			Format: <command>
 
+	vmscape=	[X86] Controls mitigation for VMscape attacks.
+			VMscape attacks can leak information from a userspace
+			hypervisor to a guest via speculative side-channels.
+
+			off		- disable the mitigation
+			ibpb		- use Indirect Branch Prediction Barrier
+					  (IBPB) mitigation (default)
+			force		- force vulnerability detection even on
+					  unaffected processors
+
 	vsyscall=	[X86-64]
 			Controls the behavior of vsyscalls (i.e. calls to
 			fixed addresses of 0xffffffffff600x00 from legacy
@@ -7161,3 +7175,13 @@
 			  management firmware translates the requests into actual
 			  hardware states (core frequency, data fabric and memory
 			  clocks etc.)
+
+	eipv4=	[KNL] Sets ipv4 address at boot up for early ethernet.
+
+	eipv6=	[KNL] Sets ipv6 address at boot up for early ethernet.
+
+	ermac=	[KNL] Sets mac address at boot up for early ethernet.
+
+	dwmac_qcom_eth.board=	[KNL] Sets Board type of device at boot up for phy detection.
+
+	dwmac_qcom_eth.enet=	[KNL] Sets the PHY type on device at boot up for phy detection.

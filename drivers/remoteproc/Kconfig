@@ -167,6 +167,14 @@ config QCOM_PIL_INFO
 config QCOM_RPROC_COMMON
 	tristate "Qualcomm Technologies, Inc. Remote Proc Common Framework"
 
+config QCOM_Q6V5_PAS_SOCCP_V1
+	bool "SOCCP V1"
+	help
+	  Support to enable power state transition control of SoC Control Processor
+	  V1 via an API which can be used by clients to vote for the subsystem to
+	  be either in active or dormant states.
+	  If unsure say N.
+
 config QCOM_Q6V5_COMMON
 	tristate
 	depends on ARCH_QCOM
@@ -332,6 +340,18 @@ config RPROC_SYSMON_NOTIF_TIMEOUT
 	int "Sysmon notifications timeout in ms"
 	default 10000
 	help
+	  The amount of time, in milliseconds, that should elapse between
+	  the start and end of sysmon notifications, before a warning
+	  is emitted.
+
+config RPROC_SYSMON_SHUTDOWN_NOTIF_TIMEOUT
+	int "Sysmon notifications timeout in ms"
+	default 10000
+	help
+	  This is a debug feature where a kernel panic is triggered when
+	  there is no acknowledgment there from the subsystem shutdown
+	  request.
+
 	  The amount of time, in milliseconds, that should elapse between
 	  the start and end of sysmon notifications, before a warning
 	  is emitted.

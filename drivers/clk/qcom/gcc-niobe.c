@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -1933,6 +1933,20 @@ static struct clk_regmap_div gcc_pcie_2_pipe_div_clk_src = {
 	},
 };
 
+static struct clk_regmap_div gcc_pwm0_xo512_div_clk_src = {
+	.reg = 0x33030,
+	.shift = 0,
+	.width = 9,
+	.clkr.hw.init = &(const struct clk_init_data) {
+		.name = "gcc_pwm0_xo512_div_clk_src",
+		.parent_data = &(const struct clk_parent_data){
+			.fw_name = "bi_tcxo",
+		},
+		.num_parents = 1,
+		.ops = &clk_regmap_div_ops,
+	},
+};
+
 static struct clk_regmap_div gcc_qupv3_wrap1_s1_div_clk_src = {
 	.reg = 0x18148,
 	.shift = 0,
@@ -3011,6 +3025,11 @@ static struct clk_branch gcc_pwm0_xo512_clk = {
 		.enable_mask = BIT(0),
 		.hw.init = &(const struct clk_init_data) {
 			.name = "gcc_pwm0_xo512_clk",
+			.parent_hws = (const struct clk_hw*[]){
+				&gcc_pwm0_xo512_div_clk_src.clkr.hw
+			},
+			.flags = CLK_SET_RATE_PARENT,
+			.num_parents = 1,
 			.ops = &clk_branch2_ops,
 		},
 	},
@@ -4133,7 +4152,7 @@ static struct clk_branch gcc_usb3_sec_phy_com_aux_clk = {
 
 static struct clk_branch gcc_usb3_sec_phy_pipe_clk = {
 	.halt_reg = 0xa5068,
-	.halt_check = BRANCH_HALT,
+	.halt_check = BRANCH_HALT_DELAY,
 	.clkr = {
 		.enable_reg = 0xa5068,
 		.enable_mask = BIT(0),
@@ -4280,6 +4299,7 @@ static struct clk_regmap *gcc_niobe_clocks[] = {
 	[GCC_PDM_AHB_CLK] = &gcc_pdm_ahb_clk.clkr,
 	[GCC_PDM_XO4_CLK] = &gcc_pdm_xo4_clk.clkr,
 	[GCC_PWM0_XO512_CLK] = &gcc_pwm0_xo512_clk.clkr,
+	[GCC_PWM0_XO512_DIV_CLK_SRC] = &gcc_pwm0_xo512_div_clk_src.clkr,
 	[GCC_QMIP_CAMERA_NRT_AHB_CLK] = &gcc_qmip_camera_nrt_ahb_clk.clkr,
 	[GCC_QMIP_CAMERA_RT_AHB_CLK] = &gcc_qmip_camera_rt_ahb_clk.clkr,
 	[GCC_QMIP_DISP_AHB_CLK] = &gcc_qmip_disp_ahb_clk.clkr,
@@ -4514,6 +4534,9 @@ static int gcc_niobe_probe(struct platform_device *pdev)
 	regmap_update_bits(regmap, 0x52010, BIT(21), BIT(21));
 	regmap_update_bits(regmap, 0x32004, BIT(0), BIT(0));
 	regmap_update_bits(regmap, 0x32030, BIT(0), BIT(0));
+
+	/* Clear GDSC_SLEEP_ENA_VOTE to stop votes being auto-removed in sleep. */
+	regmap_write(regmap, 0x52150, 0x0);
 
 	ret = qcom_cc_really_probe(pdev, &gcc_niobe_desc, regmap);
 	if (ret) {

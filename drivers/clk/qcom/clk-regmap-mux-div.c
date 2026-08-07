@@ -104,6 +104,8 @@ static int mux_div_determine_rate(struct clk_hw *hw,
 
 	for (i = 0; i < clk_hw_get_num_parents(hw); i++) {
 		struct clk_hw *parent = clk_hw_get_parent_by_index(hw, i);
+		if (!parent)
+			return -EINVAL;
 		unsigned long parent_rate = clk_hw_get_rate(parent);
 
 		max_div = BIT(md->hid_width) - 1;
@@ -141,6 +143,8 @@ static int __mux_div_set_rate_and_parent(struct clk_hw *hw, unsigned long rate,
 
 	for (i = 0; i < clk_hw_get_num_parents(hw); i++) {
 		struct clk_hw *parent = clk_hw_get_parent_by_index(hw, i);
+		if (!parent)
+			return -EINVAL;
 		unsigned long parent_rate = clk_hw_get_rate(parent);
 
 		max_div = BIT(md->hid_width) - 1;
@@ -220,6 +224,8 @@ static unsigned long mux_div_recalc_rate(struct clk_hw *hw, unsigned long prate)
 	for (i = 0; i < num_parents; i++)
 		if (src == md->parent_map[i].cfg) {
 			struct clk_hw *p = clk_hw_get_parent_by_index(hw, i);
+			if (!p)
+				return -EINVAL;
 			unsigned long parent_rate = clk_hw_get_rate(p);
 
 			return mult_frac(parent_rate, 2, div + 1);

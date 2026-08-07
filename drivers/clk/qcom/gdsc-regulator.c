@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -25,6 +25,8 @@
 #include <linux/mailbox_controller.h>
 #include <linux/mailbox/qmp.h>
 #include <linux/interconnect.h>
+#include <linux/pm.h>
+#include <linux/suspend.h>
 
 #include "../../regulator/internal.h"
 #include "gdsc-debug.h"
@@ -74,6 +76,8 @@ struct gdsc {
 	struct regmap           *domain_addr;
 	struct regmap           *hw_ctrl;
 	struct regmap           **sw_resets;
+	struct regmap           *acd_reset;
+	struct regmap           *acd_misc_reset;
 	struct collapse_vote	collapse_vote;
 	struct clk		**clocks;
 	struct mbox_client	mbox_client;
@@ -90,12 +94,14 @@ struct gdsc {
 	bool			is_gdsc_hw_ctrl_mode;
 	bool			is_root_clk_voted;
 	bool			reset_aon;
+	bool			pm_ops;
 	int			clock_count;
 	int			reset_count;
 	int			root_clk_idx;
 	int			sw_reset_count;
 	int			path_count;
 	int			collapse_count;
+	u32			clk_dis_wait_val;
 	u32			gds_timeout;
 	bool			skip_disable_before_enable;
 	bool			skip_disable;
@@ -246,6 +252,10 @@ static int gdsc_init_is_enabled(struct gdsc *sc)
 
 	sc->is_gdsc_enabled = !(regval & mask);
 
+	if (sc->is_gdsc_enabled && sc->retain_ff_enable)
+		regmap_update_bits(sc->regmap, REG_OFFSET,
+			RETAIN_FF_ENABLE_MASK, RETAIN_FF_ENABLE_MASK);
+
 	return 0;
 }
 
@@ -333,16 +343,30 @@ static int gdsc_enable(struct regulator_dev *rdev)
 				regmap_set_bits(sc->sw_resets[i], REG_OFFSET,
 						BCR_BLK_ARES_BIT);
 
+			if (sc->acd_reset)
+				regmap_set_bits(sc->acd_reset, REG_OFFSET, BCR_BLK_ARES_BIT);
+
+			if (sc->acd_misc_reset)
+				regmap_set_bits(sc->acd_misc_reset, REG_OFFSET, BCR_BLK_ARES_BIT);
+
 			/*
-			 * BLK_ARES should be kept asserted for 1us before
-			 * being de-asserted.
+			 * BLK_ARES should be kept asserted for at least 100 us
+			 * before being de-asserted.
+			 * This is necessary as in HW there are 3 demet cells
+			 * on sleep clk to synchronize the BLK_ARES.
 			 */
 			gdsc_mb(sc);
-			udelay(1);
+			udelay(100);
 
 			for (i = 0; i < sc->sw_reset_count; i++)
 				regmap_clear_bits(sc->sw_resets[i], REG_OFFSET,
 						  BCR_BLK_ARES_BIT);
+
+			if (sc->acd_reset)
+				regmap_clear_bits(sc->acd_reset, REG_OFFSET, BCR_BLK_ARES_BIT);
+
+			if (sc->acd_misc_reset)
+				regmap_clear_bits(sc->acd_misc_reset, REG_OFFSET, BCR_BLK_ARES_BIT);
 
 			/* Make sure de-assert goes through before continuing */
 			gdsc_mb(sc);
@@ -482,6 +506,12 @@ static int gdsc_disable(struct regulator_dev *rdev)
 		 * handle this during system sleep.
 		 */
 	} else if (sc->toggle_logic) {
+		if (sc->sw_reset_count) {
+			if (sc->acd_misc_reset)
+				regmap_set_bits(sc->acd_misc_reset, REG_OFFSET,
+					BCR_BLK_ARES_BIT);
+		}
+
 		/* Disable gdsc */
 		if (sc->collapse_count) {
 			for (i = 0; i < sc->collapse_count; i++)
@@ -741,6 +771,48 @@ void gdsc_debug_print_regs(struct regulator *regulator)
 }
 EXPORT_SYMBOL(gdsc_debug_print_regs);
 
+static int gdsc_parse_resets(struct gdsc *sc, struct device *dev)
+{
+	struct device_node *np;
+	int i;
+
+	if (of_find_property(dev->of_node, "sw-reset", NULL)) {
+		sc->sw_reset_count = of_count_phandle_with_args(dev->of_node,
+								"sw-reset", NULL);
+		sc->sw_resets = devm_kmalloc_array(dev, sc->sw_reset_count,
+						   sizeof(*sc->sw_resets), GFP_KERNEL);
+		if (!sc->sw_resets)
+			return -ENOMEM;
+
+		for (i = 0; i < sc->sw_reset_count; i++) {
+			np = of_parse_phandle(dev->of_node, "sw-reset", i);
+			if (!np)
+				return -ENODEV;
+
+			sc->sw_resets[i] = syscon_node_to_regmap(np);
+			of_node_put(np);
+			if (IS_ERR(sc->sw_resets[i]))
+				return PTR_ERR(sc->sw_resets[i]);
+		}
+	}
+
+	if (of_find_property(dev->of_node, "acd-reset", NULL)) {
+		sc->acd_reset = syscon_regmap_lookup_by_phandle(dev->of_node,
+								"acd-reset");
+		if (IS_ERR(sc->acd_reset))
+			return PTR_ERR(sc->acd_reset);
+	}
+
+	if (of_find_property(dev->of_node, "acd-misc-reset", NULL)) {
+		sc->acd_misc_reset = syscon_regmap_lookup_by_phandle(dev->of_node,
+							"acd-misc-reset");
+		if (IS_ERR(sc->acd_misc_reset))
+			return PTR_ERR(sc->acd_misc_reset);
+	}
+
+	return 0;
+}
+
 static int gdsc_parse_dt_data(struct gdsc *sc, struct device *dev,
 				struct regulator_init_data **init_data)
 {
@@ -766,25 +838,9 @@ static int gdsc_parse_dt_data(struct gdsc *sc, struct device *dev,
 			return PTR_ERR(sc->domain_addr);
 	}
 
-	if (of_find_property(dev->of_node, "sw-reset", NULL)) {
-		sc->sw_reset_count = of_count_phandle_with_args(dev->of_node,
-								"sw-reset", NULL);
-		sc->sw_resets = devm_kmalloc_array(dev, sc->sw_reset_count,
-						   sizeof(*sc->sw_resets), GFP_KERNEL);
-		if (!sc->sw_resets)
-			return -ENOMEM;
-
-		for (i = 0; i < sc->sw_reset_count; i++) {
-			np = of_parse_phandle(dev->of_node, "sw-reset", i);
-			if (!np)
-				return -ENODEV;
-
-			sc->sw_resets[i] = syscon_node_to_regmap(np);
-			of_node_put(np);
-			if (IS_ERR(sc->sw_resets[i]))
-				return PTR_ERR(sc->sw_resets[i]);
-		}
-	}
+	ret = gdsc_parse_resets(sc, dev);
+	if (ret)
+		return ret;
 
 	if (of_find_property(dev->of_node, "hw-ctrl-addr", NULL)) {
 		sc->hw_ctrl = syscon_regmap_lookup_by_phandle(dev->of_node,
@@ -894,6 +950,7 @@ static int gdsc_parse_dt_data(struct gdsc *sc, struct device *dev,
 				REGULATOR_CHANGE_MODE;
 		(*init_data)->constraints.valid_modes_mask |=
 				REGULATOR_MODE_NORMAL | REGULATOR_MODE_FAST;
+		sc->pm_ops = true;
 	}
 
 	return 0;
@@ -1001,6 +1058,54 @@ static int gdsc_get_resources(struct gdsc *sc, struct platform_device *pdev)
 	return 0;
 }
 
+static int restore_hw_trig_clk_dis(struct device *dev)
+{
+	struct gdsc *sc = dev_get_drvdata(dev);
+	uint32_t regval;
+	int ret;
+
+	if (sc->rdev->supply) {
+		ret = regulator_enable(sc->rdev->supply);
+		if (ret) {
+			dev_err(&sc->rdev->dev, "reg enable failed\n");
+			return ret;
+		}
+	}
+
+	regmap_read(sc->regmap, REG_OFFSET, &regval);
+	if (sc->is_gdsc_hw_ctrl_mode)
+		regval |= HW_CONTROL_MASK;
+
+	if (sc->clk_dis_wait_val) {
+		regval &= ~(CLK_DIS_WAIT_MASK);
+		regval |= sc->clk_dis_wait_val;
+	}
+
+	ret = regmap_write(sc->regmap, REG_OFFSET, regval);
+
+	if (sc->rdev->supply)
+		regulator_disable(sc->rdev->supply);
+
+	return ret;
+}
+
+static int gdsc_pm_resume_early(struct device *dev)
+{
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return restore_hw_trig_clk_dis(dev);
+	return 0;
+}
+
+static int gdsc_pm_restore_early(struct device *dev)
+{
+	return restore_hw_trig_clk_dis(dev);
+}
+
+static const struct dev_pm_ops gdsc_pm_ops = {
+	.resume_early = gdsc_pm_resume_early,
+	.restore_early = gdsc_pm_restore_early,
+};
+
 static int gdsc_probe(struct platform_device *pdev)
 {
 	static atomic_t gdsc_count = ATOMIC_INIT(-1);
@@ -1051,10 +1156,12 @@ static int gdsc_probe(struct platform_device *pdev)
 	if (!of_property_read_u32(pdev->dev.of_node, "qcom,clk-dis-wait-val",
 				  &clk_dis_wait_val)) {
 		clk_dis_wait_val = clk_dis_wait_val << CLK_DIS_WAIT_SHIFT;
+		sc->clk_dis_wait_val = clk_dis_wait_val;
 
 		/* Configure wait time between states. */
 		regval &= ~(CLK_DIS_WAIT_MASK);
 		regval |= clk_dis_wait_val;
+		sc->pm_ops = true;
 	}
 
 	regmap_write(sc->regmap, REG_OFFSET, regval);
@@ -1081,6 +1188,9 @@ static int gdsc_probe(struct platform_device *pdev)
 			sc->rdesc.name, ret);
 		goto err;
 	}
+
+	if (sc->pm_ops)
+		pdev->dev.driver->pm = &gdsc_pm_ops;
 
 	sc->rdesc.id = atomic_inc_return(&gdsc_count);
 	sc->rdesc.ops = &gdsc_ops;

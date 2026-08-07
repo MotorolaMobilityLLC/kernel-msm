@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2016, Linaro Limited
  * Copyright (c) 2014, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -23,6 +23,7 @@
 #include <dt-bindings/clock/qcom,rpmcc.h>
 
 #include "clk-debug.h"
+#include "common.h"
 
 #define QCOM_RPM_KEY_SOFTWARE_ENABLE			0x6e657773
 #define QCOM_RPM_KEY_PIN_CTRL_CLK_BUFFER_ENABLE_KEY	0x62636370
@@ -1409,6 +1410,7 @@ static const struct rpm_smd_clk_desc rpm_clk_holi = {
 /* Pitti */
 DEFINE_CLK_SMD_RPM_XO_BUFFER(pitti, rf_clk1, rf_clk1_a, QCOM_SMD_RPM_CLK_BUF_A, 4);
 DEFINE_CLK_SMD_RPM_XO_BUFFER(pitti, rf_clk2, rf_clk2_a, QCOM_SMD_RPM_CLK_BUF_A, 5);
+DEFINE_CLK_SMD_RPM_XO_BUFFER(pitti, rf_clk3, rf_clk3_a, QCOM_SMD_RPM_CLK_BUF_G, 6);
 
 static struct clk_hw *pitti_clks[] = {
 	[RPM_SMD_XO_CLK_SRC] = &holi_bi_tcxo.hw,
@@ -1423,6 +1425,8 @@ static struct clk_hw *pitti_clks[] = {
 	[RPM_SMD_RF_CLK1_A] = &pitti_rf_clk1_a.hw,
 	[RPM_SMD_RF_CLK2] = &pitti_rf_clk2.hw,
 	[RPM_SMD_RF_CLK2_A] = &pitti_rf_clk2_a.hw,
+	[RPM_SMD_RF_CLK3] = &pitti_rf_clk3.hw,
+	[RPM_SMD_RF_CLK3_A] = &pitti_rf_clk3_a.hw,
 	[RPM_SMD_CNOC_CLK] = &holi_cnoc_clk.hw,
 	[RPM_SMD_CNOC_A_CLK] = &holi_cnoc_a_clk.hw,
 	[RPM_SMD_IPA_CLK] = &holi_ipa_clk.hw,
@@ -1582,6 +1586,11 @@ static int rpm_smd_clk_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "Failed to register %s\n", name);
 			return ret;
 		}
+
+		ret = clk_hw_debug_register(&pdev->dev, hw_clks[i]);
+		if (ret)
+			dev_warn(&pdev->dev, "Failed to add %s to debug list\n",
+									name);
 	}
 
 	ret = devm_of_clk_add_hw_provider(&pdev->dev, qcom_smdrpm_clk_hw_get,

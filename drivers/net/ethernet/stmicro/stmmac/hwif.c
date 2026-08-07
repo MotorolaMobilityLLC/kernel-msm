@@ -251,11 +251,31 @@ static const struct stmmac_hwif_entry {
 		.mmc = &dwxgmac_mmc_ops,
 		.setup = dwxlgmac2_setup,
 		.quirks = stmmac_dwxlgmac_quirks,
+	}, {
+		.gmac = false,
+		.gmac4 = false,
+		.xgmac = true,
+		.min_id = DW25GMAC_CORE_4_00,
+		.dev_id = DW25GMAC_ID,
+		.regs = {
+			.ptp_off = PTP_XGMAC_OFFSET,
+			.mmc_off = MMC_XGMAC_OFFSET,
+		},
+		.desc = &dwxgmac210_desc_ops,
+		.dma = &dw25gmac400_dma_ops,
+		.mac = &dwxgmac210_ops,
+		.hwtimestamp = &stmmac_ptp,
+		.mode = NULL,
+		.tc = &dwmac510_tc_ops,
+		.mmc = &dw25gmac_mmc_ops,
+		.setup = dw25gmac_setup,
+		.quirks = NULL,
 	},
 };
 
 int stmmac_hwif_init(struct stmmac_priv *priv)
 {
+	const struct dwxgmac_addrs *dwxgmac_addrs = priv->plat->dwxgmac_addrs;
 	bool needs_xgmac = priv->plat->has_xgmac;
 	bool needs_gmac4 = priv->plat->has_gmac4;
 	bool needs_gmac = priv->plat->has_gmac;
@@ -265,7 +285,10 @@ int stmmac_hwif_init(struct stmmac_priv *priv)
 	u32 id, dev_id = 0;
 	int i, ret;
 
-	if (needs_gmac) {
+	if (priv->plat->snps_id && priv->plat->dev_id) {
+		id = priv->plat->snps_id;
+		dev_id = priv->plat->dev_id;
+	} else if (needs_gmac) {
 		id = stmmac_get_id(priv, GMAC_VERSION);
 	} else if (needs_gmac4 || needs_xgmac) {
 		id = stmmac_get_id(priv, GMAC4_VERSION);
@@ -321,7 +344,8 @@ int stmmac_hwif_init(struct stmmac_priv *priv)
 		mac->mmc = mac->mmc ? : entry->mmc;
 
 		priv->hw = mac;
-		priv->ptpaddr = priv->ioaddr + entry->regs.ptp_off;
+		priv->ptpaddr = priv->ioaddr +
+			(dwxgmac_addrs ? dwxgmac_addrs->timestamp_base : entry->regs.ptp_off);
 		priv->mmcaddr = priv->ioaddr + entry->regs.mmc_off;
 
 		/* Entry found */

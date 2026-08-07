@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2016-2018, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef _HAB_IOCTL_H
 #define _HAB_IOCTL_H
@@ -32,6 +32,24 @@ struct hab_open {
 
 struct hab_close {
 	__s32 vcid;
+	__u32 flags;
+};
+
+struct hab_virq_register {
+	__s32 virq_handle;
+	__u32 vmid;
+	__u32 virq_num;
+	__s32 efd;
+	__u32 flags;
+};
+
+struct hab_virq_unregister {
+	__s32 virq_handle;
+	__u32 flags;
+};
+
+struct hab_virq {
+	__s32 virq_handle;
 	__u32 flags;
 };
 
@@ -106,5 +124,86 @@ struct vhost_hab_config {
 
 #define IOCTL_HAB_VC_QUERY \
 	_IOWR(HAB_IOC_TYPE, 0xA, struct hab_info)
+
+#define IOCTL_HAB_VIRQ_REGISTER \
+	_IOWR(HAB_IOC_TYPE, 0xB, struct hab_virq_register)
+
+#define IOCTL_HAB_SEND_VIRQ \
+	_IOW(HAB_IOC_TYPE, 0xC, struct hab_virq)
+
+#define IOCTL_HAB_VIRQ_UNREGISTER \
+	_IOW(HAB_IOC_TYPE, 0xD, struct hab_virq_unregister)
+
+#define HAB_MMID_MAP_NODE(mmid) ( \
+{\
+		const char *__mptr = NULL;\
+		int __mmid = (mmid) / 100;\
+		switch (__mmid) {\
+		case 0:\
+			__mptr = "hab";\
+			break;\
+		case 1:\
+			__mptr = "hab-aud";\
+			break;\
+		case 2:\
+			__mptr = "hab-cam";\
+			break;\
+		case 3:\
+			__mptr = "hab-disp";\
+			break;\
+		case 4:\
+			__mptr = "hab-ogles";\
+			break;\
+		case 5:\
+			__mptr = "hab-vid";\
+			break;\
+		case 6:\
+			__mptr = "hab-misc";\
+			break;\
+		case 7:\
+			__mptr = "hab-qcpe";\
+			break;\
+		case 8:\
+			__mptr = "hab-clock";\
+			break;\
+		case 9:\
+			__mptr = "hab-fde";\
+			break;\
+		case 10:\
+			__mptr = "hab-bufferq";\
+			break;\
+		case 11:\
+			__mptr = "hab-network";\
+			break;\
+		case 12:\
+			__mptr = "hab-hsi2s";\
+			break;\
+		case 13:\
+			__mptr = "hab-xvm";\
+			break;\
+		case 14:\
+			__mptr = "hab-vnw";\
+			break;\
+		case 15:\
+			__mptr = "hab-ext";\
+			break;\
+		case 16:\
+			__mptr = "hab-gpce";\
+			break;\
+		case 17:\
+			__mptr = "hab-soccp";\
+			break;\
+		case 18:\
+			__mptr = "hab-dprx";\
+			break;\
+		case 19:\
+			__mptr = "hab-eva";\
+			break;\
+		default:\
+			__mptr = NULL;\
+		} \
+		__mptr;\
+} \
+)
 
 #endif /* _HAB_IOCTL_H */

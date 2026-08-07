@@ -11,6 +11,17 @@
 
 struct block_device;
 
+#ifndef __TRACE_HOOK_BL_HIB_RESUME_STATE
+#define __TRACE_HOOK_BL_HIB_RESUME_STATE
+enum hibernate_resume_state {
+	HIBERNATION_IMAGE_RESTORE_START,
+	HIBERNATION_DEVICE_RESUME_START,
+	HIBERNATION_DEVICE_RESUME_DONE,
+	HIBERNATION_IMAGE_RESTORE_DONE,
+	HIBERNATION_EXIT,
+};
+#endif /*__TRACE_HOOK_BL_HIB_RESUME_STATE__*/
+
 DECLARE_HOOK(android_vh_check_hibernation_swap,
 	TP_PROTO(struct block_device *resume_block, bool *hib_swap),
 	TP_ARGS(resume_block, hib_swap));
@@ -48,6 +59,10 @@ DECLARE_HOOK(android_vh_hibernate_save_cmp_len,
         TP_PROTO(size_t cmp_len),
         TP_ARGS(cmp_len));
 
-#endif /* _TRACE_HOOK_BL_HIB_H */
+DECLARE_HOOK(android_vh_hibernate_resume_state,
+        TP_PROTO(enum hibernate_resume_state state),
+        TP_ARGS(state));
+
+#endif /* _TRACE_HOOK_S2D_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

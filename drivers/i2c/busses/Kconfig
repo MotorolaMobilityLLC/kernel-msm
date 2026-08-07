@@ -62,6 +62,17 @@ config I2C_AMD756
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-amd756.
 
+config I2C_MSM_V2
+        tristate "I2C_MSM_V2"
+        depends on ARCH_QCOM
+        help
+          If you say yes to this option, support will be included for the
+          built-in I2C interface and its DMA engine on the MSM family
+          processors.
+
+          This driver can also be built as a module.  If so, the module
+          will  be called i2c-msm-v2.
+
 config I2C_AMD756_S4882
 	tristate "SMBus multiplexing on the Tyan S4882"
 	depends on I2C_AMD756 && X86
@@ -954,6 +965,19 @@ config I2C_QCOM_CCI
 
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-qcom-cci.
+
+config I2C_QCOM_GENI_MSM
+	tristate "Qualcomm Technologies Inc.'s GENI based I2C controller with SCMI"
+	depends on ARCH_QCOM || COMPILE_TEST
+	depends on QCOM_GENI_SE_MSM
+	help
+	  This driver supports GENI serial engine based I2C controller in
+	  master mode on the Qualcomm Technologies Inc.'s SCMI support SoC. If you say
+	  yes to this option, support will be included for the built-in I2C
+	  interface on the Qualcomm Technologies Inc.'s SCMI support SoCs.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called i2c-geni-msm.
 
 config I2C_QCOM_GENI
 	tristate "Qualcomm Technologies Inc.'s GENI based I2C controller"

@@ -70,6 +70,7 @@
 #include <linux/virtio_config.h>
 #include <uapi/linux/virtio_mmio.h>
 #include <linux/virtio_ring.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_GH_VIRTIO_DEBUG
 #define CREATE_TRACE_POINTS
@@ -292,6 +293,13 @@ static void vm_reset(struct virtio_device *vdev)
 
 	/* 0 status means a reset. */
 	writel(0, vm_dev->base + VIRTIO_MMIO_STATUS);
+#ifdef CONFIG_VIRTIO_MMIO_POLL_RESET
+	/* After writing 0 to device_status, the driver MUST wait for a read of
+	 * device_status to return 0 before reinitializing the device.
+	 */
+	while (readl(vm_dev->base + VIRTIO_MMIO_STATUS))
+		usleep_range(1000, 1100);
+#endif
 }
 
 
@@ -511,11 +519,15 @@ static int vm_find_vqs(struct virtio_device *vdev, unsigned int nvqs,
 	struct virtio_mmio_device *vm_dev = to_virtio_mmio_device(vdev);
 	int irq = platform_get_irq(vm_dev->pdev, 0);
 	int i, err, queue_idx = 0;
+	unsigned long irq_flags = 0;
 
 	if (irq < 0)
 		return irq;
 
-	err = request_irq(irq, vm_interrupt, IRQF_SHARED,
+	if (of_property_read_bool(vm_dev->pdev->dev.of_node, "irq_no_suspend"))
+		irq_flags |= IRQF_NO_SUSPEND;
+
+	err = request_irq(irq, vm_interrupt, IRQF_SHARED | irq_flags,
 			dev_name(&vdev->dev), vm_dev);
 	if (err)
 		return err;
@@ -612,8 +624,9 @@ static int virtio_mmio_restore(struct device *dev)
 }
 
 static const struct dev_pm_ops virtio_mmio_pm_ops = {
-	.freeze         = virtio_mmio_freeze,
-	.restore        = virtio_mmio_restore,
+	.freeze_noirq		= virtio_mmio_freeze,
+	.thaw_noirq		= virtio_mmio_restore,
+	.restore_noirq		= virtio_mmio_restore,
 };
 #endif
 

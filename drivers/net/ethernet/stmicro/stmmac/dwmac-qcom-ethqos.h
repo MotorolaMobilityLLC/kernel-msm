@@ -1,13 +1,40 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/*Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.*/
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+
 #ifndef	_DWMAC_QCOM_ETHQOS_H
 #define	_DWMAC_QCOM_ETHQOS_H
+
+#include <linux/ipc_logging.h>
+
+extern void *ipc_emac_log_ctxt;
+
+#define IPCLOG_STATE_PAGES 50
+#define __FILENAME__ (strrchr(__FILE__, '/') ? \
+				strrchr(__FILE__, '/') + 1 : __FILE__)
+#include <linux/inetdevice.h>
+#include <linux/inet.h>
+
+#include <net/addrconf.h>
+#include <net/ipv6.h>
+#include <net/inet_common.h>
+
+#include <linux/uaccess.h>
+
+#define QCOM_ETH_QOS_MAC_ADDR_LEN 6
+#define QCOM_ETH_QOS_MAC_ADDR_STR_LEN 18
 
 #define DRV_NAME "qcom-ethqos"
 #define ETHQOSDBG(fmt, args...) \
 	pr_debug(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args)
 #define ETHQOSERR(fmt, args...) \
-	pr_err(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args)
+do {\
+	pr_err(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args);\
+	if (ipc_emac_log_ctxt) { \
+		ipc_log_string(ipc_emac_log_ctxt, \
+		"%s: %s[%u]:[emac] ERROR:" fmt, __FILENAME__,\
+		__func__, __LINE__, ## args); \
+	} \
+} while (0)
 #define ETHQOSINFO(fmt, args...) \
 	pr_info(DRV_NAME " %s:%d " fmt, __func__, __LINE__, ## args)
 
@@ -48,8 +75,11 @@ struct ethqos_emac_por {
 };
 
 struct ethqos_emac_driver_data {
-	struct ethqos_emac_por *por;
+	const struct ethqos_emac_por *por;
 	unsigned int num_por;
+	struct dwxgmac_addrs dwxgmac_addrs;
+	u32 dma_addr_width;
+	bool has_hdma;
 };
 
 struct qcom_ethqos {
@@ -63,6 +93,7 @@ struct qcom_ethqos {
 	struct clk *sgmiref_clk;
 
 	unsigned int speed;
+	int interface;
 
 	int gpio_phy_intr_redirect;
 	u32 phy_intr;
@@ -78,6 +109,14 @@ struct qcom_ethqos {
 	struct regulator *reg_emac_phy;
 	struct regulator *reg_rgmii_io_pads;
 
+	bool use_domains;
+	struct dev_pm_domain_list *pd_list;
+
+	/* state of enabled wol options in PHY*/
+	u32 phy_wol_wolopts;
+	/* state of supported wol options in PHY*/
+	u32 phy_wol_supported;
+
 	int curr_serdes_speed;
 
 	/* Boolean to check if clock is suspended*/
@@ -86,11 +125,60 @@ struct qcom_ethqos {
 	/* Boolean flag for turning off GDSC during suspend */
 	bool gdsc_off_on_suspend;
 
+	/* early ethernet parameters */
+	struct work_struct early_eth;
+	struct delayed_work ipv4_addr_assign_wq;
+	struct delayed_work ipv6_addr_assign_wq;
+	bool early_eth_enabled;
+	bool driver_load_fail;
+	/* Key Performance Indicators */
+	bool print_kpi;
+
+	struct dentry *debugfs_dir;
 };
 
-int ethqos_init_reqgulators(struct qcom_ethqos *ethqos);
+struct ip_params {
+	unsigned char mac_addr[QCOM_ETH_QOS_MAC_ADDR_LEN];
+	bool is_valid_mac_addr;
+	char link_speed[32];
+	bool is_valid_link_speed;
+	char ipv4_addr_str[32];
+	struct in_addr ipv4_addr;
+	bool is_valid_ipv4_addr;
+	char ipv6_addr_str[48];
+	struct in6_ifreq ipv6_addr;
+	bool is_valid_ipv6_addr;
+};
+
+int ethqos_init_regulators(struct qcom_ethqos *ethqos);
 void ethqos_disable_regulators(struct qcom_ethqos *ethqos);
 int ethqos_init_gpio(struct qcom_ethqos *ethqos);
 void ethqos_free_gpios(struct qcom_ethqos *ethqos);
 void *qcom_ethqos_get_priv(struct qcom_ethqos *ethqos);
+
+#define QTAG_VLAN_ETH_TYPE_OFFSET 16
+#define QTAG_UCP_FIELD_OFFSET 14
+#define QTAG_ETH_TYPE_OFFSET 12
+#define PTP_UDP_EV_PORT 0x013F
+#define PTP_UDP_GEN_PORT 0x0140
+
+#define IPA_DMA_TX_CH 0
+#define IPA_DMA_RX_CH 0
+
+#define VLAN_TAG_UCP_SHIFT 13
+#define CLASS_A_TRAFFIC_UCP 3
+#define CLASS_A_TRAFFIC_TX_CHANNEL 3
+
+#define CLASS_B_TRAFFIC_UCP 2
+#define CLASS_B_TRAFFIC_TX_CHANNEL 2
+
+#define NON_TAGGED_IP_TRAFFIC_TX_CHANNEL 1
+#define ALL_OTHER_TRAFFIC_TX_CHANNEL 1
+#define ALL_OTHER_TX_TRAFFIC_IPA_DISABLED 0
+
+#define DEFAULT_INT_MOD 1
+#define AVB_INT_MOD 8
+#define IP_PKT_INT_MOD 32
+#define PTP_INT_MOD 1
+
 #endif

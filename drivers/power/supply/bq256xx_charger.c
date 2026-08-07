@@ -17,6 +17,9 @@
 #include <linux/moduleparam.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
+#include <linux/extcon-provider.h>
+#include <linux/gpio/consumer.h>
+#include <linux/of_gpio.h>
 
 #define BQ256XX_MANUFACTURER "Texas Instruments"
 
@@ -114,6 +117,7 @@
 #define BQ256XX_VBUS_STAT_USB_CDP	BIT(6)
 #define BQ256XX_VBUS_STAT_USB_DCP	(BIT(6) | BIT(5))
 #define BQ256XX_VBUS_STAT_USB_OTG	(BIT(7) | BIT(6) | BIT(5))
+#define BQ256XX_VBUS_GD_USB		BIT(7)
 
 #define BQ256XX_CHRG_STAT_MASK		GENMASK(4, 3)
 #define BQ256XX_CHRG_STAT_NOT_CHRGING	0
@@ -142,6 +146,8 @@
 #define BQ256XX_WDT_BIT_SHIFT	4
 
 #define BQ256XX_REG_RST		BIT(7)
+
+#define BQ256XX_MAX_INPUT_VOLTAGE_UV	5400000
 
 /**
  * struct bq256xx_init_data -
@@ -175,6 +181,8 @@ struct bq256xx_init_data {
  * @bat_fault: battery fault according to BQ256XX_CHARGER_STATUS_1
  * @chrg_fault: charging fault according to BQ256XX_CHARGER_STATUS_1
  * @ntc_fault: TS fault according to BQ256XX_CHARGER_STATUS_1
+ *
+ * @vbus_gd: VBUS status according to BQ256XX_CHARGER_STATUS_2
  */
 struct bq256xx_state {
 	u8 vbus_stat;
@@ -185,6 +193,13 @@ struct bq256xx_state {
 	u8 bat_fault;
 	u8 chrg_fault;
 	u8 ntc_fault;
+
+	u8 vbus_gd;
+};
+
+static const unsigned int usb_extcon_cable[] = {
+	EXTCON_USB,
+	EXTCON_NONE,
 };
 
 enum bq256xx_id {
@@ -205,6 +220,7 @@ enum bq256xx_id {
  * @charger: power supply registered for the charger
  * @battery: power supply registered for the battery
  * @lock: mutex lock structure
+ * @irq_lock: mutex lock structure for irq
  *
  * @usb2_phy: usb_phy identifier
  * @usb3_phy: usb_phy identifier
@@ -218,6 +234,9 @@ enum bq256xx_id {
  * @chip_info: device variant information
  * @state: device status and faults
  * @watchdog_timer: watchdog timer value in milliseconds
+ *
+ * @irq_waiting: flag for status of irq waiting
+ * @resume_completed: suspend/resume flag
  */
 struct bq256xx_device {
 	struct i2c_client *client;
@@ -225,6 +244,8 @@ struct bq256xx_device {
 	struct power_supply *charger;
 	struct power_supply *battery;
 	struct mutex lock;
+	struct mutex irq_lock;
+
 	struct regmap *regmap;
 
 	struct usb_phy *usb2_phy;
@@ -239,6 +260,13 @@ struct bq256xx_device {
 	const struct bq256xx_chip_info *chip_info;
 	struct bq256xx_state state;
 	int watchdog_timer;
+	/* extcon for VBUS / ID notification to USB*/
+	struct extcon_dev       *extcon;
+
+	bool irq_waiting;
+	bool resume_completed;
+	/* debug_board_gpio to deteect the debug board*/
+	int debug_board_gpio;
 };
 
 /**
@@ -425,6 +453,7 @@ static int bq256xx_get_state(struct bq256xx_device *bq,
 {
 	unsigned int charger_status_0;
 	unsigned int charger_status_1;
+	unsigned int charger_status_2;
 	int ret;
 
 	ret = regmap_read(bq->regmap, BQ256XX_CHARGER_STATUS_0,
@@ -437,6 +466,11 @@ static int bq256xx_get_state(struct bq256xx_device *bq,
 	if (ret)
 		return ret;
 
+	ret = regmap_read(bq->regmap, BQ256XX_CHARGER_STATUS_2,
+						&charger_status_2);
+	if (ret)
+		return ret;
+
 	state->vbus_stat = charger_status_0 & BQ256XX_VBUS_STAT_MASK;
 	state->chrg_stat = charger_status_0 & BQ256XX_CHRG_STAT_MASK;
 	state->online = charger_status_0 & BQ256XX_PG_STAT_MASK;
@@ -445,6 +479,7 @@ static int bq256xx_get_state(struct bq256xx_device *bq,
 	state->bat_fault = charger_status_1 & BQ256XX_BAT_FAULT_MASK;
 	state->chrg_fault = charger_status_1 & BQ256XX_CHRG_FAULT_MASK;
 	state->ntc_fault = charger_status_1 & BQ256XX_NTC_FAULT_MASK;
+	state->vbus_gd =  charger_status_2 & BQ256XX_VBUS_GD_USB;
 
 	return 0;
 }
@@ -1139,6 +1174,8 @@ static bool bq256xx_state_changed(struct bq256xx_device *bq,
 	old_state = bq->state;
 	mutex_unlock(&bq->lock);
 
+	extcon_set_state_sync(bq->extcon, EXTCON_USB, !!new_state->vbus_gd);
+
 	return memcmp(&old_state, new_state, sizeof(struct bq256xx_state)) != 0;
 }
 
@@ -1147,6 +1184,15 @@ static irqreturn_t bq256xx_irq_handler_thread(int irq, void *private)
 	struct bq256xx_device *bq = private;
 	struct bq256xx_state state;
 	int ret;
+
+	mutex_lock(&bq->irq_lock);
+	bq->irq_waiting = true;
+	if (!bq->resume_completed) {
+		pr_debug("IRQ triggered before device-resume\n");
+		disable_irq_nosync(irq);
+		mutex_unlock(&bq->irq_lock);
+		return IRQ_HANDLED;
+	}
 
 	ret = bq256xx_get_state(bq, &state);
 	if (ret < 0)
@@ -1162,6 +1208,8 @@ static irqreturn_t bq256xx_irq_handler_thread(int irq, void *private)
 	power_supply_changed(bq->charger);
 
 irq_out:
+	bq->irq_waiting = false;
+	mutex_unlock(&bq->irq_lock);
 	return IRQ_HANDLED;
 }
 
@@ -1502,6 +1550,30 @@ static int bq256xx_power_supply_init(struct bq256xx_device *bq,
 	return 0;
 }
 
+static int bq256xx_debug_board_detect(struct bq256xx_device *bq)
+{
+	int ret = 0;
+
+	if (!of_find_property(bq->dev->of_node, "debugboard-detect-gpio", NULL))
+		return ret;
+
+	bq->debug_board_gpio = of_get_named_gpio(bq->dev->of_node,
+					     "debugboard-detect-gpio", 0);
+	if (IS_ERR(&bq->debug_board_gpio)) {
+		ret = PTR_ERR(&bq->debug_board_gpio);
+		dev_err(bq->dev, "Failed to initialize debugboard_detecte gpio\n");
+		return ret;
+	}
+	gpio_direction_input(bq->debug_board_gpio);
+	if (gpio_get_value(bq->debug_board_gpio)) {
+		bq->init_data.vindpm = BQ256XX_MAX_INPUT_VOLTAGE_UV;
+		dev_info(bq->dev,
+		"debug_board detected, setting vindpm to %d\n", bq->init_data.vindpm);
+	}
+
+	return ret;
+}
+
 static int bq256xx_hw_init(struct bq256xx_device *bq)
 {
 	struct power_supply_battery_info *bat_info;
@@ -1556,6 +1628,10 @@ static int bq256xx_hw_init(struct bq256xx_device *bq)
 		bq->init_data.vbatreg_max =
 			bat_info->constant_charge_voltage_max_uv;
 	}
+
+	ret = bq256xx_debug_board_detect(bq);
+	if (ret)
+		return ret;
 
 	ret = bq->chip_info->bq256xx_set_vindpm(bq, bq->init_data.vindpm);
 	if (ret)
@@ -1628,6 +1704,7 @@ static int bq256xx_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	struct bq256xx_device *bq;
 	struct power_supply_config psy_cfg = { };
+	struct bq256xx_state state;
 
 	int ret;
 
@@ -1638,8 +1715,10 @@ static int bq256xx_probe(struct i2c_client *client,
 	bq->client = client;
 	bq->dev = dev;
 	bq->chip_info = &bq256xx_chip_info_tbl[id->driver_data];
+	bq->resume_completed = true;
 
 	mutex_init(&bq->lock);
+	mutex_init(&bq->irq_lock);
 
 	strncpy(bq->model_name, id->name, I2C_NAME_SIZE);
 
@@ -1678,18 +1757,6 @@ static int bq256xx_probe(struct i2c_client *client,
 		usb_register_notifier(bq->usb3_phy, &bq->usb_nb);
 	}
 
-	if (client->irq) {
-		ret = devm_request_threaded_irq(dev, client->irq, NULL,
-						bq256xx_irq_handler_thread,
-						IRQF_TRIGGER_FALLING |
-						IRQF_ONESHOT,
-						dev_name(&client->dev), bq);
-		if (ret < 0) {
-			dev_err(dev, "get irq fail: %d\n", ret);
-			return ret;
-		}
-	}
-
 	ret = bq256xx_power_supply_init(bq, &psy_cfg, dev);
 	if (ret) {
 		dev_err(dev, "Failed to register power supply\n");
@@ -1701,6 +1768,45 @@ static int bq256xx_probe(struct i2c_client *client,
 		dev_err(dev, "Cannot initialize the chip.\n");
 		return ret;
 	}
+
+	bq->extcon = devm_extcon_dev_allocate(bq->dev, usb_extcon_cable);
+	if (IS_ERR(bq->extcon)) {
+		ret = PTR_ERR(bq->extcon);
+		dev_err(bq->dev, "failed to allocate extcon device ret=%d\n",
+			ret);
+		return ret;
+	}
+
+	ret = devm_extcon_dev_register(bq->dev, bq->extcon);
+	if (ret < 0) {
+		dev_err(bq->dev, "failed to register extcon device ret=%d\n",
+			ret);
+		return ret;
+	}
+
+	/* Set extcon state depending upon USB connect/disconnect state on boot */
+	ret = bq256xx_get_state(bq, &state);
+	if (ret)
+		return ret;
+
+	extcon_set_state_sync(bq->extcon, EXTCON_USB, !!state.vbus_gd);
+
+	if (client->irq) {
+		ret = devm_request_threaded_irq(dev, client->irq, NULL,
+						bq256xx_irq_handler_thread,
+						IRQF_TRIGGER_FALLING |
+						IRQF_ONESHOT,
+						dev_name(&client->dev), bq);
+		if (ret < 0) {
+			dev_err(dev, "get irq fail: %d\n", ret);
+			return ret;
+		}
+
+		enable_irq_wake(client->irq);
+	}
+
+	dev_dbg(dev, "bq256xx successfully probed. charger=0x%x\n",
+		 state.vbus_gd);
 
 	return ret;
 }
@@ -1741,11 +1847,92 @@ static const struct acpi_device_id bq256xx_acpi_match[] = {
 };
 MODULE_DEVICE_TABLE(acpi, bq256xx_acpi_match);
 
+
+static int bq256xx_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq256xx_device *bq = i2c_get_clientdata(client);
+
+	mutex_lock(&bq->irq_lock);
+	bq->resume_completed = false;
+	mutex_unlock(&bq->irq_lock);
+
+	return 0;
+}
+
+static int bq256xx_suspend_noirq(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq256xx_device *bq = i2c_get_clientdata(client);
+
+	if (bq->irq_waiting) {
+		dev_err_ratelimited(dev, "Aborting suspend, an interrupt was detected while suspending\n");
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
+static int bq256xx_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq256xx_device *bq = i2c_get_clientdata(client);
+
+	mutex_lock(&bq->irq_lock);
+	bq->resume_completed = true;
+	mutex_unlock(&bq->irq_lock);
+	if (bq->irq_waiting) {
+		/* irq was pending, call the handler */
+		bq256xx_irq_handler_thread(client->irq, bq);
+		enable_irq(client->irq);
+	}
+
+	return 0;
+}
+
+static int bq256xx_restore(struct device *dev)
+{
+	int ret = 0;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq256xx_device *bq = i2c_get_clientdata(client);
+
+	if (client->irq > 0) {
+		disable_irq_nosync(client->irq);
+		devm_free_irq(dev, client->irq, bq);
+		/*
+		 * Set extcon state depending upon USB connect/disconnect state
+		 * on hibernation exit
+		 */
+		bq256xx_irq_handler_thread(client->irq, bq);
+		ret = devm_request_threaded_irq(dev, client->irq, NULL,
+						bq256xx_irq_handler_thread,
+						IRQF_TRIGGER_FALLING |
+						IRQF_ONESHOT,
+						dev_name(&client->dev), bq);
+		if (ret < 0) {
+			dev_err(dev, "get irq fail: %d\n", ret);
+			return ret;
+		}
+
+		enable_irq_wake(client->irq);
+	}
+
+	return ret;
+}
+
+static const struct dev_pm_ops  bq256xx_pm_ops = {
+	.suspend =  bq256xx_suspend,
+	.suspend_noirq = bq256xx_suspend_noirq,
+	.resume =  bq256xx_resume,
+	.restore = bq256xx_restore,
+};
+
 static struct i2c_driver bq256xx_driver = {
 	.driver = {
 		.name = "bq256xx-charger",
 		.of_match_table = bq256xx_of_match,
 		.acpi_match_table = bq256xx_acpi_match,
+		.pm = &bq256xx_pm_ops,
 	},
 	.probe = bq256xx_probe,
 	.id_table = bq256xx_i2c_ids,

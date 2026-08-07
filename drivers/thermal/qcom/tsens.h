@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __QCOM_TSENS_H__
@@ -18,6 +18,10 @@
 #define THRESHOLD_MAX_ADC_CODE	0x3ff
 #define THRESHOLD_MIN_ADC_CODE	0x0
 #define COLD_SENSOR_HW_ID	128
+
+#define TSENS_ELEVATE_DELTA	10000
+#define TSENS_ELEVATE_CPU_DELTA	5000
+#define TSENS_ELEVATE_HOT_DELTA	3000
 
 #include <linux/interrupt.h>
 #include <linux/thermal.h>
@@ -82,6 +86,8 @@ struct tsens_ops {
 	void (*disable)(struct tsens_priv *priv);
 	int (*suspend)(struct tsens_priv *priv);
 	int (*resume)(struct tsens_priv *priv);
+	int (*freeze)(struct tsens_priv *priv);
+	int (*restore)(struct tsens_priv *priv);
 	int (*get_cold_status)(const struct tsens_sensor *s, bool *cold_status);
 };
 
@@ -615,7 +621,8 @@ struct tsens_priv {
 	int				crit_irq;
 	int				cold_irq;
 
-	bool			tm_disable_on_suspend;
+	bool				need_trip_update;
+	bool				tm_disable_on_suspend;
 
 	struct dentry			*debug_root;
 	struct dentry			*debug;
@@ -637,6 +644,8 @@ int get_temp_tsens_valid(const struct tsens_sensor *s, int *temp);
 int get_temp_common(const struct tsens_sensor *s, int *temp);
 int tsens_v2_tsens_suspend(struct tsens_priv *priv);
 int tsens_v2_tsens_resume(struct tsens_priv *priv);
+int tsens_v2_tsens_freeze(struct tsens_priv *priv);
+int tsens_v2_tsens_restore(struct tsens_priv *priv);
 int get_cold_int_status(const struct tsens_sensor *s, bool *cold_status);
 
 /* TSENS target */

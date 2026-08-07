@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <trace/hooks/sched.h>
@@ -287,10 +287,21 @@ static inline bool need_active_lb(struct task_struct *p, int dst_cpu,
 	if (task_reject_partialhalt_cpu(p, dst_cpu))
 		return false;
 
+	/*
+	 * If the sleeping task on the dst_cpu and the task for which we are
+	 * doing active load balance, are pipeline tasks then don't do active
+	 * load balance.  If we allow this, the sleeping task might wakeup
+	 * again on dst_cpu before the migration of actively pulled task. This
+	 * will result in two pipeline tasks on the same cpu
+	 */
+	if (walt_pipeline_low_latency_task(p) &&
+			walt_pipeline_low_latency_task(cpu_rq(dst_cpu)->curr))
+		return false;
+
 	return true;
 }
 
-static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct *pulled_task)
+static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct **pulled_task_struct)
 {
 	struct rq *dst_rq = cpu_rq(dst_cpu);
 	struct rq *src_rq = cpu_rq(src_cpu);
@@ -339,7 +350,6 @@ static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct *pull
 	}
 	if (pull_me) {
 		walt_detach_task(pull_me, src_rq, dst_rq);
-		pulled_task = pull_me;
 		goto unlock;
 	}
 
@@ -373,7 +383,6 @@ static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct *pull
 	}
 	if (pull_me) {
 		walt_detach_task(pull_me, src_rq, dst_rq);
-		pulled_task = pull_me;
 		goto unlock;
 	}
 
@@ -383,6 +392,7 @@ static int walt_lb_pull_tasks(int dst_cpu, int src_cpu, struct task_struct *pull
 			if (cpumask_test_cpu(dst_cpu, p->cpus_ptr)
 				&& need_active_lb(p, dst_cpu, src_cpu)) {
 				bool success;
+
 				active_balance = true;
 				src_rq->active_balance = 1;
 				src_rq->push_cpu = dst_cpu;
@@ -414,13 +424,14 @@ unlock:
 	/* lock must be dropped before waking the stopper */
 	raw_spin_unlock_irqrestore(&src_rq->__lock, flags);
 
-	if (!pulled_task)
+	if (!pull_me)
 		return 0;
 
 	raw_spin_lock_irqsave(&dst_rq->__lock, flags);
-	walt_attach_task(pulled_task, dst_rq);
+	walt_attach_task(pull_me, dst_rq);
 	raw_spin_unlock_irqrestore(&dst_rq->__lock, flags);
 
+	*pulled_task_struct = pull_me;
 	return 1; /* we pulled 1 task */
 }
 
@@ -835,10 +846,15 @@ static void walt_newidle_balance(struct rq *this_rq,
 	int has_misfit = 0;
 	int i;
 	struct task_struct *pulled_task_struct = NULL;
+	struct walt_sched_cluster *cluster;
 
 	if (unlikely(walt_disabled))
 		return;
 
+	for_each_sched_cluster(cluster) {
+		if (cluster != cpu_cluster(this_cpu))
+			update_freq_relation(cluster);
+	}
 	/*
 	 * newly idle load balance is completely handled here, so
 	 * set done to skip the load balance by the caller.
@@ -940,7 +956,7 @@ found_busy_cpu:
 	if (this_rq->nr_running > 0 || (busy_cpu == this_cpu))
 		goto unlock;
 
-	*pulled_task = walt_lb_pull_tasks(this_cpu, busy_cpu, pulled_task_struct);
+	*pulled_task = walt_lb_pull_tasks(this_cpu, busy_cpu, &pulled_task_struct);
 
 unlock:
 	raw_spin_lock(&this_rq->__lock);
@@ -1080,7 +1096,16 @@ static void walt_sched_newidle_balance(void *unused, struct rq *this_rq,
 				       struct rq_flags *rf, int *pulled_task,
 				       int *done)
 {
-	walt_newidle_balance(this_rq, rf, pulled_task, done, false);
+	/*
+	 * There is a task waiting to run. No need to search for one.
+	 * The task will be enqueued when switching to idle.
+	 * Also set done to 0, such that this_rq misfit status is updated by
+	 * newidle_balance()
+	 */
+	if (this_rq->ttwu_pending)
+		done = 0;
+	else
+		walt_newidle_balance(this_rq, rf, pulled_task, done, false);
 }
 
 void walt_lb_init(void)

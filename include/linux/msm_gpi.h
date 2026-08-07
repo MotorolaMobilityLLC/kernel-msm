@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef __MSM_GPI_H_
@@ -246,10 +246,18 @@ if (print) { \
 
 /* cmds to perform by using dmaengine_slave_config() */
 enum msm_gpi_ctrl_cmd {
+	MSM_GPI_DEFAULT,
 	MSM_GPI_INIT,
 	MSM_GPI_CMD_UART_SW_STALE,
 	MSM_GPI_CMD_UART_RFR_READY,
 	MSM_GPI_CMD_UART_RFR_NOT_READY,
+	MSM_GPI_DEEP_SLEEP_INIT,
+};
+
+enum Q2SPI_CR_HEADER_CODE {
+	Q2SPI_CR_CODE_SUCCESS = 0x1,
+	Q2SPI_CR_HEADER_LEN_ZERO = 0xB,
+	Q2SPI_CR_HEADER_INCORRECT = 0xC,
 };
 
 enum msm_gpi_cb_event {
@@ -273,14 +281,8 @@ struct msm_gpi_error_log {
 };
 
 struct __packed qup_q2spi_cr_header_event {
-	u32 cr_hdr_0 : 8;
-	u32 cr_hdr_1 : 8;
-	u32 cr_hdr_2 : 8;
-	u32 cr_hdr_3 : 8;
-	u32 cr_ed_byte_0 : 8;
-	u32 cr_ed_byte_1 : 8;
-	u32 cr_ed_byte_2 : 8;
-	u32 cr_ed_byte_3 : 8;
+	u8 cr_hdr[4];
+	u8 cr_ed_byte[4];
 	u32 reserved0 : 24;
 	u8 code : 8;
 	u32 byte0_len : 4;
@@ -290,6 +292,20 @@ struct __packed qup_q2spi_cr_header_event {
 	u8 type : 8;
 	u8 ch_id : 8;
 };
+
+static const char *const gpi_cb_event_str[MSM_GPI_QUP_MAX_EVENT] = {
+	[MSM_GPI_QUP_NOTIFY] = "NOTIFY",
+	[MSM_GPI_QUP_ERROR] = "GLOBAL ERROR",
+	[MSM_GPI_QUP_CH_ERROR] = "CHAN ERROR",
+	[MSM_GPI_QUP_FW_ERROR] = "UNHANDLED ERROR",
+	[MSM_GPI_QUP_PENDING_EVENT] = "PENDING EVENT",
+	[MSM_GPI_QUP_EOT_DESC_MISMATCH] = "EOT/DESC MISMATCH",
+	[MSM_GPI_QUP_SW_ERROR] = "SW ERROR",
+	[MSM_GPI_QUP_CR_HEADER] = "Doorbell CR EVENT"
+};
+
+#define TO_GPI_CB_EVENT_STR(event) (((event) >= MSM_GPI_QUP_MAX_EVENT) ? \
+				    "INVALID" : gpi_cb_event_str[(event)])
 
 struct msm_gpi_cb {
 	enum msm_gpi_cb_event cb_event;
@@ -359,6 +375,7 @@ struct gsi_tre_queue {
 	u32 msg_cnt;
 	u32 unmap_msg_cnt;
 	u32 freed_msg_cnt;
+	bool is_multi_descriptor;
 	dma_addr_t dma_buf[GSI_MAX_NUM_TRE_MSGS];
 	void *virt_buf[GSI_MAX_NUM_TRE_MSGS];
 	u32 len[GSI_MAX_NUM_TRE_MSGS];
@@ -387,7 +404,7 @@ struct gsi_common {
 	struct gsi_xfer_param rx;
 	void *ipc;
 	bool req_chan;
-	bool err; /* For every gsi error performing gsi reset */
+	bool *err; /* For every gsi error performing gsi reset */
 	int *protocol_err; /* protocol specific error*/
 	void (*ev_cb_fun)(struct dma_chan *ch, struct msm_gpi_cb const *cb_str, void *ptr);
 };
@@ -396,6 +413,25 @@ struct gsi_common {
  * whenever client met some scenario like timeout, error in GPI transfer mode.
  */
 void gpi_dump_for_geni(struct dma_chan *chan);
+
+/**
+ * gpi_q2spi_terminate_all() - function to stop and restart the channels
+ * @chan: gsi dma channel handle
+ *
+ * Return: Returns success or failure
+ */
+int gpi_q2spi_terminate_all(struct dma_chan *chan);
+
+/**
+ * gpi_update_multi_desc_flag() - update multi descriptor flag and num of msgs for
+ *				   multi descriptor mode handling.
+ * @chan: Base address of dma channel
+ * @is_multi_descriptor: is multi descriptor flag
+ * @num_msgs: number of client messages
+ *
+ * Return:None
+ */
+void gpi_update_multi_desc_flag(struct dma_chan *chan, bool is_multi_descriptor, int num_msgs);
 
 /**
  * gsi_common_tre_process() - Process received TRE's from GSI HW
@@ -428,8 +464,33 @@ int gsi_common_tx_tre_optimization(struct gsi_common *gsi, u32 num_xfers, u32 nu
 				   u32 xfer_timeout, struct device *wrapper_dev);
 
 /**
+ * geni_gsi_ch_start() - gsi channel command to start the GSI RX and TX channels
+ * @chan: dma channel handle
+ *
+ * Return: Returns success or failure
+ */
+int geni_gsi_ch_start(struct dma_chan *chan);
+
+/**
+ * geni_gsi_connect_doorbell() - function to connect gsi doorbell
+ * @chan: dma channel handle
+ *
+ * Return: Returns success or failure
+ */
+int geni_gsi_connect_doorbell(struct dma_chan *chan);
+
+/**
+ * geni_gsi_disconnect_doorbell_stop_ch() - function to disconnect gsi doorbell and stop channel
+ * @chan: dma channel handle
+ *
+ * Return: Returns success or failure
+ */
+int geni_gsi_disconnect_doorbell_stop_ch(struct dma_chan *chan, bool stop_ch);
+
+/**
  * geni_gsi_common_request_channel() - gsi common dma request channel
  * @gsi: Base address of gsi common
+ * @stop_ch: stop channel if set to true
  *
  * Return: Returns success or failure
  */

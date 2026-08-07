@@ -1,12 +1,13 @@
-load(":target_variants.bzl", "lxc_variants")
-load(":msm_kernel_lxc.bzl", "define_msm_lxc")
 load(":image_opts.bzl", "boot_image_opts")
+load(":msm_kernel_lxc.bzl", "define_msm_lxc")
+load(":target_variants.bzl", "lxc_variants")
 
 target_name = "autogvm"
 
 def define_autogvm_lxc():
     _autogvm_lxc_in_tree_modules = [
         # keep sorted
+        "drivers/rpmsg/qcom_glink_cma.ko",
         "drivers/soc/qcom/hgsl/qcom_hgsl.ko",
     ]
 

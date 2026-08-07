@@ -49,6 +49,14 @@ config DWMAC_DWC_QOS_ETH
 	help
 	  Support for chips using the snps,dwc-qos-ethernet.txt DT binding.
 
+config EMAC_MDIO_FE
+	tristate "Support for the mdio front end driver"
+	help
+	  Adding support for EMAC MDIO Front end driver. This enables single
+	  mdio for the dual mac feature support on HQX. The front end driver
+	  get request from GVM and send it to the Backend mdio driver.The
+	  request is handled on the backend for the mdio read/write operation.
+
 config DWMAC_GENERIC
 	tristate "Generic driver for DWMAC"
 	default STMMAC_PLATFORM
@@ -144,7 +152,7 @@ config DWMAC_QCOM_ETHQOS
 
 config DWMAC_QCOM_VER3
 	tristate "EMAC ETHQOS support for direwolf"
-	default ARCH_QCOM
+	default n
 	depends on OF && (ARCH_QCOM || COMPILE_TEST)
 	help
 	  Support for the EMAC ETHQOS core 3.
@@ -276,7 +284,7 @@ config ETHQOS_QCOM_VER4
 	  only applicable for EMAC version 4.
 
 config ETHQOS_QCOM_SERDES
-	bool "Enable Serdes driver"
+	tristate "Enable Serdes driver"
 	depends on STMMAC_ETH
 	default n
 	help

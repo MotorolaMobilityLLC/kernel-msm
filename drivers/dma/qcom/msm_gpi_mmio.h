@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 /* Register offsets from gpi-top */
+#define GPI_GPII_MAP_EE_n_CH_k_VP_TABLE(n, k) \
+		(0x17800 + (0x4 * (k)) + (0x80 * (n)))
 #define GPI_GPII_n_CH_k_CNTXT_0_OFFS(n, k) \
 		(0x20000 + (0x4000 * (n)) + (0x80 * (k)))
 #define GPI_GPII_n_CH_k_CNTXT_2_OFFS(n, k) \
@@ -53,6 +55,8 @@
 #define GPI_GPII_n_CH_CMD_UART_SW_STALE (32)
 #define GPI_GPII_n_CH_CMD_UART_RFR_READY (33)
 #define GPI_GPII_n_CH_CMD_UART_RFR_NOT_READY (34)
+#define GPI_GPII_n_CH_CMD_ENABLE_HID (48)
+#define GPI_GPII_n_CH_CMD_DISABLE_HID (49)
 
 /* EV Context Array */
 #define GPI_GPII_n_EV_CH_k_CNTXT_0_OFFS(n, k) \

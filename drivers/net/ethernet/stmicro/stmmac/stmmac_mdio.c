@@ -20,6 +20,7 @@
 #include <linux/property.h>
 #include <linux/slab.h>
 
+#include "emac_mdio_fe.h"
 #include "dwxgmac2.h"
 #include "stmmac.h"
 
@@ -351,6 +352,9 @@ int stmmac_mdio_reset(struct mii_bus *bus)
 	unsigned int mii_address = priv->hw->mii.addr;
 	bool active_high = false;
 
+	if (priv->plat->early_eth && !priv->plat->need_reset)
+		return 0;
+
 #ifdef CONFIG_OF
 	if (priv->device->of_node) {
 		struct gpio_desc *reset_gpio;
@@ -359,8 +363,11 @@ int stmmac_mdio_reset(struct mii_bus *bus)
 		reset_gpio = devm_gpiod_get_optional(priv->device,
 						     "snps,reset",
 						     GPIOD_OUT_LOW);
-		if (IS_ERR(reset_gpio))
+		if (IS_ERR(reset_gpio)) {
+			pr_err("qcom-ethqos: %s failed to get gpio with err %d\n",
+			       __func__, PTR_ERR(reset_gpio));
 			return PTR_ERR(reset_gpio);
+		}
 
 		device_property_read_u32_array(priv->device,
 					       "snps,reset-delays-us",
@@ -376,6 +383,7 @@ int stmmac_mdio_reset(struct mii_bus *bus)
 		gpiod_set_value_cansleep(reset_gpio, active_high ? 0 : 1);
 		if (delays[2])
 			msleep(DIV_ROUND_UP(delays[2], 1000));
+		devm_gpiod_put(priv->device, reset_gpio);
 	}
 #endif
 
@@ -426,6 +434,76 @@ int stmmac_xpcs_setup(struct mii_bus *bus)
 }
 
 /**
+ * stmmac_get_phy_addr
+ * @priv: net device structure
+ * @new_bus: points to the mii_bus structure
+ * Description: it finds the PHY address from board and phy_type
+ */
+int stmmac_get_phy_addr(struct stmmac_priv *priv, struct mii_bus *new_bus,
+			struct net_device *ndev)
+{
+	struct stmmac_mdio_bus_data *mdio_bus_data = priv->plat->mdio_bus_data;
+	struct device_node *np = priv->device->of_node;
+	unsigned int phyaddr;
+	int err = 0;
+
+	init_completion(&priv->plat->mdio_op);
+	new_bus->reset = &stmmac_mdio_reset;
+	new_bus->priv = ndev;
+
+	if (priv->plat->phy_type != -1) {
+		if (priv->plat->phy_type == PHY_1G) {
+			err = of_property_read_u32(np, "emac-1g-phy-addr", &phyaddr);
+			new_bus->read = &virtio_mdio_read;
+			new_bus->write = &virtio_mdio_write;
+		} else {
+			new_bus->read = &virtio_mdio_read_c45_indirect;
+			new_bus->write = &virtio_mdio_write_c45_indirect;
+			new_bus->probe_capabilities = MDIOBUS_C22_C45;
+			if (priv->plat->phy_type == PHY_25G &&
+			    priv->plat->board_type == STAR_BOARD) {
+				err = of_property_read_u32(np,
+							   "emac-star-cl45-phy-addr", &phyaddr);
+			} else {
+				err = of_property_read_u32(np,
+							   "emac-air-cl45-phy-addr", &phyaddr);
+			}
+		}
+	} else {
+		err = of_property_read_u32(np, "emac-1g-phy-addr", &phyaddr);
+		if (err) {
+			new_bus->phy_mask = mdio_bus_data->phy_mask;
+			return -1;
+		}
+		new_bus->read = &virtio_mdio_read;
+		new_bus->write = &virtio_mdio_write;
+		/* Do MDIO reset before the bus->read call */
+		err = new_bus->reset(new_bus);
+		if (err) {
+			new_bus->phy_mask = ~(1 << phyaddr);
+			return phyaddr;
+		}
+		/* 1G phy check */
+		err = new_bus->read(new_bus, phyaddr, MII_BMSR);
+		if (err == -EBUSY || err == 0xffff) {
+			/* 2.5 G PHY case */
+			new_bus->read = &virtio_mdio_read_c45_indirect;
+			new_bus->write = &virtio_mdio_write_c45_indirect;
+			new_bus->probe_capabilities = MDIOBUS_C22_C45;
+
+			err = of_property_read_u32(np,
+						   "emac-air-cl45-phy-addr", &phyaddr);
+			/* Board Type check */
+			err = new_bus->read(new_bus, phyaddr, MII_BMSR);
+			if (err == -EBUSY || !err || err == 0xffff)
+				err = of_property_read_u32(np,
+							   "emac-star-cl45-phy-addr", &phyaddr);
+		}
+	}
+	new_bus->phy_mask = ~(1 << phyaddr);
+	return phyaddr;
+}
+/**
  * stmmac_mdio_register
  * @ndev: net device structure
  * Description: it registers the MII bus
@@ -438,9 +516,12 @@ int stmmac_mdio_register(struct net_device *ndev)
 	struct fwnode_handle *fwnode = of_fwnode_handle(priv->plat->phylink_node);
 	struct stmmac_mdio_bus_data *mdio_bus_data = priv->plat->mdio_bus_data;
 	struct device_node *mdio_node = priv->plat->mdio_node;
+	struct device_node *np = priv->device->of_node;
 	struct device *dev = ndev->dev.parent;
+	struct phy_device *phydev;
 	struct fwnode_handle *fixed_node;
-	int addr, found, max_addr;
+	int addr, found, max_addr, skip_phy_detect = 0;
+	unsigned int phyaddr;
 
 	if (!mdio_bus_data)
 		return 0;
@@ -461,7 +542,12 @@ int stmmac_mdio_register(struct net_device *ndev)
 			new_bus->probe_capabilities = MDIOBUS_C22_C45;
 	}
 
-	if (priv->plat->has_xgmac) {
+	err = of_property_read_bool(np, "virtio-mdio");
+	if (err) {
+		phyaddr = stmmac_get_phy_addr(priv, new_bus, ndev);
+		max_addr = PHY_MAX_ADDR;
+		skip_phy_detect = 1;
+	} else if (priv->plat->has_xgmac) {
 		new_bus->read = &stmmac_xgmac2_mdio_read;
 		new_bus->write = &stmmac_xgmac2_mdio_write;
 
@@ -484,7 +570,6 @@ int stmmac_mdio_register(struct net_device *ndev)
 	snprintf(new_bus->id, MII_BUS_ID_SIZE, "%s-%x",
 		 new_bus->name, priv->plat->bus_id);
 	new_bus->priv = ndev;
-	new_bus->phy_mask = mdio_bus_data->phy_mask;
 	new_bus->parent = priv->device;
 
 	err = of_mdiobus_register(new_bus, mdio_node);
@@ -512,13 +597,25 @@ int stmmac_mdio_register(struct net_device *ndev)
 			goto bus_register_done;
 		}
 	}
+	if (skip_phy_detect) {
+		phydev = mdiobus_get_phy(new_bus, phyaddr);
+		if (!phydev || phydev->phy_id == 0xffff) {
+			dev_err(dev, "Cannot attach phy addr %d from dtsi\n",
+				phyaddr);
+		} else {
+			priv->plat->phy_addr = phyaddr;
+			priv->phydev = phydev;
+			phy_attached_info(phydev);
+			goto bus_register_done;
+		}
+	}
 
 	if (priv->plat->phy_node || mdio_node)
 		goto bus_register_done;
 
 	found = 0;
 	for (addr = 0; addr < max_addr; addr++) {
-		struct phy_device *phydev = mdiobus_get_phy(new_bus, addr);
+		phydev = mdiobus_get_phy(new_bus, addr);
 
 		if (!phydev)
 			continue;

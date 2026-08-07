@@ -269,6 +269,9 @@ DECLARE_HOOK(android_vh_shmem_swapin_folio,
 DECLARE_HOOK(android_vh_madvise_cold_or_pageout_page,
 	TP_PROTO(bool pageout, struct page *page),
 	TP_ARGS(pageout, page));
+DECLARE_HOOK(android_vh_mark_folio_accessed,
+	TP_PROTO(struct folio *folio),
+	TP_ARGS(folio));
 DECLARE_HOOK(android_vh_page_should_be_protected,
 	TP_PROTO(struct folio *folio, unsigned long nr_scanned,
 	s8 priority, u64 *ext, int *should_protect),

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __QCOM_QCOM_IO_PGTABLE_H
 #define __QCOM_QCOM_IO_PGTABLE_H
@@ -32,6 +32,7 @@ struct qcom_io_pgtable_info {
 #define to_qcom_io_pgtable_info(x)\
 container_of((x), struct qcom_io_pgtable_info, cfg)
 
+#define IO_PGTABLE_QUIRK_QCOM_TCR_IRGN_NC	 BIT(30)
 #define IO_PGTABLE_QUIRK_QCOM_USE_LLC_NWA       BIT(31)
 
 #define ARM_V8L_FAST ((unsigned int)-1)

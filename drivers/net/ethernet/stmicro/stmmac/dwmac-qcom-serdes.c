@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-/* Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved. */
 
 #include <linux/delay.h>
 #include <linux/module.h>
@@ -1188,7 +1188,7 @@ static int qcom_ethqos_serdes_update_sgmii(struct qcom_ethqos *ethqos,
 
 	switch (speed) {
 	case SPEED_1000:
-		if (ethqos->curr_serdes_speed == SPEED_2500)
+		if (ethqos->curr_serdes_speed != SPEED_1000)
 			ret = qcom_ethqos_serdes_sgmii_1Gb(ethqos);
 
 		ethqos->curr_serdes_speed = SPEED_1000;
@@ -1312,3 +1312,4 @@ err_mem:
 	return -1;
 }
 EXPORT_SYMBOL_GPL(qcom_ethqos_serdes_configure_dt);
+MODULE_LICENSE("GPL");

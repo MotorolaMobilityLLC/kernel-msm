@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
 #include "hab_grantable.h"
+#include "hab_virq.h"
 
 #define MAX_LINE_SIZE 128
 
@@ -84,6 +85,7 @@ int hab_stat_show_ctx(struct hab_driver *driver,
 {
 	int ret = 0;
 	struct uhab_context *ctx;
+	struct virq_uhab_context *virq_ctx;
 
 	ret = strscpy(buf, "", size);
 
@@ -93,11 +95,23 @@ int hab_stat_show_ctx(struct hab_driver *driver,
 					driver->ctx_cnt);
 	list_for_each_entry(ctx, &hab_driver.uctx_list, node) {
 		ret = hab_stat_buffer_print(buf, size,
-		"ctx %d K %d close %d vc %d exp %d imp %d open %d ref %d\n",
+			"ctx %d K %d close %d vc %d exp %d imp %d open %d ref %d grp %s\n",
 			ctx->owner, ctx->kernel, ctx->closing,
 			ctx->vcnt, ctx->export_total,
 			ctx->import_total, ctx->pending_cnt,
-			get_refcnt(ctx->refcount));
+			get_refcnt(ctx->refcount),
+			ctx->kernel ? "" : HAB_MMID_MAP_NODE(ctx->mmid_grp_index * 100));
+	}
+
+	ret = hab_stat_buffer_print(buf, size,
+			"Total virq contexts %d\n",
+			driver->virq_ctx_cnt);
+	list_for_each_entry(virq_ctx, &hab_driver.virq_uctx_list, node) {
+		ret = hab_stat_buffer_print(buf, size,
+		"ctx %d K %d virq %d ref %d\n",
+			virq_ctx->owner, virq_ctx->kernel,
+			virq_ctx->virq_total,
+			get_refcnt(virq_ctx->refcount));
 	}
 	spin_unlock_bh(&hab_driver.drvlock);
 
@@ -120,32 +134,47 @@ static int print_ctx_total_expimp(struct uhab_context *ctx,
 	struct compressed_pfns *pfn_table = NULL;
 	int exp_total = 0, imp_total = 0;
 	int exp_cnt = 0, imp_cnt = 0;
-	struct export_desc *exp = NULL;
+	struct export_desc *export = NULL;
+	struct export_desc_super *exp_super, *exp_super_tmp;
 	int exim_size = 0;
 	int ret = 0;
 
 	read_lock(&ctx->exp_lock);
-	list_for_each_entry(exp, &ctx->exp_whse, node) {
-		pfn_table =	(struct compressed_pfns *)exp->payload;
-		exim_size = get_pft_tbl_total_size(pfn_table);
-		exp_total += exim_size;
-		exp_cnt++;
+	list_for_each_entry(export, &ctx->exp_whse, node) {
+		exp_super = container_of(export, struct export_desc_super, exp);
+		if (!exp_super->is_loopback) {
+			pfn_table =	(struct compressed_pfns *)export->payload;
+			exim_size = get_pft_tbl_total_size(pfn_table);
+			exp_total += exim_size;
+			exp_cnt++;
+		} else {
+			exim_size = PAGE_SIZE * export->payload_count;
+			exp_total += exim_size;
+			exp_cnt++;
+		}
 	}
 	read_unlock(&ctx->exp_lock);
 
 	spin_lock_bh(&ctx->imp_lock);
-	list_for_each_entry(exp, &ctx->imp_whse, node) {
-		if (habmm_imp_hyp_map_check(ctx->import_ctx, exp)) {
-			pfn_table =	(struct compressed_pfns *)exp->payload;
+	hab_rb_for_each_entry(exp_super, exp_super_tmp, &ctx->imp_whse, node) {
+		export = &exp_super->exp;
+		if (!exp_super->is_loopback && habmm_imp_hyp_map_check(ctx->import_ctx, export)) {
+			pfn_table =	(struct compressed_pfns *)export->payload;
 			exim_size = get_pft_tbl_total_size(pfn_table);
 			imp_total += exim_size;
 			imp_cnt++;
+		} else {
+			if (exp_super->is_loopback) {
+				exim_size = PAGE_SIZE * export->payload_count;
+				imp_total += exim_size;
+				imp_cnt++;
+			}
 		}
 	}
 	spin_unlock_bh(&ctx->imp_lock);
 
 	if (exp_cnt || exp_total || imp_cnt || imp_total)
-		hab_stat_buffer_print(buf, size,
+		ret = hab_stat_buffer_print(buf, size,
 				"ctx %d exp %d size %d imp %d size %d\n",
 				ctx->owner, exp_cnt, exp_total,
 				imp_cnt, imp_total);
@@ -153,26 +182,40 @@ static int print_ctx_total_expimp(struct uhab_context *ctx,
 		return 0;
 
 	read_lock(&ctx->exp_lock);
-	hab_stat_buffer_print(buf, size, "export[expid:vcid:size]: ");
-	list_for_each_entry(exp, &ctx->exp_whse, node) {
-		pfn_table =	(struct compressed_pfns *)exp->payload;
-		exim_size = get_pft_tbl_total_size(pfn_table);
-		hab_stat_buffer_print(buf, size,
-			"[%d:%x:%d] ", exp->export_id,
-			exp->vcid_local, exim_size);
+	ret = hab_stat_buffer_print(buf, size, "export[expid:vcid:size]: ");
+	list_for_each_entry(export, &ctx->exp_whse, node) {
+		exp_super = container_of(export, struct export_desc_super, exp);
+		if (!exp_super->is_loopback) {
+			pfn_table =	(struct compressed_pfns *)export->payload;
+			exim_size = get_pft_tbl_total_size(pfn_table);
+			ret = hab_stat_buffer_print(buf, size,
+				"[%d:%x:%d] ", export->export_id,
+				export->vcid_local, exim_size);
+		} else {
+			ret = hab_stat_buffer_print(buf, size,
+				"[*%d:%x:%d] ", export->export_id,
+				export->vcid_local, export->payload_count * PAGE_SIZE);
+		}
 	}
-	hab_stat_buffer_print(buf, size, "\n");
+	ret = hab_stat_buffer_print(buf, size, "\n");
 	read_unlock(&ctx->exp_lock);
 
 	spin_lock_bh(&ctx->imp_lock);
-	hab_stat_buffer_print(buf, size, "import[expid:vcid:size]: ");
-	list_for_each_entry(exp, &ctx->imp_whse, node) {
-		if (habmm_imp_hyp_map_check(ctx->import_ctx, exp)) {
-			pfn_table =	(struct compressed_pfns *)exp->payload;
-			exim_size = get_pft_tbl_total_size(pfn_table);
-			hab_stat_buffer_print(buf, size,
-				"[%d:%x:%d] ", exp->export_id,
-				exp->vcid_local, exim_size);
+	ret = hab_stat_buffer_print(buf, size, "import[expid:vcid:size]: ");
+	hab_rb_for_each_entry(exp_super, exp_super_tmp, &ctx->imp_whse, node) {
+		export = &exp_super->exp;
+		if (likely(!exp_super->is_loopback)) {
+			if (habmm_imp_hyp_map_check(ctx->import_ctx, export)) {
+				pfn_table =	(struct compressed_pfns *)export->payload;
+				exim_size = get_pft_tbl_total_size(pfn_table);
+				ret = hab_stat_buffer_print(buf, size,
+					"[%d:%x:%d] ", export->export_id,
+					export->vcid_local, exim_size);
+			}
+		} else {
+			ret = hab_stat_buffer_print(buf, size,
+				"[*%d:%x:%d] ", export->export_id,
+				export->vcid_local, export->payload_count * PAGE_SIZE);
 		}
 	}
 	ret = hab_stat_buffer_print(buf, size, "\n");
@@ -208,7 +251,6 @@ int hab_stat_show_expimp(struct hab_driver *driver,
 						break;
 				}
 			}
-			break;
 		}
 	}
 	spin_unlock_bh(&hab_driver.drvlock);
@@ -246,6 +288,28 @@ int hab_stat_show_reclaim(struct hab_driver *driver, char *buf, int size)
 	spin_unlock(&hab_driver.reclaim_lock);
 
 	return hab_stat_buffer_print(buf, size, "total: %u, size %u\n", total_num, total_size);
+}
+
+int hab_stat_show_virq(struct hab_driver *driver, char *buf, int size)
+{
+	int ret = 0;
+	struct virq_uhab_context *ctx;
+	struct hvirq_dbl *dbl = NULL;
+
+	ret = strscpy(buf, "", size);
+
+	spin_lock_bh(&hab_driver.drvlock);
+	list_for_each_entry(ctx, &hab_driver.virq_uctx_list, node) {
+		list_for_each_entry(dbl, &ctx->virq, node) {
+			ret = hab_stat_buffer_print(buf, size,
+					"ctx %d virq rx regd %d recv %d lbl %d\n",
+					ctx->owner,  ctx->virq_total,
+					dbl->virq_recv, dbl->virtirq_label);
+		}
+	}
+	spin_unlock_bh(&hab_driver.drvlock);
+
+	return ret;
 }
 
 #define HAB_PIPE_DUMP_FILE_NAME "/sdcard/habpipe-"
@@ -322,6 +386,6 @@ void dump_hab(int mmid)
 			dump_hab_buf(str, 8); /* separator */
 		}
 	}
-	dev_coredumpv(hab_driver.dev, filp, pipedump_idx, GFP_KERNEL);
+	dev_coredumpv(hab_driver.dev[mmid / 100], filp, pipedump_idx, GFP_KERNEL);
 	dump_hab_close();
 }

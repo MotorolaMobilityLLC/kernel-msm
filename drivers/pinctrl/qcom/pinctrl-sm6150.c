@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -50,6 +50,9 @@
 		.intr_cfg_reg = base + 0x8 + REG_SIZE * id,	\
 		.intr_status_reg = base + 0xc + REG_SIZE * id,	\
 		.intr_target_reg = base + 0x8 + REG_SIZE * id,	\
+		.dir_conn_reg = (base == EAST) ? base + EAST_PDC_OFFSET : \
+			((base == WEST) ? base + WEST_PDC_OFFSET : \
+			base + SOUTH_PDC_OFFSET), \
 		.mux_bit = 2,			\
 		.dir_conn_reg = (base == EAST) ? base + EAST_PDC_OFFSET : \
 			((base == WEST) ? base + WEST_PDC_OFFSET : \
@@ -1582,6 +1585,14 @@ static struct msm_dir_conn sm6150_dir_conn[] = {
 	  {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}
 };
 
+#ifdef CONFIG_HIBERNATION
+static u32 tile_dir_conn_addr[NUM_TILES] = {
+	[0] =   SOUTH + SOUTH_PDC_OFFSET,
+	[1] =   WEST + WEST_PDC_OFFSET,
+	[2] =   EAST + EAST_PDC_OFFSET
+};
+#endif
+
 static struct msm_pinctrl_soc_data sm6150_pinctrl = {
 	.pins = sm6150_pins,
 	.npins = ARRAY_SIZE(sm6150_pins),
@@ -1592,6 +1603,10 @@ static struct msm_pinctrl_soc_data sm6150_pinctrl = {
 	.ngpios = 124,
 	.dir_conn = sm6150_dir_conn,
 	.egpio_func = 9,
+	.ntiles = NUM_TILES,
+#ifdef CONFIG_HIBERNATION
+	.dir_conn_addr = tile_dir_conn_addr,
+#endif
 };
 
 static int sm6150_pinctrl_dirconn_list_probe(struct platform_device *pdev)

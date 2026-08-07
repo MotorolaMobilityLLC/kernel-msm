@@ -268,6 +268,15 @@ config ARCH_NIOBE
           chipset. If you do not wish to build a kernel that runs on this
           chipset or if you are unsure, say 'N' here.
 
+config ARCH_SERAPH
+        bool "Enable support for Qualcomm Technologies, Inc. Seraph"
+        depends on ARCH_QCOM
+        help
+          This enables support for Qualcomm Technologies, Inc. Seraph
+          chipset. If you do not wish to build a kernel that runs on this
+          chipset or if you are unsure,
+          say 'N' here.
+
 config ARCH_MONACO_AUTO
         bool "Enable Support for Qualcomm Technologies, Inc. MONACO_AUTO"
         depends on ARCH_QCOM
@@ -366,6 +375,32 @@ config QTI_QUIN_GVM
 	  Auto GVM on the QUIN platform. If you do not wish to build a
 	  kernel that runs this configuration or if you are unsure,
 	  say 'N' here.
+
+config ARCH_ANORAK
+	bool "Enable Support for Qualcomm Technologies, Inc. ANORAK"
+	depends on ARCH_QCOM
+	help
+	  This enables support for the Qualcomm Technologies, Inc.'s
+	  ANORAK chipset. If you do not wish to build a kernel that
+	  runs on this chipset or if you are unsure, say 'N' here.
+
+config ARCH_NEO
+	bool "Enable Support for Qualcomm Technologies, Inc. NEO"
+	depends on ARCH_QCOM
+	help
+	  This enables support for the Qualcomm Technologies, Inc.'s
+	  NEO chipset. If you do not wish to build a kernel that
+	  runs on this chipset or if you are unsure, say 'N' here.
+
+config ARCH_MXR
+	bool "Enable Google MXR Platforms"
+	depends on ARCH_QCOM
+	help
+	  This enables Googles MXR platforms which depends on
+	  base qcom boards
+	  This option includes platform-specific configurations, drivers, and build rules
+	  required to compile and run the kernel on MXR devices. Select this if you are
+	  targeting MXR hardware or working on related kernel features.
 
 config ARCH_REALTEK
 	bool "Realtek Platforms"
@@ -477,5 +512,15 @@ config ARCH_ZYNQMP
 	bool "Xilinx ZynqMP Family"
 	help
 	  This enables support for Xilinx ZynqMP Family
+
+config QVP_SIM
+	bool "Enable Qualcomm Technologies, Inc. Virtual Platform Simulation"
+	depends on ARM64
+	depends on ARCH_QCOM
+	help
+	  This enables support for Qualcomm Technologies, Inc.'s Virtual Platform
+	  for ARM64 Architecture.
+
+	  If unsure, say N.
 
 endmenu # "Platform selection"

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2018, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
-#include "hab.h"
 #include <linux/of.h>
+#include "hab.h"
+#include "hab_virq.h"
+
+struct local_virq virqsettings = {0};
 
 /*
  * set valid mmid value in tbl to show this is valid entry. All inputs here are
@@ -12,7 +15,8 @@
  */
 static int fill_vmid_mmid_tbl(struct vmid_mmid_desc *tbl, int32_t vm_start,
 				   int32_t vm_range, int32_t mmid_start,
-				   int32_t mmid_range, int32_t be, int kernel_only)
+				   int32_t mmid_range, int32_t be, int kernel_only,
+				   bool dma_coherent)
 {
 	int i, j;
 
@@ -27,6 +31,7 @@ static int fill_vmid_mmid_tbl(struct vmid_mmid_desc *tbl, int32_t vm_start,
 			tbl[i].mmid[j] = j;
 			tbl[i].is_listener[j] = be; /* BE IS listen */
 			tbl[i].kernel_only[j] = kernel_only;
+			tbl[i].dma_coherent[j] = dma_coherent;
 		}
 	}
 
@@ -48,11 +53,13 @@ int fill_default_gvm_settings(struct local_vmid *settings, int vmid_default,
 	int32_t vmremote = vmid_default;
 	/* pchan is not kernel only by default */
 	int32_t kernel_only = 0;
+	/* dma_coherent is false by default */
+	bool dma_coherent = false;
 
 	/* default gvm always talks to host as vm0 */
 	settings->self = 0;
 	return fill_vmid_mmid_tbl(settings->vmid_mmid_list, vmremote, range,
-		mmid_start/100, (mmid_end-mmid_start)/100+1, be, kernel_only);
+		mmid_start/100, (mmid_end-mmid_start)/100+1, be, kernel_only, dma_coherent);
 }
 #else
 int fill_default_gvm_settings(struct local_vmid *settings, int vmid_local,
@@ -63,11 +70,13 @@ int fill_default_gvm_settings(struct local_vmid *settings, int vmid_local,
 	int32_t vmremote = 0; /* default to host[0] as local is guest[2] */
 	/* pchan is not kernel only by default */
 	int32_t kernel_only = 0;
+	/* dma_coherent is false by default */
+	bool dma_coherent = false;
 
 	settings->self = vmid_local;
 	/* default gvm always talks to host as vm0 */
 	return fill_vmid_mmid_tbl(settings->vmid_mmid_list, vmremote, range,
-		mmid_start/100, (mmid_end-mmid_start)/100+1, be, kernel_only);
+		mmid_start/100, (mmid_end-mmid_start)/100+1, be, kernel_only, dma_coherent);
 }
 #endif
 
@@ -78,10 +87,11 @@ static int hab_parse_dt(struct local_vmid *settings)
 	struct device_node *hab_node = NULL;
 	struct device_node *mmid_grp_node = NULL;
 	const char *role = NULL;
-	int tmp = -1, vmids_num;
+	int tmp = -1, vmids_num, count = 0;
 	u32 vmids[16];
 	int32_t grp_start_id, be;
 	int kernel_only;
+	bool dma_coherent;
 
 	/* parse device tree*/
 	pr_debug("parsing hab node in device tree...\n");
@@ -101,6 +111,27 @@ static int hab_parse_dt(struct local_vmid *settings)
 	pr_debug("local vmid = %d\n", tmp);
 	settings->self = tmp;
 
+	if (of_find_property(hab_node, HAB_VIRQ_NODE, NULL)) {
+		count = of_property_count_elems_of_size(hab_node, HAB_VIRQ_NODE,
+				sizeof(u32));
+		if (count == 0)
+			pr_err("No virt-irq are specified for %s\n", HAB_VIRQ_NODE);
+		else if (count > HAB_VIRTIRQ_MAX)
+			pr_err("The number of virq exceed limitation set %d for %s\n",
+					HAB_VIRTIRQ_MAX, HAB_VIRQ_NODE);
+
+		result = of_property_read_u32_array(hab_node, HAB_VIRQ_NODE,
+				virqsettings.label, count);
+		if (result != 0)
+			pr_err("error %d getting virq resource for %s\n", result,
+					HAB_VIRQ_NODE);
+	}
+
+	virqsettings.cnt_virq = count;
+
+	for (int i = 0 ; i < count ; i++)
+		pr_debug("virq-label is %d\n", virqsettings.label[i]);
+
 	for_each_child_of_node(hab_node, mmid_grp_node) {
 		/* read the group starting id */
 		result = of_property_read_u32(mmid_grp_node,
@@ -113,6 +144,12 @@ static int hab_parse_dt(struct local_vmid *settings)
 
 		pr_debug("grp-start-id = %d\n", tmp);
 		grp_start_id = tmp;
+
+		if (of_property_read_bool(mmid_grp_node, "dma-coherent"))
+			dma_coherent = true;
+		else
+			dma_coherent = false;
+		pr_debug("coherent is %d in mmid grp %d\n", dma_coherent, tmp);
 
 		/* read the role(fe/be) of these pchans in this mmid group */
 		result = of_property_read_string(mmid_grp_node, "role", &role);
@@ -156,7 +193,7 @@ static int hab_parse_dt(struct local_vmid *settings)
 			result = fill_vmid_mmid_tbl(
 					settings->vmid_mmid_list,
 					vmids[i], 1,
-					grp_start_id/100, 1, be, kernel_only);
+					grp_start_id/100, 1, be, kernel_only, dma_coherent);
 			if (result) {
 				pr_err("fill_vmid_mmid_tbl failed\n");
 				return result;

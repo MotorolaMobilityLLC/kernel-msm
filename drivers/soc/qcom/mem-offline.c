@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023,2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/memory.h>
@@ -62,11 +62,14 @@ static bool is_rpm_controller;
 static DECLARE_BITMAP(movable_bitmap, 1024);
 static bool has_pend_offline_req;
 static struct workqueue_struct *migrate_wq;
+static struct timer_list mem_offline_timeout_timer;
+static struct task_struct *offline_trig_task;
 #define MODULE_CLASS_NAME	"mem-offline"
 #define MEMBLOCK_NAME		"memory%lu"
 #define SEGMENT_NAME		"segment%lu"
 #define BUF_LEN			100
 #define MIGRATE_TIMEOUT_SEC	20
+#define OFFLINE_TIMEOUT_SEC	7
 
 struct section_stat {
 	unsigned long success_count;
@@ -477,7 +480,7 @@ static unsigned long get_section_allocated_memory(unsigned long sec_nr)
 {
 	unsigned long block_sz = memory_block_size_bytes();
 	unsigned long pages_per_blk = block_sz / PAGE_SIZE;
-	unsigned long tot_free_pages = 0, pfn, end_pfn, flags;
+	unsigned long tot_free_pages = 0, pfn, end_pfn;
 	unsigned long used;
 	struct zone *movable_zone = &NODE_DATA(numa_node_id())->node_zones[ZONE_MOVABLE];
 	struct page *page;
@@ -491,7 +494,6 @@ static unsigned long get_section_allocated_memory(unsigned long sec_nr)
 	if (!zone_intersects(movable_zone, pfn, pages_per_blk))
 		return 0;
 
-	spin_lock_irqsave(&movable_zone->lock, flags);
 	while (pfn < end_pfn) {
 		if (!pfn_valid(pfn) || !PageBuddy(pfn_to_page(pfn))) {
 			pfn++;
@@ -501,11 +503,16 @@ static unsigned long get_section_allocated_memory(unsigned long sec_nr)
 		tot_free_pages += 1 << page_private(page);
 		pfn += 1 << page_private(page);
 	}
-	spin_unlock_irqrestore(&movable_zone->lock, flags);
 
 	used = block_sz - (tot_free_pages * PAGE_SIZE);
 
 	return used;
+}
+
+static void mem_offline_timeout_cb(struct timer_list *timer)
+{
+	pr_info("mem-offline: SIGALRM is raised to stop the offline operation\n");
+	send_sig_info(SIGALRM, SEND_SIG_PRIV, offline_trig_task);
 }
 
 static int mem_event_callback(struct notifier_block *self,
@@ -572,6 +579,8 @@ static int mem_event_callback(struct notifier_block *self,
 			   idx) / sections_per_block].fail_count;
 		has_pend_offline_req = true;
 		cancel_work_sync(&fill_movable_zone_work);
+		offline_trig_task = current;
+		mod_timer(&mem_offline_timeout_timer, jiffies + (OFFLINE_TIMEOUT_SEC * HZ));
 		cur = ktime_get();
 		break;
 	case MEM_OFFLINE:
@@ -592,6 +601,14 @@ static int mem_event_callback(struct notifier_block *self,
 		pr_debug("mem-offline: Segment %d memblk_bitmap 0x%lx\n",
 				seg_idx, segment_infos[seg_idx].bitmask_kernel_blk);
 		totalram_pages_add(memory_block_size_bytes()/PAGE_SIZE);
+		del_timer_sync(&mem_offline_timeout_timer);
+		offline_trig_task = NULL;
+		break;
+	case MEM_CANCEL_OFFLINE:
+		pr_debug("mem-offline: MEM_CANCEL_OFFLINE : start = 0x%llx end = 0x%llx\n",
+				start_addr, end_addr);
+		del_timer_sync(&mem_offline_timeout_timer);
+		offline_trig_task = NULL;
 		break;
 	case MEM_CANCEL_ONLINE:
 		pr_info("mem-offline: MEM_CANCEL_ONLINE: start = 0x%llx end = 0x%llx\n",
@@ -1832,12 +1849,14 @@ static struct platform_driver mem_offline_driver = {
 
 static int __init mem_module_init(void)
 {
+	timer_setup(&mem_offline_timeout_timer, mem_offline_timeout_cb, 0);
 	return platform_driver_register(&mem_offline_driver);
 }
 subsys_initcall(mem_module_init);
 
 static void __exit mem_module_exit(void)
 {
+	del_timer_sync(&mem_offline_timeout_timer);
 	platform_driver_unregister(&mem_offline_driver);
 }
 module_exit(mem_module_exit);

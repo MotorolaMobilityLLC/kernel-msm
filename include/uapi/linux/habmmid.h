@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef HABMMID_H
 #define HABMMID_H
@@ -80,12 +80,39 @@
 
 #define	MM_EXT_START 1500
 #define	MM_EXT_1 1501
-#define	MM_EXT_END 1502
+#define	MM_EXT_2 1502
+#define	MM_EXT_3 1503
+#define	MM_EXT_END 1504
 
 #define	MM_GPCE_START 1600
 #define	MM_GPCE_1 1601
 #define	MM_GPCE_END 1602
 
-#define	MM_ID_MAX 1603
+#define	MM_SOCCP_START 1700
+#define	MM_SOCCP_1 1701
+#define	MM_SOCCP_END 1702
+
+#define	MM_DPRX_START 1800
+#define	MM_DPRX_1 1801
+#define	MM_DPRX_2 1802
+#define	MM_DPRX_END 1803
+
+#define	MM_EVA_START 1900
+#define	MM_EVA_1 1901
+#define	MM_EVA_END 1902
+
+#define	MM_ID_MAX	1903
+
+#define VIRQ_MIN   1000
+
+#define VIRQ_AUD   1001
+#define VIRQ_CAM   2001
+#define VIRQ_DISP1 3001
+#define VIRQ_DISP2 3002
+#define VIRQ_GFX   4001
+#define VIRQ_VID   5001
+#define VIRQ_MISC  6001
+
+#define VIRQ_MAX   8001
 
 #endif /* HABMMID_H */

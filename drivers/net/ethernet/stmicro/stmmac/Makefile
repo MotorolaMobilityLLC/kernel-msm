@@ -6,7 +6,7 @@ stmmac-objs:= stmmac_main.o stmmac_ethtool.o stmmac_mdio.o ring_mode.o	\
 	      mmc_core.o stmmac_hwtstamp.o stmmac_ptp.o dwmac4_descs.o	\
 	      dwmac4_dma.o dwmac4_lib.o dwmac4_core.o dwmac5.o hwif.o \
 	      stmmac_tc.o dwxgmac2_core.o dwxgmac2_dma.o dwxgmac2_descs.o \
-	      stmmac_xdp.o \
+	      stmmac_xdp.o dw25gmac.o \
 	      $(stmmac-y)
 
 stmmac-$(CONFIG_STMMAC_SELFTESTS) += stmmac_selftests.o
@@ -20,9 +20,10 @@ obj-$(CONFIG_DWMAC_LPC18XX)	+= dwmac-lpc18xx.o
 obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-mediatek.o
 obj-$(CONFIG_DWMAC_MESON)	+= dwmac-meson.o dwmac-meson8b.o
 obj-$(CONFIG_DWMAC_OXNAS)	+= dwmac-oxnas.o
+obj-$(CONFIG_EMAC_MDIO_FE)	+= emac_mdio_fe.o
 obj-$(CONFIG_DWMAC_QCOM_ETHQOS) += dwmac-qcom-eth.o
 dwmac-qcom-eth-objs := dwmac-qcom-ethqos.o dwmac-qcom-gpio.o
-obj-$(CONFIG_ETHQOS_QCOM_SERDES) += dwmac-qcom-serdes.o
+dwmac-qcom-eth-$(CONFIG_ETHQOS_QCOM_SERDES) += dwmac-qcom-serdes.o
 obj-$(CONFIG_DWMAC_ROCKCHIP)	+= dwmac-rk.o
 obj-$(CONFIG_DWMAC_SOCFPGA)	+= dwmac-altr-socfpga.o
 obj-$(CONFIG_DWMAC_STI)		+= dwmac-sti.o
@@ -40,4 +41,5 @@ dwmac-altr-socfpga-objs := altr_tse_pcs.o dwmac-socfpga.o
 obj-$(CONFIG_STMMAC_PCI)	+= stmmac-pci.o
 obj-$(CONFIG_DWMAC_INTEL)	+= dwmac-intel.o
 obj-$(CONFIG_DWMAC_LOONGSON)	+= dwmac-loongson.o
+
 stmmac-pci-objs:= stmmac_pci.o

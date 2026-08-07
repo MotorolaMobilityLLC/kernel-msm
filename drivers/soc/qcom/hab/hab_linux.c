@@ -1,10 +1,206 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include <linux/of_device.h>
 #include "hab.h"
+#include "hab_virq.h"
+
+/**
+ * hab_sgl_copy_buffer - Copy data between a linear buffer and an SG list
+ * @sgl:		 The SG list
+ * @buf:		 Where to copy from
+ * @buflen:		 The number of bytes to copy
+ * @skip:		 Number of bytes to skip before copying
+ * @to_buffer:		 transfer direction (true == from an sg list to a
+ *			 buffer, false == from a buffer to an sg list)
+ *
+ * Returns the number of copied bytes.
+ *
+ **/
+size_t hab_sgl_copy_buffer(struct scatterlist *sgl, void *buf,
+		      size_t buflen, off_t skip, bool to_buffer)
+{
+	int i;
+	unsigned int sg_copy_len;
+	unsigned int copy_len = 0;
+	unsigned int copy_len_once = 0;
+	struct scatterlist *sg;
+	void *ptr = NULL;
+
+	if (!buflen) {
+		pr_warn("copy nothing since buflen is 0\n");
+		return 0;
+	}
+
+	sg = sgl;
+	for (i = 0; sg && skip >= sg->length; i++) {
+		skip -= sg->length;
+		sg = sg_next(sg);
+	}
+
+	if (!sg) {
+		pr_warn("copy nothing since skip all scatterlists\n");
+		return 0;
+	}
+
+	for (; sg && buflen > 0;) {
+		/* use sg_virt so that we can avoid kmap(sgl_copy would use it).
+		 * assumption: only support on the 64 bits OS, since 32 bits OS
+		 * sg_virt may failed.
+		 */
+		ptr = sg_virt(sg);
+
+		sg_copy_len = sg->length - skip;
+		copy_len_once = min_t(uint, buflen, sg_copy_len);
+
+		if (to_buffer)
+			memcpy(buf + copy_len, ptr + skip, copy_len_once);
+		else
+			memcpy(ptr + skip, buf + copy_len, copy_len_once);
+
+		skip = 0;
+		sg = sg_next(sg);
+		buflen -= copy_len_once;
+		copy_len += copy_len_once;
+	}
+
+	return copy_len;
+}
+
+/**
+ * hab_sgl_free - free a scatterlist and its pages.
+ * @sgl: Scatterlist with one or more elements
+ */
+void hab_sgl_free(struct scatterlist *sgl)
+{
+	int i, j;
+	struct scatterlist *sg;
+	struct page *page;
+	unsigned int npage;
+
+	for_each_sg(sgl, sg, INT_MAX, i) {
+		if (!sg)
+			break;
+
+		npage = round_up(sg->length, PAGE_SIZE) >> PAGE_SHIFT;
+		page = sg_page(sg);
+		for (j = 0; j < npage && page; j++) {
+			__free_page(page);
+			page++;
+		}
+	}
+
+	kfree(sgl);
+}
+
+/**
+ * hab_sgl_alloc_merge - allocate a scatterlist and its pages. We will try
+ *                       to merge consecutive pages into same scatterlist.
+ * @length: Length in bytes of the buffer to allocate
+ * @gfp: Memory allocation flags
+ * @nent_p: [out] The number of valid entries in the scatterlist
+ *
+ * Returns: A pointer to an initialized scatterlist or %NULL upon failure.
+ */
+struct scatterlist *hab_sgl_alloc_merge(unsigned long long length, gfp_t gfp,
+				unsigned int *nent_p)
+{
+	struct scatterlist *sgl, *sg;
+	struct page *allpc_page, *sgl_first_page;
+	unsigned int nent, nalloc = 0, nsgl = 0;
+	u32 elem_len, sgl_len;
+	unsigned long first_pfn, end_pfn, pfn;
+
+	/* The total number of entries in the scatterlist. */
+	nent = round_up(length, PAGE_SIZE) >> PAGE_SHIFT;
+
+	/* Check for integer overflow */
+	if (length > (nent << PAGE_SHIFT)) {
+		pr_err("length is too long %llu\n", length);
+		return NULL;
+	}
+
+	sgl = kmalloc_array(nent, sizeof(struct scatterlist), gfp);
+	if (!sgl)
+		return NULL;
+
+	sg_init_table(sgl, nent);
+
+	sg = sgl;
+	while (length) {
+		/**
+		 * If length < page_size, we will still request a page,
+		 * but will write the length instead of PAGE_SIZE into sgl_len
+		 * if not merged or add to the sgl_len if merged with previous
+		 * page(s).
+		 */
+		elem_len = min_t(u64, length, PAGE_SIZE);
+		allpc_page = alloc_page(gfp);
+		if (!allpc_page)
+			goto err_alloc_page;
+
+		nalloc++;
+		length -= elem_len;
+
+		if (nalloc == 1) {
+			sgl_first_page = allpc_page;
+			sgl_len = elem_len;
+			first_pfn = end_pfn = page_to_pfn(allpc_page);
+		} else {
+			pfn = page_to_pfn(allpc_page);
+			/**
+			 * todo, optimize the pfn merging algorithm to further
+			 * reduce the number of vring descriptors used.
+			 */
+			if ((pfn + 1) == first_pfn) {
+				sgl_first_page = allpc_page;
+				first_pfn = pfn;
+				sgl_len += elem_len;
+			} else if ((end_pfn + 1) == pfn) {
+				end_pfn = pfn;
+				sgl_len += elem_len;
+			} else {
+				sg_set_page(sg, sgl_first_page, sgl_len, 0);
+				nsgl++;
+				sg = sg_next(sg);
+				sgl_first_page = allpc_page;
+				sgl_len = elem_len;
+				first_pfn = end_pfn = page_to_pfn(allpc_page);
+			}
+		}
+	}
+
+	sg_set_page(sg, sgl_first_page, sgl_len, 0);
+	nsgl++;
+	/**
+	 * After the potential above merging happens,
+	 * mark the end of valid entries in the scatterlist
+	 */
+	sg_init_marker(sgl, nsgl);
+
+	pr_debug("alloc page %u, sgl number %u\n", nent, nsgl);
+	*nent_p = nsgl;
+
+	return sgl;
+
+/* free all allocated memory used for payload and sgl */
+err_alloc_page:
+	if (nalloc) {
+		sg_set_page(sg, sgl_first_page, sgl_len, 0);
+		nsgl++;
+		/**
+		 * After the potential above merging happens,
+		 * mark the end of valid entries in the scatterlist
+		 */
+		sg_init_marker(sgl, nsgl);
+	}
+
+	hab_sgl_free(sgl);
+
+	return NULL;
+}
 
 unsigned int get_refcnt(struct kref ref)
 {
@@ -58,7 +254,24 @@ static int hab_open(struct inode *inodep, struct file *filep)
 		return -ENOMEM;
 	}
 
-	ctx->owner = task_pid_nr(current);
+	/*
+	 * w/ the /dev/hab node split feature, when one single process
+	 * using different threads to call habmm_socket_open() w/ different
+	 * MMIDs from different MMID groups, we can know those different
+	 * uhab_context are belonging to the same process.
+	 *
+	 * even if w/o /dev/hab node split feature, there will be a case where
+	 * a child thread is responsible for managing habmm_socket_open/close,
+	 * and other child threads use vcid for communication.
+	 * If ctx->owner is pid, then context_stat will display the pid of the child thread.
+	 * This is not what we want. We hope that context_stat will display the
+	 * thread group id of the process, not the pid of a child thread.
+	 * Because the threa group id often has more information
+	 * for us to analyze and debug.
+	 */
+	ctx->owner = task_tgid_nr(current);
+	ctx->mmid_grp_index = MINOR(inodep->i_rdev);
+
 	filep->private_data = ctx;
 	pr_debug("ctx owner %d refcnt %d\n", ctx->owner,
 			get_refcnt(ctx->refcount));
@@ -162,6 +375,14 @@ static long hab_copy_data(struct hab_message *msg, struct hab_recv *recv_param)
 	return ret;
 }
 
+static inline long hab_check_cmd(unsigned int cmd, unsigned int data_size)
+{
+	if (!_IOC_SIZE(cmd) || !(cmd & IOC_INOUT) || (_IOC_SIZE(cmd) > data_size))
+		return -EINVAL;
+
+	return 0;
+}
+
 static long hab_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
 	struct uhab_context *ctx = (struct uhab_context *)filep->private_data;
@@ -175,21 +396,34 @@ static long hab_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	unsigned char data[256] = { 0 };
 	long ret = 0;
 	char names[30] = { 0 };
+	int mmid_grp_index = ctx->mmid_grp_index;
 
-	if (_IOC_SIZE(cmd) && (cmd & IOC_IN)) {
-		if (_IOC_SIZE(cmd) > sizeof(data))
-			return -EINVAL;
+	ret = hab_check_cmd(cmd, sizeof(data));
+	if (ret)
+		return ret;
 
-		if (copy_from_user(data, (void __user *)arg, _IOC_SIZE(cmd))) {
-			pr_err("copy_from_user failed cmd=%x size=%d\n",
-				cmd, _IOC_SIZE(cmd));
-			return -EFAULT;
-		}
+	if ((cmd & IOC_IN) &&
+	    (copy_from_user(data, (void __user *)arg, _IOC_SIZE(cmd)))) {
+		pr_err("copy_from_user failed cmd=%x size=%d\n",
+			cmd, _IOC_SIZE(cmd));
+		return -EFAULT;
 	}
 
 	switch (cmd) {
 	case IOCTL_HAB_VC_OPEN:
 		open_param = (struct hab_open *)data;
+		/*
+		 * each hab group node(/dev/hab-*) only serves mmid(s) of the corresponding group
+		 * but the super node /dev/hab(mmid_grp_index is 0) serves all mmids.
+		 */
+		if (mmid_grp_index &&
+			(mmid_grp_index != (HAB_MMID_GET_MAJOR(open_param->mmid) / 100))) {
+			pr_err("current node is %s, not for mmid %d (major %d)\n",
+				HAB_MMID_MAP_NODE(mmid_grp_index * 100),
+				open_param->mmid,
+				HAB_MMID_GET_MAJOR(open_param->mmid));
+			return -EINVAL;
+		}
 		ret = hab_vchan_open(ctx, open_param->mmid,
 			&open_param->vcid,
 			open_param->timeout,
@@ -286,11 +520,12 @@ static long hab_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 		ret = -ENOIOCTLCMD;
 	}
 
-	if (_IOC_SIZE(cmd) && (cmd & IOC_OUT))
-		if (copy_to_user((void __user *) arg, data, _IOC_SIZE(cmd))) {
-			pr_err("copy_to_user failed: cmd=%x\n", cmd);
-			ret = -EFAULT;
-		}
+	if ((ret != -ENOIOCTLCMD) &&
+	    (cmd & IOC_OUT) &&
+	    (copy_to_user((void __user *) arg, data, _IOC_SIZE(cmd)))) {
+		pr_err("copy_to_user failed: cmd=%x\n", cmd);
+		ret = -EFAULT;
+	}
 
 	return ret;
 }
@@ -346,10 +581,9 @@ static int hab_power_down_callback(
 	case SYS_HALT:
 	case SYS_POWER_OFF:
 		pr_debug("reboot called %ld\n", action);
-		hab_hypervisor_unregister(); /* only for single VM guest */
 		break;
 	}
-	pr_debug("reboot called %ld done\n", action);
+	pr_info("reboot called %ld done\n", action);
 	return NOTIFY_DONE;
 }
 
@@ -385,52 +619,189 @@ static void reclaim_cleanup(struct work_struct *reclaim_work)
 	}
 }
 
+void hab_rb_init(struct rb_root *root)
+{
+	*root = RB_ROOT;
+}
+
+struct export_desc_super *hab_rb_exp_find(struct rb_root *root, struct export_desc_super *key)
+{
+	struct rb_node *node = root->rb_node;
+	struct export_desc_super *exp_super;
+
+	while (node) {
+		exp_super = rb_entry(node, struct export_desc_super, node);
+		if (key->exp.export_id < exp_super->exp.export_id)
+			node = node->rb_left;
+		else if (key->exp.export_id > exp_super->exp.export_id)
+			node = node->rb_right;
+		else {
+			if (key->exp.pchan < exp_super->exp.pchan)
+				node = node->rb_left;
+			else if (key->exp.pchan > exp_super->exp.pchan)
+				node = node->rb_right;
+			else
+				return exp_super;
+		}
+	}
+
+	return NULL;
+}
+
+struct export_desc_super *hab_rb_exp_insert(struct rb_root *root, struct export_desc_super *exp_s)
+{
+	struct rb_node **new = &(root->rb_node), *parent = NULL;
+
+	while (*new) {
+		struct export_desc_super *this = rb_entry(*new, struct export_desc_super, node);
+
+		parent = *new;
+		if (exp_s->exp.export_id < this->exp.export_id)
+			new = &((*new)->rb_left);
+		else if (exp_s->exp.export_id > this->exp.export_id)
+			new = &((*new)->rb_right);
+		else {
+			if (exp_s->exp.pchan < this->exp.pchan)
+				new = &((*new)->rb_left);
+			else if (exp_s->exp.pchan > this->exp.pchan)
+				new = &((*new)->rb_right);
+			else
+				/* should not found the target key before insert */
+				return this;
+		}
+	}
+
+	rb_link_node(&exp_s->node, parent, new);
+	rb_insert_color(&exp_s->node, root);
+
+	return NULL;
+}
+
+/*
+ * Create one more char device for /dev/hab
+ * Additional +1 added for extra node for hab-virq
+ * which will exist at the end of cdev array
+ */
+#define CDEV_NUM_MAX (MM_ID_MAX / 100 + 2)
+
+/*
+ * Create a char device for the specified MMID group.
+ * The input argument is the MMID group divided by 100, e.g., 1 for audio, 6 for misc.
+ * If 0 is given, create a device for /dev/hab.
+ */
+int hab_create_cdev_node(int mmid_grp_index)
+{
+	int result;
+	const char *node_name;
+	dev_t dev_no;
+	struct local_vmid *settings;
+	int i, vmid;
+
+	node_name = HAB_MMID_MAP_NODE(mmid_grp_index * 100);
+	if (!node_name) {
+		pr_err("err hab group id %d\n", mmid_grp_index);
+		return -ENOENT;
+	}
+
+	settings = &hab_driver.settings;
+	/* locate first remote vmid */
+	for (i = 0; i < HABCFG_VMID_MAX; i++)
+		if (HABCFG_GET_VMID(settings, i) != HABCFG_VMID_INVALID &&
+			HABCFG_GET_VMID(settings, i) != settings->self)
+			break;
+
+	if (i == HABCFG_VMID_MAX) {
+		pr_err("remote vmid not filled\n");
+		return -ENODEV;
+	}
+	vmid = HABCFG_GET_VMID(settings, i);
+
+	cdev_init(&(hab_driver.cdev[mmid_grp_index]), &hab_fops);
+	hab_driver.cdev[mmid_grp_index].owner = THIS_MODULE;
+
+	dev_no = MKDEV(hab_driver.major, mmid_grp_index);
+
+	result = cdev_add(&(hab_driver.cdev[mmid_grp_index]), dev_no, 1);
+	if (result) {
+		pr_err("cdev_add failed: %d\n", result);
+		return result;
+	}
+
+	hab_driver.dev[mmid_grp_index] = device_create(hab_driver.class, NULL,
+		dev_no, &hab_driver, node_name);
+
+	if (IS_ERR_OR_NULL(hab_driver.dev[mmid_grp_index])) {
+		result = PTR_ERR(hab_driver.dev[mmid_grp_index]);
+		pr_err("mmid_grp_index %d device_create %s failed: %d\n",
+				mmid_grp_index, node_name, result);
+		cdev_del(&hab_driver.cdev[mmid_grp_index]);
+		hab_driver.dev[mmid_grp_index] = NULL;
+		return result;
+	}
+
+	/* First, try to configure system dma_ops */
+	result = dma_coerce_mask_and_coherent(
+			hab_driver.dev[mmid_grp_index],
+			DMA_BIT_MASK(64));
+	/* System dma_ops failed, fallback to dma_ops of hab */
+	if (result) {
+		pr_warn("config system dma_ops failed %d, fallback to hab\n",
+				result);
+		hab_driver.dev[mmid_grp_index]->bus = NULL;
+		set_dma_ops(hab_driver.dev[mmid_grp_index], &hab_dma_ops);
+	}
+
+	if (mmid_grp_index != 0)
+		hab_driver.dev[mmid_grp_index]->dma_coherent =
+			HABCFG_GET_DMA_COHERENT(settings, vmid, mmid_grp_index);
+	else
+		/*
+		 * no device tree node for the super node /dev/hab
+		 * set the default value, false, for coherent of device /dev/hab
+		 */
+		hab_driver.dev[mmid_grp_index]->dma_coherent = false;
+
+	pr_debug("create char device for /dev/%s successful, coherent %d\n",
+		node_name, hab_driver.dev[mmid_grp_index]->dma_coherent);
+
+	return 0;
+}
+
 static int __init hab_init(void)
 {
 	int result;
-	dev_t dev;
+	dev_t dev_no;
 
 	pr_debug("init start, ver %X\n", HAB_API_VER);
 
-	result = alloc_chrdev_region(&hab_driver.major, 0, 1, "hab");
+	/* prepare resources for creating hab char devices */
+	result = alloc_chrdev_region(&dev_no, 0, CDEV_NUM_MAX, "hab");
 
 	if (result < 0) {
 		pr_err("alloc_chrdev_region failed: %d\n", result);
 		return result;
 	}
 
-	cdev_init(&hab_driver.cdev, &hab_fops);
-	hab_driver.cdev.owner = THIS_MODULE;
-	hab_driver.cdev.ops = &hab_fops;
-	dev = MKDEV(MAJOR(hab_driver.major), 0);
+	hab_driver.major = MAJOR(dev_no);
 
-	result = cdev_add(&hab_driver.cdev, dev, 1);
+	hab_driver.dev = kzalloc(sizeof(struct device *) * CDEV_NUM_MAX, GFP_KERNEL);
+	if (!hab_driver.dev)
+		goto dev_alloc_fail;
 
-	if (result < 0) {
-		unregister_chrdev_region(dev, 1);
-		pr_err("cdev_add failed: %d\n", result);
-		return result;
-	}
+	hab_driver.cdev = kzalloc(sizeof(struct cdev) * CDEV_NUM_MAX, GFP_KERNEL);
+	if (!hab_driver.cdev)
+		goto cdev_alloc_fail;
 
 	hab_driver.class = class_create(THIS_MODULE, "hab");
 
 	if (IS_ERR(hab_driver.class)) {
 		result = PTR_ERR(hab_driver.class);
 		pr_err("class_create failed: %d\n", result);
-		goto err;
-	}
-
-	hab_driver.dev = device_create(hab_driver.class, NULL,
-					dev, &hab_driver, "hab");
-
-	if (IS_ERR(hab_driver.dev)) {
-		result = PTR_ERR(hab_driver.dev);
-		pr_err("device_create failed: %d\n", result);
-		goto err;
+		goto err_class_create;
 	}
 
 	result = register_reboot_notifier(&hab_reboot_notifier);
-	if (result)
+	if (result != 0)
 		pr_err("failed to register reboot notifier %d\n", result);
 
 	INIT_WORK(&hab_driver.reclaim_work, reclaim_cleanup);
@@ -439,27 +810,30 @@ static int __init hab_init(void)
 	result = do_hab_parse();
 
 	if (result)
-		goto err;
+		goto err_hab_parse;
 
 	hab_driver.kctx = hab_ctx_alloc(1);
 	if (!hab_driver.kctx) {
 		pr_err("hab_ctx_alloc failed\n");
 		result = -ENOMEM;
-		hab_hypervisor_unregister();
-		goto err;
+		goto err_hab_parse;
 	}
-	/* First, try to configure system dma_ops */
-	result = dma_coerce_mask_and_coherent(
-			hab_driver.dev,
-			DMA_BIT_MASK(64));
 
-	/* System dma_ops failed, fallback to dma_ops of hab */
-	if (result) {
-		pr_warn("config system dma_ops failed %d, fallback to hab\n",
-				result);
-		hab_driver.dev->bus = NULL;
-		set_dma_ops(hab_driver.dev, &hab_dma_ops);
+	hab_driver.kvirq_ctx = virq_hab_ctx_alloc(1);
+
+	/* create the super char device node /dev/hab */
+	result = hab_create_cdev_node(0);
+	if (result)
+		goto err;
+
+	/* check if used for MM HAB device nodes */
+	if (hab_driver.dev[CDEV_NUM_MAX-1] == NULL) {
+		/* Create /dev/hab-virq */
+		result = hab_create_virq_cdev_node(CDEV_NUM_MAX-1);
+		if (result)
+			pr_err("VIRQ node creation fail resume with hab init result %d\n", result);
 	}
+
 	hab_hypervisor_register_post();
 	hab_stat_init(&hab_driver);
 
@@ -470,12 +844,19 @@ static int __init hab_init(void)
 	return 0;
 
 err:
-	if (!IS_ERR_OR_NULL(hab_driver.dev))
-		device_destroy(hab_driver.class, dev);
+	if (hab_driver.kctx != NULL)
+		hab_ctx_put(hab_driver.kctx);
+	if (hab_driver.kvirq_ctx != NULL)
+		virq_hab_ctx_put(hab_driver.kvirq_ctx);
+err_hab_parse:
 	if (!IS_ERR_OR_NULL(hab_driver.class))
 		class_destroy(hab_driver.class);
-	cdev_del(&hab_driver.cdev);
-	unregister_chrdev_region(dev, 1);
+err_class_create:
+	kfree(hab_driver.cdev);
+cdev_alloc_fail:
+	kfree(hab_driver.dev);
+dev_alloc_fail:
+	unregister_chrdev_region(hab_driver.major, CDEV_NUM_MAX);
 
 	pr_err("Error in hab init, result %d\n", result);
 	return result;
@@ -483,16 +864,23 @@ err:
 
 static void __exit hab_exit(void)
 {
-	dev_t dev;
+	int i;
 
 	hab_hypervisor_unregister();
 	hab_stat_deinit(&hab_driver);
 	hab_ctx_put(hab_driver.kctx);
-	dev = MKDEV(MAJOR(hab_driver.major), 0);
-	device_destroy(hab_driver.class, dev);
+
+	if (hab_driver.kvirq_ctx != NULL)
+		virq_hab_ctx_put(hab_driver.kvirq_ctx);
+	for (i = 0; i < CDEV_NUM_MAX; i++) {
+		if (!IS_ERR_OR_NULL(hab_driver.dev[i])) {
+			device_destroy(hab_driver.class, MKDEV(hab_driver.major, i));
+			cdev_del(&hab_driver.cdev[i]);
+		}
+	}
 	class_destroy(hab_driver.class);
-	cdev_del(&hab_driver.cdev);
-	unregister_chrdev_region(dev, 1);
+	unregister_chrdev_region(hab_driver.major, CDEV_NUM_MAX);
+
 	unregister_reboot_notifier(&hab_reboot_notifier);
 	pr_debug("hab exit called\n");
 }

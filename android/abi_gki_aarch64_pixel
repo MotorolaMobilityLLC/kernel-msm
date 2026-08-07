@@ -2443,6 +2443,7 @@
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_setscheduler_uclamp
   __traceiter_android_vh_set_task_comm
+  __traceiter_android_vh_show_mem
   __traceiter_android_vh_si_meminfo_adjust
   __traceiter_android_vh_sound_usb_support_cpu_suspend
   __traceiter_android_vh_sysrq_crash
@@ -2586,6 +2587,7 @@
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_setscheduler_uclamp
   __tracepoint_android_vh_set_task_comm
+  __tracepoint_android_vh_show_mem
   __tracepoint_android_vh_si_meminfo_adjust
   __tracepoint_android_vh_sound_usb_support_cpu_suspend
   __tracepoint_android_vh_sysrq_crash

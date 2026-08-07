@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -138,6 +138,39 @@ static const char * const drv_names_cliffs[][MAX_DRV_NAMES] = {
 			"DDR AUX", "ARC CPRF", ""},
 	[AOSS_DRV_NAME] = {"APPS", "SP", "AUDIO", "AOP", "DEBUG", "GPU", "DISPLAY", "COMPUTE",
 			"TME", "MODEM", "WLAN RF", "WLAN BB", "CAM", "PCIE", "WPSS", ""},
+};
+
+static const char * const drv_names_niobe[][MAX_DRV_NAMES] = {
+	[CXPC_DRV_NAME] = {"TZ", "L3", "HLOS", "HYP", "SECPROC", "AUDIO", "AOP", "DEBUG",
+			"GPU", "DISPLAY", "COMPUTE_DSP", "TME_HW", "TME_SW", "DISPLAY",
+			"RESERVED", "RESERVED", "WLAN RF", "WLAN BB", "RESERVED",
+			"RESERVED", "PCIE0 CESTA", "PCIE1 CESTA", "PCIE2_CESTA", "DDR AUX",
+			"ARC CPRF", ""},
+	[AOSS_DRV_NAME] = {"APPS", "SP", "AUDIO", "AOP", "DEBUG", "GPU", "DISPLAY", "COMPUTE",
+			"DISPLAY_2ND", "MODEM", "WLAN RF", "WLAN BB", "CAM", "PCIE", ""},
+};
+
+static const char * const drv_names_anorak[][MAX_DRV_NAMES] = {
+	[CXPC_DRV_NAME] = {"TZ", "L3", "HLOS", "HYP", "SECPROC", "AUDIO", "SENSOR", "AOP", "DEBUG",
+			"GPU", "DISPLAY", "COMPUTE_DSP", "TIME_HW", "TIME_SW", "DISPLAY_1",
+			"MDM SW", "MDM HW", "WLAN RF", "WLAN BB", "DDR AUX", "ARC CPRF", ""},
+	[AOSS_DRV_NAME] = {""},
+};
+
+static const char * const drv_names_neo[][MAX_DRV_NAMES] = {
+	[CXPC_DRV_NAME] = {"TZ", "HYP", "HLOS", "L3", "SECPROC", "AUDIO", "SENSOR", "AOP",
+			"DEBUG", "GPU", "DISPLAY", "COMPUTE_DSP", "TME_HW", "TME_SW", "WPSS",
+			"MDM SW", "MDM HW", "WLAN RF", "WLAN BB", "DDR AUX", "ARC CPRF", ""},
+	[AOSS_DRV_NAME] = {""},
+};
+
+static const char * const drv_names_seraph[][MAX_DRV_NAMES] = {
+	[CXPC_DRV_NAME] = {"TZ", "L3", "HLOS", "HYP", "RESERVED", "AUDIO", "AOP", "DEBUG",
+			"GPU", "DISPLAY", "COMPUTE_DSP", "TME_HW", "TME_SW", "RESERVED",
+			"WLAN RF", "WLAN BB", "WPSS", "PCIE0 CESTA", "PCIE1 CESTA", "SOCCP",
+			"DDR AUX", "ARC CPRF", ""},
+	[AOSS_DRV_NAME] = {"APPS", "RESERVED", "AUDIO", "AOP", "DEBUG", "GPU", "DISPLAY", "COMPUTE",
+			"TME", "RESERVED", "WLAN RF", "WLAN BB", "PCIE", "SOCCP", ""},
 };
 
 static ssize_t debug_time_ms_show(struct device *dev,
@@ -535,6 +568,14 @@ static const struct of_device_id drv_match_table[] = {
 	  .data = drv_names_volcano },
 	{ .compatible = "qcom,sys-pm-cliffs",
 	  .data = drv_names_cliffs },
+	{ .compatible = "qcom,sys-pm-niobe",
+	  .data = drv_names_niobe },
+	{ .compatible = "qcom,sys-pm-anorak",
+	  .data = drv_names_anorak },
+	{ .compatible = "qcom,sys-pm-neo",
+	  .data = drv_names_neo },
+	{ .compatible = "qcom,sys-pm-seraph",
+	  .data = drv_names_seraph },
 	{ }
 };
 

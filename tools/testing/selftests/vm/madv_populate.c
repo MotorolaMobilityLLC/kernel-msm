@@ -274,12 +274,16 @@ static void test_softdirty(void)
 
 int main(int argc, char **argv)
 {
+	int nr_tests = 16;
 	int err;
 
 	pagesize = getpagesize();
 
+	if (softdirty_supported())
+		nr_tests += 5;
+
 	ksft_print_header();
-	ksft_set_plan(21);
+	ksft_set_plan(nr_tests);
 
 	sense_support();
 	test_prot_read();
@@ -287,7 +291,8 @@ int main(int argc, char **argv)
 	test_holes();
 	test_populate_read();
 	test_populate_write();
-	test_softdirty();
+	if (softdirty_supported())
+		test_softdirty();
 
 	err = ksft_get_fail_cnt();
 	if (err)

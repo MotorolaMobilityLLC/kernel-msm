@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
 #include "hab_grantable.h"
@@ -155,6 +155,9 @@ struct export_desc_super *habmem_add_export(
 	exp->vcid_remote = vchan->otherend_id;
 	exp->domid_local = vchan->pchan->vmid_local;
 	exp->domid_remote = vchan->pchan->vmid_remote;
+
+	if ((HABMM_EXP_MEM_TYPE_LOOPBACK & flags) != 0)
+		exp_super->is_loopback = true;
 
 	/*
 	 * In new protocol, exp_desc will not be sent to remote during hab export.
@@ -352,11 +355,17 @@ int hab_mem_export(struct uhab_context *ctx,
 	int page_count;
 	int compressed = 0;
 
-	if (!ctx || !param || !param->sizebytes
-		|| ((param->sizebytes % PAGE_SIZE) != 0)
-		|| (!param->buffer && !(HABMM_EXPIMP_FLAGS_FD & param->flags))
-		)
+	if (!ctx || !param || !param->sizebytes ||
+	    ((param->sizebytes % PAGE_SIZE) != 0) ||
+	    (!param->buffer && !(HABMM_EXPIMP_FLAGS_FD & param->flags))) {
+		if (!ctx || !param)
+			pr_err("invalid parameter! ctx is %pK, param is %pK\n", ctx, param);
+		else
+			pr_err("invalid parameter! vcid 0x%x, exp_sz %u, buff 0x%llx, flag %u\n",
+				param->vcid, param->sizebytes, param->buffer, param->flags);
+
 		return -EINVAL;
+	}
 
 	param->exportid = 0;
 	vchan = hab_get_vchan_fromvcid(param->vcid, ctx, 0);
@@ -425,7 +434,7 @@ int hab_mem_unexport(struct uhab_context *ctx,
 	exp = idr_find(&vchan->pchan->expid_idr, param->exportid);
 	if (!exp) {
 		spin_unlock_bh(&vchan->pchan->expid_lock);
-		pr_err("unexp fail, cannot find exp id %d\n", param->exportid);
+		pr_err("unexp fail, cannot find exp id %d on vc %x\n", param->exportid, vchan->id);
 		ret = -EINVAL;
 		goto err_novchan;
 	}
@@ -437,8 +446,9 @@ int hab_mem_unexport(struct uhab_context *ctx,
 		idr_remove(&vchan->pchan->expid_idr, param->exportid);
 	else {
 		ret = exp_super->remote_imported == 0 ? -EINVAL : -EBUSY;
-		pr_err("unexp exp id %d fail, exp state %d, remote imp %d\n",
-				param->exportid, exp_super->exp_state, exp_super->remote_imported);
+		pr_err("unexp expid %d fail on vc %x, pcnt %d, state %d, remote imp %d\n",
+			param->exportid, vchan->id, exp->payload_count,
+			exp_super->exp_state, exp_super->remote_imported);
 		spin_unlock_bh(&vchan->pchan->expid_lock);
 		goto err_novchan;
 	}
@@ -469,8 +479,8 @@ int hab_mem_import(struct uhab_context *ctx,
 		int kernel)
 {
 	int ret = 0, found = 0;
-	struct export_desc *exp = NULL;
-	struct export_desc_super *exp_super = NULL;
+	struct export_desc *export = NULL;
+	struct export_desc_super *exp_super = NULL, key = {0};
 	struct virtual_channel *vchan = NULL;
 	struct hab_header header = HAB_HEADER_INITIALIZER;
 	struct hab_import_ack expected_ack = {0};
@@ -527,59 +537,55 @@ int hab_mem_import(struct uhab_context *ctx,
 		}
 	}
 
+	key.exp.export_id = param->exportid;
+	key.exp.pchan = vchan->pchan;
 	spin_lock_bh(&ctx->imp_lock);
-	list_for_each_entry(exp, &ctx->imp_whse, node) {
-		if ((exp->export_id == param->exportid) &&
-			(exp->pchan == vchan->pchan)) {
-			exp_super = container_of(exp, struct export_desc_super, exp);
-
-			/* not allowed to import one exp desc more than once */
-			if (exp_super->import_state == EXP_DESC_IMPORTED
-				|| exp_super->import_state == EXP_DESC_IMPORTING) {
-				pr_err("not allowed to import one exp desc (export id %u) more than once\n",
-						exp->export_id);
-				spin_unlock_bh(&ctx->imp_lock);
-				ret = -EINVAL;
-				goto err_imp;
-			}
-
-			/*
-			 * set the flag to avoid another thread getting the exp desc again
-			 * and must be before unlock, otherwise it is no use.
-			 */
-			exp_super->import_state = EXP_DESC_IMPORTING;
-			found = 1;
-			break;
+	exp_super = hab_rb_exp_find(&ctx->imp_whse, &key);
+	if (exp_super) {
+		/* not allowed to import one exp desc more than once */
+		if (exp_super->import_state == EXP_DESC_IMPORTED
+			|| exp_super->import_state == EXP_DESC_IMPORTING) {
+			export = &exp_super->exp;
+			pr_err("vc %x not allowed to import one expid %u more than once\n",
+					vchan->id, export->export_id);
+			spin_unlock_bh(&ctx->imp_lock);
+			ret = -EINVAL;
+			goto err_imp;
 		}
-	}
-	spin_unlock_bh(&ctx->imp_lock);
-
-	if (!found) {
-		pr_err("Fail to get export descriptor from export id %d\n",
-			param->exportid);
+		/*
+		 * set the flag to avoid another thread getting the exp desc again
+		 * and must be before unlock, otherwise it is no use.
+		 */
+		exp_super->import_state = EXP_DESC_IMPORTING;
+		found = 1;
+	} else {
+		spin_unlock_bh(&ctx->imp_lock);
+		pr_err("Fail to get export descriptor from export id %d vcid %x\n",
+			param->exportid, vchan->id);
 		ret = -ENODEV;
 		goto err_imp;
 	}
+	spin_unlock_bh(&ctx->imp_lock);
 
-	if ((exp->payload_count << PAGE_SHIFT) != param->sizebytes) {
-		pr_err("input size %d don't match buffer size %d\n",
-			param->sizebytes, exp->payload_count << PAGE_SHIFT);
+	export = &exp_super->exp;
+	if ((export->payload_count << PAGE_SHIFT) != param->sizebytes) {
+		pr_err("vc %x input size %d don't match buffer size %d\n",
+			vchan->id, param->sizebytes, export->payload_count << PAGE_SHIFT);
 		ret = -EINVAL;
 		exp_super->import_state = EXP_DESC_INIT;
 		goto err_imp;
 	}
 
-	ret = habmem_imp_hyp_map(ctx->import_ctx, param, exp, kernel);
+	ret = habmem_imp_hyp_map(ctx->import_ctx, param, export, kernel);
 	if (ret) {
-		pr_err("Import fail ret:%d pcnt:%d rem:%d 1st_ref:0x%X\n",
-			ret, exp->payload_count,
-			exp->domid_local, *((uint32_t *)exp->payload));
+		pr_err("Import fail on vc %x ret:%d pcnt:%d rem:%d 1st_ref:0x%X\n",
+			vchan->id, ret, export->payload_count,
+			export->domid_local, *((uint32_t *)export->payload));
 		exp_super->import_state = EXP_DESC_INIT;
 		goto err_imp;
 	}
 
-	exp->import_index = param->index;
-	exp->kva = kernel ? (void *)param->kva : NULL;
+	export->import_index = param->index;
 	exp_super->import_state = EXP_DESC_IMPORTED;
 
 err_imp:
@@ -589,10 +595,10 @@ err_imp:
 			(found == 1) &&
 			(ret != 0)) {
 			/* dma_buf create failure, rollback required */
-			hab_send_unimport_msg(vchan, exp->export_id);
+			hab_send_unimport_msg(vchan, export->export_id);
 
 			spin_lock_bh(&ctx->imp_lock);
-			list_del(&exp->node);
+			hab_rb_remove(&ctx->imp_whse, exp_super);
 			ctx->import_total--;
 			spin_unlock_bh(&ctx->imp_lock);
 
@@ -609,9 +615,10 @@ int hab_mem_unimport(struct uhab_context *ctx,
 		int kernel)
 {
 	int ret = 0, found = 0;
-	struct export_desc *exp = NULL, *exp_tmp;
-	struct export_desc_super *exp_super = NULL;
+	struct export_desc *exp = NULL;
+	struct export_desc_super *exp_super = NULL, key = {0};
 	struct virtual_channel *vchan;
+	long fcnt_idle;
 
 	if (!ctx || !param)
 		return -EINVAL;
@@ -623,34 +630,36 @@ int hab_mem_unimport(struct uhab_context *ctx,
 		return -ENODEV;
 	}
 
+	if ((kernel == 1) || (param->flags & HABMM_UNIMP_FLAGS_FD_ALREADY_CLOSED))
+		fcnt_idle = 1;
+	else
+		fcnt_idle = 2;
+
+	key.exp.export_id = param->exportid;
+	key.exp.pchan = vchan->pchan;
 	spin_lock_bh(&ctx->imp_lock);
-	list_for_each_entry_safe(exp, exp_tmp, &ctx->imp_whse, node) {
-
-		/* same pchan is expected here */
-		if (exp->export_id == param->exportid &&
-			exp->pchan == vchan->pchan) {
-			exp_super = container_of(exp, struct export_desc_super, exp);
-
-			/* only successfully imported export desc could be found and released */
-			if (exp_super->import_state == EXP_DESC_IMPORTED) {
-				list_del(&exp->node);
-				ctx->import_total--;
-				found = 1;
-			} else
-				pr_err("exp desc id:%u status:%d is found, invalid to unimport\n",
-						exp->export_id, exp_super->import_state);
-			break;
-		}
+	exp_super = hab_rb_exp_find(&ctx->imp_whse, &key);
+	if (exp_super) {
+		/* only successfully imported export desc could be found and released */
+		if (exp_super->import_state == EXP_DESC_IMPORTED) {
+			hab_rb_remove(&ctx->imp_whse, exp_super);
+			ctx->import_total--;
+			found = 1;
+		} else
+			pr_err("vc %x exp id:%u status:%d is found, invalid to unimport\n",
+				vchan->id, exp_super->exp.export_id, exp_super->import_state);
 	}
 	spin_unlock_bh(&ctx->imp_lock);
 
-	if (!found)
+	if (!found) {
 		ret = -EINVAL;
-	else {
-		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, kernel);
+		pr_err("exp id %u unavailable on vc %x\n", param->exportid, vchan->id);
+	} else {
+		exp = &exp_super->exp;
+		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, fcnt_idle);
 		if (ret) {
 			pr_err("unmap fail id:%d pcnt:%d vcid:%d\n",
-			exp->export_id, exp->payload_count, exp->vcid_remote);
+				exp->export_id, exp->payload_count, exp->vcid_remote);
 		}
 		param->kva = (uint64_t)exp->kva;
 		if (vchan->pchan->mem_proto == 1)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk-provider.h>
@@ -16,6 +16,9 @@
 #include <soc/qcom/tcs.h>
 
 #include <dt-bindings/clock/qcom,rpmh.h>
+
+#include "clk-debug.h"
+#include "common.h"
 
 #define CLK_RPMH_ARC_EN_OFFSET		0
 #define CLK_RPMH_VRM_EN_OFFSET		4
@@ -475,6 +478,7 @@ static struct clk_hw *sm8150_rpmh_clocks[] = {
 	[RPMH_RF_CLK2_A]	= &sdm845_rf_clk2_ao.hw,
 	[RPMH_RF_CLK3]		= &sdm845_rf_clk3.hw,
 	[RPMH_RF_CLK3_A]	= &sdm845_rf_clk3_ao.hw,
+	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
 };
 
 static const struct clk_rpmh_desc clk_rpmh_sm8150 = {
@@ -514,6 +518,7 @@ static struct clk_hw *sc8180x_rpmh_clocks[] = {
 	[RPMH_RF_CLK2_A]	= &sc8180x_rf_clk2_ao.hw,
 	[RPMH_RF_CLK3]		= &sc8180x_rf_clk3.hw,
 	[RPMH_RF_CLK3_A]	= &sc8180x_rf_clk3_ao.hw,
+	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
 };
 
 static const struct clk_rpmh_desc clk_rpmh_sc8180x = {
@@ -536,6 +541,7 @@ static struct clk_hw *sm8250_rpmh_clocks[] = {
 	[RPMH_RF_CLK1_A]	= &sdm845_rf_clk1_ao.hw,
 	[RPMH_RF_CLK3]		= &sdm845_rf_clk3.hw,
 	[RPMH_RF_CLK3_A]	= &sdm845_rf_clk3_ao.hw,
+	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
 };
 
 static const struct clk_rpmh_desc clk_rpmh_sm8250 = {
@@ -703,6 +709,42 @@ static const struct clk_rpmh_desc clk_rpmh_lemans = {
 	.num_clks = ARRAY_SIZE(lemans_rpmh_clocks),
 };
 
+DEFINE_CLK_RPMH_ARC(neo, bi_tcxo, bi_tcxo_ao, "xo.lvl", 0x3, 1);
+
+static struct clk_hw *neo_rpmh_clocks[] = {
+	[RPMH_CXO_CLK]		= &neo_bi_tcxo.hw,
+	[RPMH_CXO_CLK_A]	= &neo_bi_tcxo_ao.hw,
+};
+
+static const struct clk_rpmh_desc clk_rpmh_neo = {
+	.clks = neo_rpmh_clocks,
+	.num_clks = ARRAY_SIZE(neo_rpmh_clocks),
+};
+
+DEFINE_CLK_RPMH_VRM(anorak, rf_clk1, rf_clk1_ao, "clka1", 1);
+DEFINE_CLK_RPMH_VRM(anorak, ln_bb_clk7, ln_bb_clk7_ao, "clka7", 2);
+DEFINE_CLK_RPMH_VRM(anorak, ln_bb_clk8, ln_bb_clk8_ao, "clka8", 4);
+DEFINE_CLK_RPMH_VRM(anorak, ln_bb_clk9, ln_bb_clk9_ao, "clka9", 2);
+
+static struct clk_hw *anorak_rpmh_clocks[] = {
+	[RPMH_CXO_CLK]		= &sc7280_bi_tcxo.hw,
+	[RPMH_CXO_CLK_A]	= &sc7280_bi_tcxo_ao.hw,
+	[RPMH_LN_BB_CLK7]	= &anorak_ln_bb_clk7.hw,
+	[RPMH_LN_BB_CLK7_A]	= &anorak_ln_bb_clk7_ao.hw,
+	[RPMH_LN_BB_CLK8]	= &anorak_ln_bb_clk8.hw,
+	[RPMH_LN_BB_CLK8_A]	= &anorak_ln_bb_clk8_ao.hw,
+	[RPMH_LN_BB_CLK9]	= &anorak_ln_bb_clk9.hw,
+	[RPMH_LN_BB_CLK9_A]	= &anorak_ln_bb_clk9_ao.hw,
+	[RPMH_RF_CLK1]		= &anorak_rf_clk1.hw,
+	[RPMH_RF_CLK1_A]	= &anorak_rf_clk1_ao.hw,
+	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
+};
+
+static const struct clk_rpmh_desc clk_rpmh_anorak = {
+	.clks = anorak_rpmh_clocks,
+	.num_clks = ARRAY_SIZE(anorak_rpmh_clocks),
+};
+
 static struct clk_hw *of_clk_rpmh_hw_get(struct of_phandle_args *clkspec,
 					 void *data)
 {
@@ -858,6 +900,60 @@ static const struct clk_rpmh_desc clk_rpmh_niobe = {
 	.num_clks = ARRAY_SIZE(niobe_rpmh_clocks),
 };
 
+DEFINE_CLK_RPMH_VRM_OPT(volcano, ln_bb_clk2, ln_bb_clk2_ao, "clka7", 4);
+DEFINE_CLK_RPMH_VRM_OPT(volcano, ln_bb_clk3, ln_bb_clk3_ao, "clka8", 4);
+DEFINE_CLK_RPMH_VRM_OPT(volcano, ln_bb_clk4, ln_bb_clk4_ao, "clka9", 2);
+
+static struct clk_hw *volcano_rpmh_clocks[] = {
+	[RPMH_CXO_PAD_CLK]	= &pineapple_xo_pad.hw,
+	[RPMH_CXO_PAD_CLK_A]	= &pineapple_xo_pad_ao.hw,
+	[RPMH_CXO_CLK]		= &pineapple_bi_tcxo.hw,
+	[RPMH_CXO_CLK_A]	= &pineapple_bi_tcxo_ao.hw,
+	[RPMH_LN_BB_CLK2]	= &volcano_ln_bb_clk2.hw,
+	[RPMH_LN_BB_CLK2_A]	= &volcano_ln_bb_clk2_ao.hw,
+	[RPMH_LN_BB_CLK3]	= &volcano_ln_bb_clk3.hw,
+	[RPMH_LN_BB_CLK3_A]	= &volcano_ln_bb_clk3_ao.hw,
+	[RPMH_LN_BB_CLK4]	= &volcano_ln_bb_clk4.hw,
+	[RPMH_LN_BB_CLK4_A]	= &volcano_ln_bb_clk4_ao.hw,
+	[RPMH_RF_CLK1]		= &pineapple_rf_clk1.hw,
+	[RPMH_RF_CLK1_A]	= &pineapple_rf_clk1_ao.hw,
+	[RPMH_RF_CLK2]		= &pineapple_rf_clk2.hw,
+	[RPMH_RF_CLK2_A]	= &pineapple_rf_clk2_ao.hw,
+	[RPMH_RF_CLK3]		= &kalama_rf_clk3.hw,
+	[RPMH_RF_CLK3_A]	= &kalama_rf_clk3_ao.hw,
+	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
+};
+
+static const struct clk_rpmh_desc clk_rpmh_volcano = {
+	.clks = volcano_rpmh_clocks,
+	.num_clks = ARRAY_SIZE(volcano_rpmh_clocks),
+};
+
+DEFINE_CLK_RPMH_ARC(seraph, xo_pad, xo_pad_ao, "xo.lvl", 0x03, 1);
+DEFINE_CLK_RPMH_FIXED(seraph, bi_tcxo, bi_tcxo_ao, xo_pad, xo_pad_ao, 2);
+DEFINE_CLK_RPMH_VRM_OPT(seraph, c1a_e0, c1a_e0_ao, "C1A_E0", 2);
+DEFINE_CLK_RPMH_VRM_OPT(seraph, c6a_e0, c6a_e0_ao, "C6A_E0", 1);
+DEFINE_CLK_RPMH_VRM_OPT(seraph, c7a_e0, c7a_e0_ao, "C7A_E0", 2);
+
+static struct clk_hw *seraph_rpmh_clocks[] = {
+	[RPMH_CXO_PAD_CLK]	= &seraph_xo_pad.hw,
+	[RPMH_CXO_PAD_CLK_A]	= &seraph_xo_pad_ao.hw,
+	[RPMH_CXO_CLK]		= &seraph_bi_tcxo.hw,
+	[RPMH_CXO_CLK_A]	= &seraph_bi_tcxo_ao.hw,
+	[RPMH_RF_CLK1]		= &seraph_c1a_e0.hw,
+	[RPMH_RF_CLK1_A]	= &seraph_c1a_e0_ao.hw,
+	[RPMH_LN_BB_CLK1]	= &seraph_c6a_e0.hw,
+	[RPMH_LN_BB_CLK1_A]	= &seraph_c6a_e0_ao.hw,
+	[RPMH_DIV_CLK1]		= &seraph_c7a_e0.hw,
+	[RPMH_DIV_CLK1_A]	= &seraph_c7a_e0_ao.hw,
+	[RPMH_IPA_CLK]		= &sdm845_ipa.hw,
+};
+
+static const struct clk_rpmh_desc clk_rpmh_seraph = {
+	.clks = seraph_rpmh_clocks,
+	.num_clks = ARRAY_SIZE(seraph_rpmh_clocks),
+};
+
 static int clk_rpmh_probe(struct platform_device *pdev)
 {
 	struct clk_hw **hw_clks;
@@ -917,6 +1013,11 @@ static int clk_rpmh_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "failed to register %s\n", name);
 			return ret;
 		}
+
+		ret = clk_hw_debug_register(&pdev->dev, hw_clks[i]);
+		if (ret)
+			dev_warn(&pdev->dev, "Failed to add %s to debug list\n",
+						qcom_clk_hw_get_name(hw_clks[i]));
 	}
 
 	/* typecast to silence compiler warning */
@@ -952,6 +1053,10 @@ static const struct of_device_id clk_rpmh_match_table[] = {
 	{ .compatible = "qcom,lemans-rpmh-clk", .data = &clk_rpmh_lemans},
 	{ .compatible = "qcom,cliffs-rpmh-clk", .data = &clk_rpmh_cliffs},
 	{ .compatible = "qcom,niobe-rpmh-clk", .data = &clk_rpmh_niobe},
+	{ .compatible = "qcom,volcano-rpmh-clk", .data = &clk_rpmh_volcano},
+	{ .compatible = "qcom,anorak-rpmh-clk", .data = &clk_rpmh_anorak},
+	{ .compatible = "qcom,neo-rpmh-clk", .data = &clk_rpmh_neo},
+	{ .compatible = "qcom,seraph-rpmh-clk", .data = &clk_rpmh_seraph},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, clk_rpmh_match_table);

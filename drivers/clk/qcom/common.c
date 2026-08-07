@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2013-2014, 2017-2021, The Linux Foundation.
  * All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/export.h>
@@ -381,6 +381,7 @@ int qcom_cc_really_probe(struct platform_device *pdev,
 		return -ENOMEM;
 
 	reset = &cc->reset;
+	reset->dev = dev;
 	reset->rcdev.of_node = dev->of_node;
 	reset->rcdev.ops = &qcom_reset_ops;
 	reset->rcdev.owner = dev->driver->owner;

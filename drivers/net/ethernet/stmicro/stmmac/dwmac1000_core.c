@@ -85,7 +85,8 @@ static int dwmac1000_rx_ipc_enable(struct mac_device_info *hw)
 	return !!(value & GMAC_CONTROL_IPC);
 }
 
-static void dwmac1000_dump_regs(struct mac_device_info *hw, u32 *reg_space)
+static void dwmac1000_dump_regs(struct stmmac_priv *priv, struct mac_device_info *hw,
+				u32 *reg_space)
 {
 	void __iomem *ioaddr = hw->pcsr;
 	int i;
@@ -414,7 +415,9 @@ static void dwmac1000_get_adv_lp(void __iomem *ioaddr, struct rgmii_adv *adv)
 	dwmac_get_adv_lp(ioaddr, GMAC_PCS_BASE, adv);
 }
 
-static void dwmac1000_debug(void __iomem *ioaddr, struct stmmac_extra_stats *x,
+static void dwmac1000_debug(struct stmmac_priv *priv,
+			    void __iomem *ioaddr,
+			    struct stmmac_extra_stats *x,
 			    u32 rx_queues, u32 tx_queues)
 {
 	u32 value = readl(ioaddr + GMAC_DEBUG);

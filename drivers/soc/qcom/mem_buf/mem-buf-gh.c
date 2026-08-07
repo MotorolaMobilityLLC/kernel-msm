@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/anon_inodes.h>
@@ -43,6 +43,7 @@ static LIST_HEAD(mem_buf_xfer_mem_list);
  * @work: work structure for dispatching the message processing to a worker
  * thread, so as to not block the message queue receiving thread.
  */
+
 struct mem_buf_rmt_msg {
 	void *msg;
 	size_t msg_size;
@@ -615,7 +616,6 @@ static void mem_buf_cleanup_alloc_req(struct mem_buf_xfer_mem *xfer_mem,
 			acl_desc->n_acl_entries = 1;
 			acl_desc->acl_entries[0].vmid = VMID_HLOS;
 			acl_desc->acl_entries[0].perms = GH_RM_ACL_X | GH_RM_ACL_W | GH_RM_ACL_R;
-
 			ret = mem_buf_map_mem_s2(GH_RM_TRANS_TYPE_DONATE, &memparcel_hdl,
 						      acl_desc, &sgl_desc, VMID_TVM);
 			if (ret) {
@@ -720,7 +720,41 @@ static void mem_buf_relinquish_work(struct work_struct *work)
 	kfree(rmt_msg);
 }
 
-static int mem_buf_alloc_resp_hdlr(void *hdlr_data, void *msg_buf, size_t size, void *out_buf)
+#ifdef CONFIG_RECLAIM_LENT_MEMORY
+void mem_buf_relinquish_all_mem(gh_vmid_t vmid)
+{
+	struct mem_buf_xfer_mem *xfer_mem_iter, *tmp, *xfer_mem = NULL;
+
+	mutex_lock(&mem_buf_xfer_mem_list_lock);
+	list_for_each_entry_safe(xfer_mem_iter, tmp, &mem_buf_xfer_mem_list,
+				entry) {
+		xfer_mem = xfer_mem_iter;
+		if (xfer_mem->nr_acl_entries == 1
+				&& xfer_mem->dst_vmids[0] == vmid) {
+			list_del(&xfer_mem->entry);
+			mem_buf_cleanup_alloc_req(xfer_mem, xfer_mem->hdl);
+		}
+	}
+	mutex_unlock(&mem_buf_xfer_mem_list_lock);
+}
+
+u64 mem_buf_account_all_mem(void)
+{
+	u64 total_size = 0;
+	struct mem_buf_xfer_mem *xfer_mem_iter;
+
+	mutex_lock(&mem_buf_xfer_mem_list_lock);
+	list_for_each_entry(xfer_mem_iter, &mem_buf_xfer_mem_list,
+				entry) {
+		total_size += xfer_mem_iter->size;
+	}
+	mutex_unlock(&mem_buf_xfer_mem_list_lock);
+
+	return total_size;
+}
+#endif /*CONFIG_RECLAIM_LENT_MEMORY*/
+
+static int mem_buf_alloc_resp_hdlr(void *msgq, void *msg_buf, size_t size, void *out_buf)
 {
 	struct mem_buf_alloc_resp *alloc_resp = msg_buf;
 	struct mem_buf_desc *membuf = out_buf;
@@ -894,10 +928,12 @@ static void mem_buf_relinquish_mem(struct mem_buf_desc *membuf)
 	arg.nr_acl_entries = 1;
 	arg.vmids = vmids;
 	arg.perms = perms;
-	arg.flags = GH_RM_MEM_DONATE_SANITIZE;
+	arg.flags = gh_rm_default_trans_type() == GH_RM_TRANS_TYPE_LEND
+			? GH_RM_MEM_LEND_SANITIZE
+			: GH_RM_MEM_DONATE_SANITIZE;
 	arg.label = 0;
 
-	ret = mem_buf_assign_mem(GH_RM_TRANS_TYPE_DONATE, sgt, &arg);
+	ret = mem_buf_assign_mem(gh_rm_default_trans_type(), sgt, &arg);
 	if (ret)
 		goto err_free_sgt;
 
@@ -1164,8 +1200,7 @@ struct dma_buf *mem_buf_retrieve(struct mem_buf_retrieve_kernel_arg *arg)
 	buffer->sg_table = *sgt;
 	kfree(sgt);
 
-	INIT_LIST_HEAD(&buffer->attachments);
-	mutex_init(&buffer->lock);
+	qcom_sg_buffer_init(buffer);
 	buffer->heap = NULL;
 	buffer->len = mem_buf_get_sgl_buf_size(sgl_desc);
 	buffer->uncached = false;
@@ -1173,7 +1208,9 @@ struct dma_buf *mem_buf_retrieve(struct mem_buf_retrieve_kernel_arg *arg)
 	buffer->vmperm = mem_buf_vmperm_alloc_accept(&buffer->sg_table,
 						     arg->memparcel_hdl,
 						     arg->vmids, arg->perms,
-						     arg->nr_acl_entries);
+						     arg->nr_acl_entries,
+						     qcom_sg_release,
+						     &buffer->kref);
 
 	exp_info.size = buffer->len;
 	exp_info.flags = arg->fd_flags;

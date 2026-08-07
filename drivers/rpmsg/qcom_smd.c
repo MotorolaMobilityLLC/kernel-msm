@@ -20,6 +20,7 @@
 #include <linux/wait.h>
 #include <linux/rpmsg.h>
 #include <linux/rpmsg/qcom_smd.h>
+#include <linux/termios.h>
 
 #include "rpmsg_internal.h"
 
@@ -226,6 +227,9 @@ struct qcom_smd_channel {
 	void *drvdata;
 
 	struct list_head list;
+	int (*signals_cb)(struct rpmsg_device *dev, void *priv, u32 old, u32 new);
+	u32 rsigs;
+	bool is_pkt_ch;
 };
 
 /*
@@ -338,6 +342,16 @@ struct smd_channel_info_word_pair {
 			channel->info_word->tx.param = cpu_to_le32(value);   \
 		else							      \
 			channel->info->tx.param = cpu_to_le32(value);	      \
+	})
+
+#define GET_RX_CHANNEL_SIGNAL(channel)					      \
+	({								      \
+		(GET_RX_CHANNEL_FLAG(channel, fDSR) ? TIOCM_DSR : 0) |	      \
+		(GET_RX_CHANNEL_FLAG(channel, fCTS) ? TIOCM_CTS : 0) |	      \
+		(GET_RX_CHANNEL_FLAG(channel, fCD) ? TIOCM_CD : 0) |	      \
+		(GET_RX_CHANNEL_FLAG(channel, fRI) ? TIOCM_RI : 0) |	\
+		(GET_TX_CHANNEL_FLAG(channel, fDSR) ? TIOCM_DTR : 0) |	\
+		(GET_TX_CHANNEL_FLAG(channel, fCTS) ? TIOCM_RTS : 0);	\
 	})
 
 /**
@@ -575,9 +589,11 @@ static int qcom_smd_channel_recv_single(struct qcom_smd_channel *channel)
  */
 static bool qcom_smd_channel_intr(struct qcom_smd_channel *channel)
 {
+	struct rpmsg_endpoint *ept = &channel->qsept->ept;
 	bool need_state_scan = false;
 	int remote_state;
 	__le32 pktlen;
+	u32 rsig = 0;
 	int avail;
 	int ret;
 
@@ -599,6 +615,12 @@ static bool qcom_smd_channel_intr(struct qcom_smd_channel *channel)
 	/* Don't consume any data until we've opened the channel */
 	if (channel->state != SMD_CHANNEL_OPENED)
 		goto out;
+	/* Check if any signal updated */
+	rsig = GET_RX_CHANNEL_SIGNAL(channel);
+	if ((channel->signals_cb) && (channel->rsigs != rsig)) {
+		channel->signals_cb(ept->rpdev, ept->priv, channel->rsigs, rsig);
+		channel->rsigs = rsig;
+	}
 
 	/* Indicate that we've seen the new data */
 	SET_RX_CHANNEL_FLAG(channel, fHEAD, 0);
@@ -606,6 +628,13 @@ static bool qcom_smd_channel_intr(struct qcom_smd_channel *channel)
 	/* Consume data */
 	for (;;) {
 		avail = qcom_smd_channel_get_rx_avail(channel);
+
+		if (!channel->is_pkt_ch) {
+			if (avail > 0)
+				channel->pkt_size = avail;
+			else
+				break;
+		}
 
 		if (!channel->pkt_size && avail >= SMD_PACKET_HEADER_LEN) {
 			qcom_smd_channel_peek(channel, &pktlen, sizeof(pktlen));
@@ -744,7 +773,7 @@ static int __qcom_smd_send(struct qcom_smd_channel *channel, const void *data,
 			   int len, bool wait)
 {
 	__le32 hdr[5] = { cpu_to_le32(len), };
-	int tlen = sizeof(hdr) + len;
+	int tlen = (channel->is_pkt_ch) ? sizeof(hdr) + len : len;
 	unsigned long flags;
 	int ret = 0;
 
@@ -793,7 +822,9 @@ static int __qcom_smd_send(struct qcom_smd_channel *channel, const void *data,
 
 	SET_TX_CHANNEL_FLAG(channel, fTAIL, 0);
 
-	qcom_smd_write_fifo(channel, hdr, sizeof(hdr));
+	if (channel->is_pkt_ch)
+		qcom_smd_write_fifo(channel, hdr, sizeof(hdr));
+
 	qcom_smd_write_fifo(channel, data, len);
 
 	SET_TX_CHANNEL_FLAG(channel, fHEAD, 1);
@@ -820,9 +851,9 @@ static int qcom_smd_channel_open(struct qcom_smd_channel *channel,
 	int ret;
 
 	/*
-	 * Packets are maximum 4k, but reduce if the fifo is smaller
+	 * Packets are maximum 8k, but reduce if the fifo is smaller
 	 */
-	bb_size = min(channel->fifo_size, SZ_4K);
+	bb_size = min(channel->fifo_size, SZ_8K);
 	channel->bounce_buffer = kmalloc(bb_size, GFP_KERNEL);
 	if (!channel->bounce_buffer)
 		return -ENOMEM;
@@ -1001,6 +1032,51 @@ static __poll_t qcom_smd_poll(struct rpmsg_endpoint *ept,
 		mask |= EPOLLOUT | EPOLLWRNORM;
 
 	return mask;
+}
+
+int qcom_smd_register_signals_cb(struct rpmsg_endpoint *ept,
+				   int (*cb)(struct rpmsg_device *, void *, u32, u32))
+{
+	struct qcom_smd_endpoint *channel;
+
+	if (!ept || !cb)
+		return -EINVAL;
+
+	channel = to_smd_endpoint(ept);
+	channel->qsch->signals_cb = cb;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qcom_smd_register_signals_cb);
+
+/* For getting and setting signals for smd pkt for modem support */
+int qcom_smd_get_sigs(struct rpmsg_endpoint *ept)
+{
+	struct qcom_smd_endpoint *qsept = to_smd_endpoint(ept);
+	struct qcom_smd_channel *channel = qsept->qsch;
+
+		return GET_RX_CHANNEL_SIGNAL(channel);
+}
+
+int qcom_smd_set_sigs(struct rpmsg_endpoint *ept, u32 set, u32 clear)
+{
+	struct qcom_smd_endpoint *qsept = to_smd_endpoint(ept);
+	struct qcom_smd_channel *channel = qsept->qsch;
+
+	if (set & TIOCM_DTR)
+		SET_TX_CHANNEL_FLAG(channel, fDSR, 1);
+	else
+		SET_TX_CHANNEL_FLAG(channel, fDSR, 0);
+
+	if (set & TIOCM_RTS)
+		SET_TX_CHANNEL_FLAG(channel, fCTS, 1);
+	else
+		SET_TX_CHANNEL_FLAG(channel, fDSR, 0);
+
+	SET_TX_CHANNEL_FLAG(channel, fSTATE, 1);
+	qcom_smd_signal_channel(channel);
+
+	return 0;
 }
 
 /*
@@ -1233,7 +1309,8 @@ static void qcom_channel_scan_worker(struct work_struct *work)
 			if (!entry->name[0])
 				continue;
 
-			if (!(eflags & SMD_CHANNEL_FLAGS_PACKET))
+			if (!(eflags & SMD_CHANNEL_FLAGS_PACKET) &&
+				!(eflags & SMD_CHANNEL_FLAGS_STREAM))
 				continue;
 
 			if ((eflags & SMD_CHANNEL_FLAGS_EDGE_MASK) != edge->edge_id)
@@ -1246,6 +1323,10 @@ static void qcom_channel_scan_worker(struct work_struct *work)
 			channel = qcom_smd_create_channel(edge, info_id, fifo_id, entry->name);
 			if (IS_ERR(channel))
 				continue;
+
+			channel->is_pkt_ch =
+				(eflags & SMD_CHANNEL_FLAGS_PACKET) ? true
+					: false;
 
 			spin_lock_irqsave(&edge->channels_lock, flags);
 			list_add(&channel->list, &edge->channels);
@@ -1415,8 +1496,8 @@ static int qcom_smd_parse_edge(struct device *dev,
 	}
 
 	ret = devm_request_irq(dev, irq,
-			       qcom_smd_edge_intr, IRQF_TRIGGER_RISING,
-			       node->name, edge);
+				qcom_smd_edge_intr, IRQF_TRIGGER_RISING
+				| IRQF_NO_SUSPEND, node->name, edge);
 	if (ret) {
 		dev_err(dev, "failed to request smd irq\n");
 		goto put_node;
@@ -1443,7 +1524,21 @@ static void qcom_smd_edge_release(struct device *dev)
 	struct qcom_smd_edge *edge = to_smd_edge(dev);
 
 	list_for_each_entry_safe(channel, tmp, &edge->channels, list) {
+
+		/* Wake all waiters */
+		wake_up_interruptible_all(&channel->fblockread_event);
+		wake_up_interruptible_all(&channel->state_change_event);
+
 		list_del(&channel->list);
+
+		/*
+		 * Ensure woken threads complete poll cleanup before freeing memory.
+		 * On single-CPU systems like MDM9607, wake_up_interruptible_all()
+		 * only marks threads runnable but doesn't immediately schedule them.
+		 * synchronize_rcu() provides a scheduling point via might_sleep().
+		 */
+		synchronize_rcu();
+
 		kfree(channel->name);
 		kfree(channel);
 	}

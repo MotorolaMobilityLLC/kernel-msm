@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -22,7 +22,6 @@
 #define WATCHDOG_TIMEOUT (30 * HZ)
 #define IPC_LOG_PAGES (100)
 #define MAX_NETBUF_SIZE (128)
-#define MHI_NETDEV_NAPI_POLL_WEIGHT (64)
 
 #ifdef CONFIG_MHI_BUS_DEBUG
 #define MHI_NETDEV_LOG_LVL MHI_MSG_LVL_VERBOSE
@@ -709,8 +708,7 @@ static int mhi_netdev_enable_iface(struct mhi_netdev *mhi_netdev)
 		goto napi_alloc_fail;
 	}
 
-	netif_napi_add(mhi_netdev->ndev, mhi_netdev->napi,
-		       mhi_netdev_poll, MHI_NETDEV_NAPI_POLL_WEIGHT);
+	netif_napi_add(mhi_netdev->ndev, mhi_netdev->napi, mhi_netdev_poll);
 
 	ret = register_netdev(mhi_netdev->ndev);
 	if (ret) {

@@ -160,6 +160,14 @@ config PHY_QCOM_UFS_V4_PINEAPPLE
           This is required to enable UFS on Pineapple chipset.
           To compile this driver as a module, choose M here.
 
+config PHY_QCOM_UFS_V4_NIOBE
+	tristate "Qualcomm Technologies, Inc. UFS Niobe Phy Driver"
+	help
+	  Support for UFS phy present on QCOM Niobe chipsets.
+	  This is required to enable UFS on Niobe chipset.
+	  To compile this driver as a module, choose M here.
+	  This would be needed for all niobe ufs platforms.
+
 config PHY_QCOM_UFS_V4_WAIPIO
         tristate "Qualcomm Technologies, Inc. UFS Waipio Phy Driver"
         help
@@ -181,6 +189,16 @@ config PHY_QCOM_UFS_V4_LAHAINA
 	  Support for UFS phy present on QCOM Lahaina chipsets.
 	  This is required to enable UFS on Lahaina chipset.
 	  To compile this driver as a module, choose M here.
+
+config PHY_QCOM_UFS_V4_CROW
+	tristate "Qualcomm Technologies, Inc. UFS Crow Phy Driver"
+	help
+	  Support for UFS phy present on QCOM Crow chipsets is essential
+	  for enabling UFS on Crow chipsets.
+	  To compile this driver as a module, users can choose "M" to have
+	  the flexibility of loading and unloading the driver as needed.
+	  By incorporating support for UFS phy on Crow chipsets, users
+	  can take advantage of the benefits offered by CROW UFS PHY.
 
 endif
 

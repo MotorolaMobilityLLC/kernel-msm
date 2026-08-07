@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/seq_file.h>
@@ -316,7 +316,8 @@ bool select_prev_cpu_fastpath(int prev_cpu, int start_cpu, int order_index,
 static void walt_find_best_target(struct sched_domain *sd,
 					cpumask_t *candidates,
 					struct task_struct *p,
-					struct find_best_target_env *fbt_env)
+					struct find_best_target_env *fbt_env,
+					bool *force_energy_eval)
 {
 	unsigned long min_task_util = uclamp_task_util(p);
 	long target_max_spare_cap = 0;
@@ -335,7 +336,9 @@ static void walt_find_best_target(struct sched_domain *sd,
 	bool rtg_high_prio_task = task_rtg_high_prio(p);
 	cpumask_t visit_cpus;
 	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
-	int packing_cpu;
+	int packing_cpu, cpu;
+	unsigned int search_sibling_cluster = 0;
+	bool visited_clusters[MAX_CLUSTERS] = {[0 ... (MAX_CLUSTERS-1)] = false};
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	int mvp_min_tasks = INT_MAX; // Moto chentao: spread mvp tasks.
 	int least_mvp_cpu = -1; // Moto huangzq2
@@ -363,28 +366,47 @@ static void walt_find_best_target(struct sched_domain *sd,
 	if (packing_cpu >= 0) {
 		fbt_env->fastpath = CLUSTER_PACKING_FASTPATH;
 		cpumask_set_cpu(packing_cpu, candidates);
-			goto out;
+		visited_clusters[cpu_cluster(packing_cpu)->id] = true;
+		goto out;
 	}
 
 	/* fast path for prev_cpu */
 	if (select_prev_cpu_fastpath(prev_cpu, start_cpu, order_index, p)) {
 		fbt_env->fastpath = PREV_CPU_FASTPATH;
 		cpumask_set_cpu(prev_cpu, candidates);
+		visited_clusters[cpu_cluster(prev_cpu)->id] = true;
 		goto out;
 	}
 
+/* retry for sibling cluster */
+retry:
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		int best_idle_cpu_cluster = -1;
 		int target_cpu_cluster = -1;
 		int this_complex_idle = 0;
 		int best_complex_idle = 0;
+		int cluster_id;
 
 		target_max_spare_cap = 0;
 		min_exit_latency = INT_MAX;
 		best_idle_cuml_util = ULONG_MAX;
 
-		cpumask_and(&visit_cpus, p->cpus_ptr,
-				&cpu_array[order_index][cluster]);
+		if (search_sibling_cluster) {
+			if (!(search_sibling_cluster & BIT(cluster)))
+				continue;
+			cluster_id = cluster;
+			cpumask_and(&visit_cpus, p->cpus_ptr, &sched_cluster[cluster]->cpus);
+		} else {
+			cpumask_and(&visit_cpus, p->cpus_ptr, &cpu_array[order_index][cluster]);
+			cluster_id = cpu_cluster(
+					cpumask_first(&cpu_array[order_index][cluster]))->id;
+		}
+
+		if (visited_clusters[cluster_id])
+			continue;
+
+		visited_clusters[cluster_id] = true;
+
 		for_each_cpu(i, &visit_cpus) {
 			unsigned long capacity_orig = capacity_orig_of(i);
 			unsigned long wake_cpu_util, new_cpu_util, new_util_cuml;
@@ -573,6 +595,20 @@ static void walt_find_best_target(struct sched_domain *sd,
 	}
 
 out:
+	search_sibling_cluster = 0;
+	for_each_cpu(cpu, candidates) {
+		struct walt_sched_cluster *cluster = cpu_cluster(cpu);
+		int sibling = cluster->sibling_cluster;
+
+		if ((sibling >= 0) && !visited_clusters[sibling]) {
+			search_sibling_cluster |= BIT(sibling);
+		}
+	}
+	if (search_sibling_cluster) {
+		*force_energy_eval = true;
+		goto retry;
+	}
+
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	trace_sched_find_best_target(p, min_task_util, start_cpu, cpumask_bits(candidates)[0],
 			     most_spare_cap_cpu, order_index, end_index,
@@ -889,6 +925,7 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	struct compute_energy_output output;
 	struct walt_task_struct *wts;
 	int pipeline_cpu;
+	bool force_energy_eval = false;
 
 	if (walt_is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
 			cpumask_test_cpu(prev_cpu, p->cpus_ptr))
@@ -909,7 +946,8 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 			cpumask_test_cpu(pipeline_cpu, p->cpus_ptr) &&
 			cpu_active(pipeline_cpu) &&
 			!cpu_halted(pipeline_cpu)) {
-		if (!walt_pipeline_low_latency_task(cpu_rq(pipeline_cpu)->curr)) {
+		if ((p == cpu_rq(pipeline_cpu)->curr) ||
+			!walt_pipeline_low_latency_task(cpu_rq(pipeline_cpu)->curr)) {
 			best_energy_cpu = pipeline_cpu;
 			fbt_env.fastpath = PIPELINE_FASTPATH;
 			goto out;
@@ -936,10 +974,12 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		sync = 0;
 
 	if (sysctl_sched_sync_hint_enable && sync
-			&& bias_to_this_cpu(p, cpu, start_cpu) && !cpu_halted(cpu)) {
-		best_energy_cpu = cpu;
-		fbt_env.fastpath = SYNC_WAKEUP;
-		goto unlock;
+	    && bias_to_this_cpu(p, cpu, start_cpu) && !cpu_halted(cpu)) {
+		if (cpu_cluster(cpu)->sibling_cluster == -1) {
+			best_energy_cpu = cpu;
+			fbt_env.fastpath = SYNC_WAKEUP;
+			goto unlock;
+		}
 	}
 
 	/* if symmetrical system, default to upstream behavior */
@@ -963,7 +1003,8 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	fbt_env.skip_cpu = walt_is_many_wakeup(sibling_count_hint) ?
 			   cpu : -1;
 
-	walt_find_best_target(NULL, candidates, p, &fbt_env);
+	walt_find_best_target(NULL, candidates, p, &fbt_env, &force_energy_eval);
+
 
 	/* Bail out if no candidate was found. */
 	weight = cpumask_weight(candidates);
@@ -972,7 +1013,7 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 	first_cpu = cpumask_first(candidates);
 
-	if (fbt_env.fastpath == CLUSTER_PACKING_FASTPATH) {
+	if ((fbt_env.fastpath == CLUSTER_PACKING_FASTPATH) && !force_energy_eval) {
 		best_energy_cpu = first_cpu;
 		goto unlock;
 	}
@@ -989,7 +1030,7 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 		goto unlock;
 	}
 
-	if (!energy_eval_needed) {
+	if (!energy_eval_needed && !force_energy_eval) {
 		int max_spare_cpu = first_cpu;
 
 		for_each_cpu(cpu, candidates) {
@@ -1295,6 +1336,8 @@ void walt_cfs_deactivate_mvp_task(struct rq *rq, struct task_struct *p)
  * slice expired: MVP slice is expired and other MVP can preempt.
  * slice not expired: This MVP task can continue to run.
  */
+#define MAX_MVP_TIME_NS			500000000ULL
+#define MVP_THROTTLE_TIME_NS		100000000ULL
 static void walt_cfs_account_mvp_runtime(struct rq *rq, struct task_struct *curr)
 {
 	struct walt_rq *wrq = &per_cpu(walt_rq, cpu_of(rq));
@@ -1314,6 +1357,23 @@ static void walt_cfs_account_mvp_runtime(struct rq *rq, struct task_struct *curr
 	if (!(rq->clock_update_flags & RQCF_UPDATED))
 		update_rq_clock(rq);
 
+	if (wrq->mvp_throttle_time) {
+		if ((rq->clock - wrq->mvp_throttle_time) > MVP_THROTTLE_TIME_NS) {
+			wrq->skip_mvp = false;
+			wrq->mvp_throttle_time = 0;
+		}
+	} else if (wrq->mvp_arrival_time) {
+		if ((rq->clock - wrq->mvp_arrival_time) > MAX_MVP_TIME_NS) {
+			wrq->skip_mvp = true;
+			wrq->mvp_arrival_time = 0;
+			wrq->mvp_throttle_time = rq->clock;
+		}
+	}
+
+	/*
+	 * continue accounting even in skip_mvp state if a MVP task is selected
+	 * by scheduler core to run on CPU.
+	 */
 	if (curr->se.sum_exec_runtime > wts->sum_exec_snapshot_for_total)
 		wts->total_exec = curr->se.sum_exec_runtime - wts->sum_exec_snapshot_for_total;
 	else
@@ -1427,6 +1487,7 @@ void walt_cfs_tick(struct rq *rq)
 {
 	struct walt_rq *wrq = &per_cpu(walt_rq, cpu_of(rq));
 	struct walt_task_struct *wts = (struct walt_task_struct *) rq->curr->android_vendor_data1;
+	bool skip_mvp;
 
 	if (unlikely(walt_disabled))
 		return;
@@ -1436,12 +1497,15 @@ void walt_cfs_tick(struct rq *rq)
 	if (list_empty(&wts->mvp_list) || (wts->mvp_list.next == NULL))
 		goto out;
 
+	/* Reschedule if RQ's skip_mvp state changes */
+	skip_mvp = wrq->skip_mvp;
 	walt_cfs_account_mvp_runtime(rq, rq->curr);
 	/*
 	 * If the current is not MVP means, we have to re-schedule to
 	 * see if we can run any other task including MVP tasks.
 	 */
-	if ((wrq->mvp_tasks.next != &wts->mvp_list) && rq->cfs.h_nr_running > 1)
+	if (((skip_mvp != wrq->skip_mvp) ||
+		(wrq->mvp_tasks.next != &wts->mvp_list)) && rq->cfs.h_nr_running > 1)
 		resched_curr(rq);
 
 out:
@@ -1461,7 +1525,7 @@ static void walt_cfs_check_preempt_wakeup(void *unused, struct rq *rq, struct ta
 	struct walt_task_struct *wts_p = (struct walt_task_struct *) p->android_vendor_data1;
 	struct task_struct *c = rq->curr;
 	struct walt_task_struct *wts_c = (struct walt_task_struct *) rq->curr->android_vendor_data1;
-	bool resched = false;
+	bool resched = false, skip_mvp;
 	bool p_is_mvp, curr_is_mvp;
 
 	if (unlikely(walt_disabled))
@@ -1475,7 +1539,7 @@ static void walt_cfs_check_preempt_wakeup(void *unused, struct rq *rq, struct ta
 	 * is simple.
 	 */
 	if (!curr_is_mvp) {
-		if (p_is_mvp)
+		if (p_is_mvp && !wrq->skip_mvp)
 			goto preempt;
 		return; /* CFS decides preemption */
 	}
@@ -1484,14 +1548,15 @@ static void walt_cfs_check_preempt_wakeup(void *unused, struct rq *rq, struct ta
 	 * current is MVP. update its runtime before deciding the
 	 * preemption.
 	 */
+	skip_mvp = wrq->skip_mvp;
 	walt_cfs_account_mvp_runtime(rq, c);
 #if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
 	if (likely(moto_sched_enabled))
-		resched = (wrq->mvp_tasks.next != &wts_c->mvp_list) && (wrq->mvp_tasks.next == &wts_p->mvp_list); // Moto wangwang: fix preemption issue.
+		resched = (skip_mvp != wrq->skip_mvp) || ((wrq->mvp_tasks.next != &wts_c->mvp_list) && (wrq->mvp_tasks.next == &wts_p->mvp_list)); // Moto wangwang: fix preemption issue.
 	else
-		resched = (wrq->mvp_tasks.next != &wts_c->mvp_list);
+		resched = (skip_mvp != wrq->skip_mvp) || (wrq->mvp_tasks.next != &wts_c->mvp_list);
 #else
-	resched = (wrq->mvp_tasks.next != &wts_c->mvp_list);
+	resched = (skip_mvp != wrq->skip_mvp) || (wrq->mvp_tasks.next != &wts_c->mvp_list);
 #endif
 
 	/*
@@ -1552,9 +1617,14 @@ static void walt_cfs_replace_next_task_fair(void *unused, struct rq *rq, struct 
 			 (*p)->on_rq, task_thread_info(*p)->cpu,
 			 cpu_of(rq), ((*p)->flags & PF_KTHREAD));
 
-	/* We don't have MVP tasks queued */
-	if (list_empty(&wrq->mvp_tasks))
+	/* RQ is in MVP throttled state*/
+	if (wrq->skip_mvp)
 		return;
+
+	if (list_empty(&wrq->mvp_tasks)) {
+		wrq->mvp_arrival_time = 0;
+		return;
+	}
 
 	/* Return the first task from MVP queue */
 	wts = list_first_entry(&wrq->mvp_tasks, struct walt_task_struct, mvp_list);
@@ -1563,6 +1633,11 @@ static void walt_cfs_replace_next_task_fair(void *unused, struct rq *rq, struct 
 	*p = mvp;
 	*se = &mvp->se;
 	*repick = true;
+
+	/* TODO: check with team if it is fine in case clock is not updated */
+	/* Mark arrival of MVP task */
+	if (!wrq->mvp_arrival_time)
+		wrq->mvp_arrival_time = rq->clock;
 
 	if (simple) {
 		for_each_sched_entity((*se)) {

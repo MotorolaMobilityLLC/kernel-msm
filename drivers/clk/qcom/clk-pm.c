@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2024-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -17,20 +17,43 @@
 /* Restores the clocks configuration while coming out of Hibernation */
 static int clock_pm_restore_early(struct device *dev)
 {
-	clk_restore_context();
+	if (pm_runtime_enabled(dev)) {
+		int ret;
+
+		ret = pm_runtime_get_sync(dev);
+		if (ret < 0)
+			return ret;
+
+		clk_restore_context();
+	}
+
 	clk_restore_critical_clocks(dev);
+
+	if (pm_runtime_enabled(dev))
+		pm_runtime_put_sync(dev);
+
 	return 0;
 }
 
 /* Restores the clocks configuration while coming out of DeepSleep */
 static int clock_pm_resume_early(struct device *dev)
 {
-#ifdef CONFIG_DEEPSLEEP
-	if (pm_suspend_via_firmware()) {
-		clk_restore_context();
+	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
+		if (pm_runtime_enabled(dev)) {
+			int ret;
+
+			ret = pm_runtime_get_sync(dev);
+			if (ret < 0)
+				return ret;
+
+			clk_restore_context();
+		}
+
 		clk_restore_critical_clocks(dev);
+
+		if (pm_runtime_enabled(dev))
+			pm_runtime_put_sync(dev);
 	}
-#endif
 	return 0;
 }
 
@@ -56,6 +79,9 @@ int register_qcom_clks_pm(struct platform_device *pdev, bool runtime,
 		return PTR_ERR(pdev);
 
 	if (runtime) {
+
+		pdev->dev.driver->pm = &clock_pm_rt_ops;
+
 		ret = qcom_cc_runtime_init(pdev, desc);
 		if (ret)
 			return ret;
@@ -63,11 +89,9 @@ int register_qcom_clks_pm(struct platform_device *pdev, bool runtime,
 		ret = pm_runtime_get_sync(&pdev->dev);
 		if (ret)
 			return ret;
-
-		pdev->dev.driver->pm = &clock_pm_rt_ops;
 	} else {
-		platform_set_drvdata(pdev, desc);
 		pdev->dev.driver->pm = &clock_pm_ops;
+		platform_set_drvdata(pdev, desc);
 	}
 
 	return 0;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/cpuidle.h>
@@ -47,7 +47,7 @@ static void save_hib_resume_bdev(void *data, struct block_device *hib_resume_bde
 static void check_hibernation_swap(void *data, struct block_device *dev,
 			bool *hib_swap)
 {
-	if (dev == hiber_bdev)
+	if (dev == hiber_bdev || !ta_based_key)
 		*hib_swap = true;
 	else
 		*hib_swap = false;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  */
 
@@ -12,6 +12,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <linux/gunyah/gh_irq_lend.h>
 #include <linux/gunyah/gh_rm_drv.h>
+#include <linux/gunyah/gh_vm.h>
 
 #include "gh_rm_drv_private.h"
 
@@ -38,6 +39,7 @@ struct gh_irq_entry {
 
 static struct gh_irq_entry gh_irq_entries[GH_IRQ_LABEL_MAX];
 static DEFINE_SPINLOCK(gh_irq_lend_lock);
+struct notifier_block vm_nb;
 
 static int gh_irq_released_accepted_nb_handler(struct notifier_block *this,
 				      unsigned long cmd, void *data)
@@ -143,6 +145,58 @@ static int gh_irq_lent_nb_handler(struct notifier_block *this,
 
 static struct notifier_block gh_irq_lent_nb = {
 	.notifier_call = gh_irq_lent_nb_handler,
+};
+
+static int gh_irq_vm_nb_handler(struct notifier_block *this, unsigned long cmd,
+				void *data)
+{
+	gh_vmid_t vmid;
+	enum gh_irq_label label;
+	struct gh_irq_entry *entry;
+	unsigned long flags;
+	int ret;
+
+	if (!data)
+		return NOTIFY_DONE;
+	vmid = *((gh_vmid_t *)data);
+
+	switch (cmd) {
+	case GH_VM_EARLY_POWEROFF:
+		for (label = 0; label < GH_IRQ_LABEL_MAX; label++) {
+			spin_lock_irqsave(&gh_irq_lend_lock, flags);
+			entry = &gh_irq_entries[label];
+			if (vmid != entry->vmid ||
+			    (entry->state !=
+				     GH_IRQ_STATE_WAIT_RELEASE_OR_ACCEPT &&
+			     entry->state != GH_IRQ_STATE_RELEASED &&
+			     entry->state != GH_IRQ_STATE_ACCEPTED &&
+			     entry->state != GH_IRQ_STATE_LENT)) {
+				spin_unlock_irqrestore(&gh_irq_lend_lock,
+						       flags);
+				continue;
+			}
+			spin_unlock_irqrestore(&gh_irq_lend_lock, flags);
+
+			ret = gh_rm_vm_irq_reclaim(entry->virq_handle);
+			if (ret) {
+				pr_err("Failed to reclaim IRQ label:%d of VMID:%d\n",
+				       label, entry->vmid);
+				continue;
+			}
+
+			spin_lock_irqsave(&gh_irq_lend_lock, flags);
+			entry->state = GH_IRQ_STATE_NONE;
+			spin_unlock_irqrestore(&gh_irq_lend_lock, flags);
+		}
+		pr_info("IRQ reclaim for VMID:%d finished\n", vmid);
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block gh_irq_vm_nb = {
+	.notifier_call = gh_irq_vm_nb_handler,
 };
 
 /**
@@ -441,6 +495,10 @@ static int __init gh_irq_lend_init(void)
 	if (ret)
 		return ret;
 
+	ret = gh_register_vm_notifier(&gh_irq_vm_nb);
+	if (ret)
+		return ret;
+
 	return gh_rm_register_notifier(&gh_irq_released_accepted_nb);
 }
 module_init(gh_irq_lend_init);
@@ -449,6 +507,7 @@ static void gh_irq_lend_exit(void)
 {
 	gh_rm_unregister_notifier(&gh_irq_lent_nb);
 	gh_rm_unregister_notifier(&gh_irq_released_accepted_nb);
+	gh_unregister_vm_notifier(&gh_irq_vm_nb);
 }
 module_exit(gh_irq_lend_exit);
 

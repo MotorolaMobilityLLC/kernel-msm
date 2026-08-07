@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #ifndef __MSM_PCIE_H
 #define __MSM_PCIE_H
@@ -92,8 +92,10 @@ int msm_pcie_set_target_link_speed(u32 rc_idx, u32 target_link_speed,
  *
  * This function gives PCIe clients the control to allow the link to re-enter
  * L1. Should only be used after msm_pcie_prevent_l1 has been called.
+ *
+ * Return 0 on success, negative value on error
  */
-void msm_pcie_allow_l1(struct pci_dev *pci_dev);
+int msm_pcie_allow_l1(struct pci_dev *pci_dev);
 
 /**
  * msm_pcie_prevent_l1 - keeps PCIe link out of L1
@@ -187,6 +189,16 @@ int msm_pcie_deregister_event(struct msm_pcie_register_event *reg);
  */
 int msm_pcie_enumerate(u32 rc_idx);
 
+/**
+ * msm_pcie_deenumerate - deenumerates the Endpoints.
+ * @rc_idx:	RC that Endpoints connect to.
+ *
+ * This function de-enumerates Endpoints connected to RC.
+ *
+ * Return: 0 on success, negative value on error
+ */
+int msm_pcie_deenumerate(u32 rc_idx);
+
 /*
  * msm_pcie_debug_info - run a PCIe specific debug testcase.
  * @dev:	pci device structure
@@ -215,6 +227,28 @@ int msm_pcie_debug_info(struct pci_dev *dev, u32 option, u32 base,
  */
 int msm_pcie_reg_dump(struct pci_dev *pci_dev, u8 *buff, u32 len);
 
+/*
+ * msm_pcie_dsp_link_control - enable/disable DSP link
+ * @pci_dev:	pci device structure, endpoint of this DSP
+ * @link_enable true to enable, false to disable
+ *
+ * This function enable(include training)/disable link between PCIe
+ * switch DSP and endpoint attached.
+ * Return: 0 on success, negative value on error
+ */
+int msm_pcie_dsp_link_control(struct pci_dev *pci_dev,
+				    bool link_enable);
+
+/*
+ * msm_pcie_fmd_enable - deassert perst and enable FMD bit
+ * @pci_dev:	pci device structure
+ *
+ * This function will de-assert PERST if PERST is already in assert state
+ * and set fmd_enable  bit, after that no further perst assert/de-assert
+ * are allowed.
+ */
+int msm_pcie_fmd_enable(struct pci_dev *pci_dev);
+
 #else /* !CONFIG_PCI_MSM */
 static inline int msm_pcie_pm_control(enum msm_pcie_pm_opt pm_opt, u32 busnr,
 			void *user, void *data, u32 options)
@@ -228,12 +262,16 @@ static inline int msm_pcie_set_target_link_speed(u32 rc_idx,
 	return -ENODEV;
 }
 
-static inline void msm_pcie_allow_l1(struct pci_dev *pci_dev)
+static inline int msm_pcie_allow_l1(struct pci_dev *pci_dev)
 {
+	return -ENODEV;
 }
 
 static inline int msm_pcie_prevent_l1(struct pci_dev *pci_dev)
 {
+#if IS_ENABLED(CONFIG_PCIE_QCOM_ECAM)
+	return 0;
+#endif
 	return -ENODEV;
 }
 
@@ -262,6 +300,11 @@ static inline int msm_pcie_enumerate(u32 rc_idx)
 	return -ENODEV;
 }
 
+static inline int msm_pcie_deenumerate(u32 rc_idx)
+{
+	return -ENODEV;
+}
+
 static inline int msm_pcie_debug_info(struct pci_dev *dev, u32 option, u32 base,
 			u32 offset, u32 mask, u32 value)
 {
@@ -269,6 +312,17 @@ static inline int msm_pcie_debug_info(struct pci_dev *dev, u32 option, u32 base,
 }
 
 static inline int msm_pcie_reg_dump(struct pci_dev *pci_dev, u8 *buff, u32 len)
+{
+	return -ENODEV;
+}
+
+static inline int msm_pcie_dsp_link_control(struct pci_dev *pci_dev,
+						  bool link_enable)
+{
+	return -ENODEV;
+}
+
+static inline int msm_pcie_fmd_enable(struct pci_dev *pci_dev)
 {
 	return -ENODEV;
 }

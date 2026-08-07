@@ -1,6 +1,6 @@
-load(":target_variants.bzl", "la_variants")
-load(":msm_kernel_la.bzl", "define_msm_la")
 load(":image_opts.bzl", "boot_image_opts")
+load(":msm_kernel_la.bzl", "define_msm_la")
+load(":target_variants.bzl", "la_variants")
 
 target_name = "gen3auto"
 
@@ -65,7 +65,11 @@ def define_gen3auto():
         "drivers/i2c/muxes/i2c-mux-pca954x.ko",
         "drivers/iio/adc/qcom-spmi-adc5.ko",
         "drivers/iio/adc/qcom-vadc-common.ko",
+        "drivers/iio/buffer/industrialio-triggered-buffer.ko",
         "drivers/iio/buffer/kfifo_buf.ko",
+        "drivers/iio/imu/st_asm330lhhx/st_asm330lhhx.ko",
+        "drivers/iio/imu/st_asm330lhhx/st_asm330lhhx_i2c.ko",
+        "drivers/iio/imu/st_asm330lhhx/st_asm330lhhx_spi.ko",
         "drivers/input/misc/pm8941-pwrkey.ko",
         "drivers/interconnect/icc-test.ko",
         "drivers/interconnect/qcom/icc-bcm-voter.ko",
@@ -83,10 +87,17 @@ def define_gen3auto():
         "drivers/irqchip/qcom-pdc.ko",
         "drivers/mailbox/msm_qmp.ko",
         "drivers/mailbox/qcom-apcs-ipc-mailbox.ko",
+        "drivers/media/platform/msm/npu/msm_npu.ko",
         "drivers/mfd/qcom-spmi-pmic.ko",
+        "drivers/misc/bootmarker_proxy.ko",
         "drivers/misc/qseecom_proxy.ko",
         "drivers/mmc/host/cqhci.ko",
         "drivers/mmc/host/sdhci-msm.ko",
+        "drivers/mmc/host/sdhci-msm-scaling.ko",
+        "drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-eth.ko",
+        "drivers/net/ethernet/stmicro/stmmac/stmmac.ko",
+        "drivers/net/ethernet/stmicro/stmmac/stmmac-platform.ko",
+        "drivers/net/pcs/pcs_xpcs.ko",
         "drivers/net/phy/micrel.ko",
         "drivers/nvmem/nvmem_qcom-spmi-sdam.ko",
         "drivers/nvmem/nvmem_qfprom.ko",
@@ -200,6 +211,7 @@ def define_gen3auto():
     _gen3auto_consolidate_in_tree_modules = _gen3auto_in_tree_modules + [
         # keep sorted
         "drivers/misc/lkdtm/lkdtm.ko",
+        "drivers/usb/misc/lvstest.ko",
         "kernel/locking/locktorture.ko",
         "kernel/rcu/rcutorture.ko",
         "kernel/torture.ko",

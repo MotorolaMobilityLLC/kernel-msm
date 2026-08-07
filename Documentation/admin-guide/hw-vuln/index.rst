@@ -23,3 +23,4 @@ are configurable at compile, boot or run time.
    srso
    reg-file-data-sampling
    indirect-target-selection
+   vmscape

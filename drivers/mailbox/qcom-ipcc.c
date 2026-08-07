@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/bitfield.h>
@@ -10,6 +11,8 @@
 #include <linux/mailbox_controller.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/suspend.h>
+#include <linux/notifier.h>
 
 #include <dt-bindings/mailbox/qcom-ipcc.h>
 
@@ -34,6 +37,7 @@
 struct qcom_ipcc_chan_info {
 	u16 client_id;
 	u16 signal_id;
+	u16 is_signal_enabled;
 };
 
 /**
@@ -56,6 +60,8 @@ struct qcom_ipcc {
 	struct mbox_controller mbox;
 	int num_chans;
 	int irq;
+	struct notifier_block hibernate_notif_block;
+	bool needs_unmasking;
 };
 
 static inline struct qcom_ipcc *to_qcom_ipcc(struct mbox_controller *mbox)
@@ -88,11 +94,31 @@ static irqreturn_t qcom_ipcc_irq_fn(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static void qcom_ipcc_update_irq_status(struct qcom_ipcc *ipcc,
+		irq_hw_number_t hwirq, bool is_enabled)
+{
+	struct qcom_ipcc_chan_info *qcom_ipcc_chan_info;
+	int chan_id;
+
+	for (chan_id = 0; chan_id < ipcc->num_chans; chan_id++) {
+		qcom_ipcc_chan_info = ipcc->chans[chan_id].con_priv;
+		if (!qcom_ipcc_chan_info)
+			break;
+
+		if (qcom_ipcc_chan_info->client_id == FIELD_GET(IPCC_CLIENT_ID_MASK, hwirq) &&
+			qcom_ipcc_chan_info->signal_id == FIELD_GET(IPCC_SIGNAL_ID_MASK, hwirq)) {
+			qcom_ipcc_chan_info->is_signal_enabled = is_enabled;
+			break;
+		}
+	}
+}
+
 static void qcom_ipcc_mask_irq(struct irq_data *irqd)
 {
 	struct qcom_ipcc *ipcc = irq_data_get_irq_chip_data(irqd);
 	irq_hw_number_t hwirq = irqd_to_hwirq(irqd);
 
+	qcom_ipcc_update_irq_status(ipcc, hwirq, 0);
 	writel(hwirq, ipcc->base + IPCC_REG_RECV_SIGNAL_DISABLE);
 }
 
@@ -101,6 +127,7 @@ static void qcom_ipcc_unmask_irq(struct irq_data *irqd)
 	struct qcom_ipcc *ipcc = irq_data_get_irq_chip_data(irqd);
 	irq_hw_number_t hwirq = irqd_to_hwirq(irqd);
 
+	qcom_ipcc_update_irq_status(ipcc, hwirq, 1);
 	writel(hwirq, ipcc->base + IPCC_REG_RECV_SIGNAL_ENABLE);
 }
 
@@ -253,11 +280,42 @@ static int qcom_ipcc_setup_mbox(struct qcom_ipcc *ipcc,
 	return devm_mbox_controller_register(dev, mbox);
 }
 
+static void qcom_ipcc_restore_unmask_irq(struct device *dev)
+{
+	struct qcom_ipcc_chan_info *qcom_ipcc_chan_info;
+	int chan_id;
+	u32 packed_id;
+	struct qcom_ipcc *ipcc = dev_get_drvdata(dev);
+
+	if (!ipcc || !ipcc->num_chans)
+		return;
+
+	for (chan_id = 0; chan_id < ipcc->num_chans; chan_id++) {
+		qcom_ipcc_chan_info = ipcc->chans[chan_id].con_priv;
+		if (!qcom_ipcc_chan_info)
+			break;
+
+		packed_id = qcom_ipcc_get_hwirq(qcom_ipcc_chan_info->client_id,
+				qcom_ipcc_chan_info->signal_id);
+		if (qcom_ipcc_chan_info->is_signal_enabled) {
+			dev_dbg(dev,
+				"%s: restore 0x%lx for client_id: %u signal_id: %u\n",
+				__func__, packed_id, qcom_ipcc_chan_info->client_id,
+				qcom_ipcc_chan_info->signal_id);
+			writel(packed_id,
+				ipcc->base + IPCC_REG_RECV_SIGNAL_ENABLE);
+		}
+	}
+}
+
 static int qcom_ipcc_pm_resume(struct device *dev)
 {
 	struct qcom_ipcc *ipcc = dev_get_drvdata(dev);
 	u32 hwirq;
 	int virq;
+
+	if ((pm_suspend_target_state == PM_SUSPEND_MEM) || ipcc->needs_unmasking)
+		qcom_ipcc_restore_unmask_irq(dev);
 
 	hwirq = readl(ipcc->base + IPCC_REG_RECV_ID);
 	if (hwirq == IPCC_NO_PENDING_IRQ)
@@ -269,6 +327,18 @@ static int qcom_ipcc_pm_resume(struct device *dev)
 		FIELD_GET(IPCC_CLIENT_ID_MASK, hwirq), FIELD_GET(IPCC_SIGNAL_ID_MASK, hwirq));
 
 	return 0;
+}
+
+static int qcom_ipcc_hibernation_cb(struct notifier_block *nb,
+				unsigned long event, void *dummy)
+{
+	struct qcom_ipcc *ipcc = container_of(nb, struct qcom_ipcc, hibernate_notif_block);
+
+	if (event == PM_HIBERNATION_PREPARE)
+		ipcc->needs_unmasking = true;
+	else if (event ==  PM_POST_HIBERNATION)
+		ipcc->needs_unmasking = false;
+	return NOTIFY_OK;
 }
 
 static int qcom_ipcc_probe(struct platform_device *pdev)
@@ -313,6 +383,13 @@ static int qcom_ipcc_probe(struct platform_device *pdev)
 		goto err_req_irq;
 	}
 
+	ipcc->hibernate_notif_block.notifier_call = qcom_ipcc_hibernation_cb;
+	ret = register_pm_notifier(&ipcc->hibernate_notif_block);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to register PM notifier: %d\n", ret);
+		goto err_req_irq;
+	}
+
 	platform_set_drvdata(pdev, ipcc);
 
 	return 0;
@@ -330,6 +407,7 @@ static int qcom_ipcc_remove(struct platform_device *pdev)
 {
 	struct qcom_ipcc *ipcc = platform_get_drvdata(pdev);
 
+	unregister_pm_notifier(&ipcc->hibernate_notif_block);
 	disable_irq_wake(ipcc->irq);
 	irq_domain_remove(ipcc->irq_domain);
 

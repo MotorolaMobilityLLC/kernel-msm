@@ -2,7 +2,10 @@
 # Qualcomm pin control drivers
 obj-$(CONFIG_PINCTRL_MSM)	+= pinctrl-msm.o
 obj-$(CONFIG_PINCTRL_PINEAPPLE)	+= pinctrl-pineapple.o
+obj-$(CONFIG_PINCTRL_NEO)	+= pinctrl-neo.o
+obj-$(CONFIG_PINCTRL_ANORAK)	+= pinctrl-anorak.o
 obj-$(CONFIG_PINCTRL_NIOBE)	+= pinctrl-niobe.o
+obj-$(CONFIG_PINCTRL_SERAPH)    += pinctrl-seraph.o
 obj-$(CONFIG_PINCTRL_CLIFFS)    += pinctrl-cliffs.o
 obj-$(CONFIG_PINCTRL_KALAMA)	+= pinctrl-kalama.o
 obj-$(CONFIG_PINCTRL_BLAIR)	+= pinctrl-blair.o
@@ -62,3 +65,4 @@ obj-$(CONFIG_PINCTRL_LEMANS) += pinctrl-lemans.o
 obj-$(CONFIG_PINCTRL_DIREWOLF) += pinctrl-direwolf.o
 obj-$(CONFIG_PINCTRL_MONACO_AUTO) += pinctrl-monaco_auto.o
 obj-$(CONFIG_PINCTRL_SM6150) 	+= pinctrl-sm6150.o
+obj-$(CONFIG_PINCTRL_SA8797P)	+= pinctrl-sa8797p.o

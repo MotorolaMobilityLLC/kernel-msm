@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -11,13 +11,25 @@
 #include <linux/qseecom_kernel.h>
 #include <trace/hooks/bl_hib.h>
 #include <linux/reboot.h>
+#include <linux/smci_clientenv.h>
+#include <soc/qcom/smci_low_power_key_mgr.h>
 
+#define INVALID_OPERATION_CHECK 11
 #define AUTH_SIZE		16
+#define AUTH_TAG		0xFF
+#define AUTHTAG			1
+#define PAGE_BATCH              5000
 #define QSEECOM_ALIGN_SIZE      0x40
 #define QSEECOM_ALIGN_MASK      (QSEECOM_ALIGN_SIZE - 1)
 #define QSEECOM_ALIGN(x)        \
 	((x + QSEECOM_ALIGN_MASK) & (~QSEECOM_ALIGN_MASK))
 
+
+typedef __u32 __bitwise blk_opf_t;
+
+static struct smci_object client_env = {0};
+static struct smci_object key_mgr_object = {0};
+static struct qseecom_handle *app_handle;
 
 struct s4app_time {
 	uint16_t year;
@@ -76,7 +88,6 @@ static struct crypto_aead *tfm;
 static struct aead_request *req;
 static u8 iv_size;
 static u8 key[AES256_KEY_SIZE];
-static struct qseecom_handle *app_handle;
 static int first_encrypt;
 static void *temp_out_buf;
 static int pos;
@@ -85,6 +96,13 @@ static unsigned short root_swap_dev;
 static struct work_struct save_params_work;
 static struct completion write_done;
 static unsigned char iv[IV_SIZE];
+static uint8_t *compressed_blk_array;
+static int blk_array_pos;
+static unsigned long nr_pages;
+static void *auth_slot;
+static int qtee_ret;
+static unsigned long page_counter;
+static unsigned long pages_since_last_log;
 
 static void init_sg(struct scatterlist *sg, void *data, unsigned int size)
 {
@@ -132,7 +150,8 @@ static void encrypt_page(void *data, void *buf)
 		ret = -ENOMEM;
 		goto err_aead;
 	}
-
+	page_counter++;
+	pages_since_last_log++;
 	crypto_init_wait(&wait);
 	aead_request_set_callback(req, CRYPTO_TFM_REQ_MAY_BACKLOG,
 				crypto_req_done, &wait);
@@ -170,6 +189,11 @@ static void encrypt_page(void *data, void *buf)
 
 	if (first_encrypt)
 		first_encrypt = 0;
+
+	if (pages_since_last_log >= PAGE_BATCH) {
+		pr_info("Encrypted %lu pages\n", page_counter);
+		pages_since_last_log = 0;
+	}
 
 out:
 	aead_request_free(req);
@@ -301,6 +325,26 @@ static int write_page(void *buf, sector_t offset, struct hib_bio_batch *hb)
 	return hib_submit_io(REQ_OP_WRITE, REQ_SYNC, offset, src, hb);
 }
 
+/*
+ * Number of pages compressed at one time. This is inline with UNC_PAGES
+ * in kernel/power/swap.c.
+ */
+#define UNCMP_PAGES   32
+
+static uint32_t get_size_of_compression_block_array(unsigned long pages)
+{
+	/*
+	 * Get the max index based on total no. of pages. Current compression
+	 * algorithm compresses each UNC_PAGES pages to x pages. Use this logic to
+	 * get the max index.
+	 */
+	uint32_t max_index = DIV_ROUND_UP(pages, UNCMP_PAGES);
+
+	uint32_t size = ALIGN((max_index * sizeof(*compressed_blk_array)), PAGE_SIZE);
+
+	return size;
+}
+
 static void save_auth_and_params_to_disk(struct work_struct *work)
 {
 	int cur_slot;
@@ -309,7 +353,7 @@ static void save_auth_and_params_to_disk(struct work_struct *work)
 	int authslot_count = 0;
 	int authpage_count = read_authpage_count();
 	struct hib_bio_batch hb;
-	int err2;
+	int err2, i = 0;
 
 	hib_init_batch(&hb);
 
@@ -317,6 +361,27 @@ static void save_auth_and_params_to_disk(struct work_struct *work)
 	 * Allocate a page to save the encryption params
 	 */
 	params_slot = alloc_swapdev_block(root_swap_dev);
+
+	if (auth_slot) {
+		*(int *)auth_slot = params_slot + 1;
+
+		/* Currently bootloader code does the following to
+		 * calculate the authentication slot index.
+		 * authslot = NrMetaPages + NrCopyPages + NrSwapMapPages +
+		 * HDR_SWP_INFO_NUM_PAGES;
+		 *
+		 * However, with compression enabled, we cannot apply the
+		 * above logic to get the authentication slot. So this
+		 * data should be provided to the BL for decryption to work.
+		 *
+		 * In the current implementation, BL doesn't make use of
+		 * the swap_map_pages for restoring the hibernation image. So these pages
+		 * could be used for other purposes. Use this to store the
+		 * authentication slot number. This data will be stored at index as
+		 * that of the first swap_map_page.
+		 */
+		write_page(auth_slot, 1, &hb);
+	}
 
 	authpage = authslot_start;
 	while (authslot_count < authpage_count) {
@@ -327,6 +392,18 @@ static void save_auth_and_params_to_disk(struct work_struct *work)
 	}
 	params->authslot_count = authslot_count;
 	write_page(params, params_slot, &hb);
+
+	/*
+	 * Write the array holding the compressed block count to disk
+	 */
+	if (compressed_blk_array) {
+		uint32_t size = get_size_of_compression_block_array(nr_pages);
+		for (i = 0; i < size / PAGE_SIZE; i++) {
+			cur_slot = alloc_swapdev_block(root_swap_dev);
+			write_page(compressed_blk_array + (i * PAGE_SIZE), cur_slot, &hb);
+		}
+	}
+
 	err2 = hib_wait_io(&hb);
 	hib_finish_batch(&hb);
 	complete_all(&write_done);
@@ -426,6 +503,14 @@ static int init_ta_and_set_key(void)
 	return ret;
 }
 
+static int init_and_set_key(void)
+{
+	if (!ta_based_key)
+		return qtee_ret;
+
+	return init_ta_and_set_key();
+}
+
 static int alloc_auth_memory(void)
 {
 	unsigned long total_auth_size;
@@ -457,6 +542,136 @@ void deinit_aes_encrypt(void)
 	kfree(params);
 }
 
+static void cleanup_cmp_blk_array(void)
+{
+	blk_array_pos = 0;
+	if (compressed_blk_array) {
+		kvfree((void *)compressed_blk_array);
+		compressed_blk_array = NULL;
+	}
+	if (auth_slot) {
+		free_page((unsigned long)auth_slot);
+		auth_slot = NULL;
+
+	}
+}
+
+static int setup(void)
+{
+	int ret = 0;
+
+	ret =  smci_get_client_env_object(&client_env);
+	if (ret) {
+		pr_err("Failed to get client env object, ret = %d\n", ret);
+		return ret;
+	}
+
+	ret = smci_clientenv_open(client_env, KEYMANAGER_UID,
+				  &key_mgr_object);
+	if (ret)
+		pr_err("Failed to get Key Manager object, ret = %d\n", ret);
+
+	return ret;
+}
+
+static void cleanup(void)
+{
+	SMCI_OBJECT_ASSIGN_NULL(key_mgr_object);
+	SMCI_OBJECT_ASSIGN_NULL(client_env);
+}
+
+int key_mgr_get_key(uint32_t event, void *key, size_t key_len,
+		    size_t *key_len_out)
+{
+	if (setup()) {
+		cleanup();
+		return -EINVAL;
+	}
+
+	int ret = key_manager_getkey(key_mgr_object, event, key,
+					 key_len, key_len_out);
+	cleanup();
+	return ret;
+}
+
+int key_restore(void)
+{
+	int ret;
+	size_t key_len_out;
+
+	if (!kernel_based_restore)
+		return 0;
+
+	ret = key_mgr_get_key(KEY_MGR_HIBERNATE_WITH_ENCRYPTION, key,
+					AES256_KEY_SIZE, &key_len_out);
+	if (ret)
+		pr_err("%s: Failed to restore key: %d\n", __func__, ret);
+
+	return ret;
+
+}
+
+int key_mgr_prepare(uint32_t event, const struct keymgr_key_info *key_info)
+{
+	if (setup()) {
+		cleanup();
+		return -EINVAL;
+	}
+	int ret = key_manager_prepare(key_mgr_object, event, key_info);
+
+	cleanup();
+	return ret;
+}
+
+int get_key_for_hib(void)
+{
+	size_t key_len_out;
+	struct keymgr_key_info *key_info;
+
+	pr_info("%s: Getting key from SSG\n", __func__);
+	key_info = kmalloc(sizeof(struct keymgr_key_info), GFP_KERNEL);
+	if (!key_info)
+		return -ENOMEM;
+	key_info->key_size = AES256_KEY_SIZE;
+
+	qtee_ret = key_mgr_prepare(KEY_MGR_HIBERNATE_WITH_ENCRYPTION, key_info);
+	if (qtee_ret) {
+		if (qtee_ret == INVALID_OPERATION_CHECK) {
+			pr_err("%s: Thrashing the old key.. %d, %d\n", __func__, qtee_ret,
+					KEY_MGR_ERROR_INVALID_OPERATION);
+			qtee_ret = key_mgr_get_key(KEY_MGR_HIBERNATE_WITH_ENCRYPTION,
+					 key, AES256_KEY_SIZE, &key_len_out);
+			if (qtee_ret) {
+				pr_err("%s: Failed to init QTEE: key_mgr_get_key: %d\n",
+					__func__, qtee_ret);
+				goto free_key_info;
+			}
+			qtee_ret = key_mgr_prepare(KEY_MGR_HIBERNATE_WITH_ENCRYPTION,
+				key_info);
+			if (qtee_ret) {
+				pr_err("%s: Failed to init QTEE: key_mgr_prepare: %d\n",
+					 __func__, qtee_ret);
+				goto free_key_info;
+			}
+		} else {
+			pr_err("%s: Failed to init QTEE: key_mgr_prepare: %d\n",
+					 __func__, qtee_ret);
+			goto free_key_info;
+		}
+	}
+
+	qtee_ret = key_mgr_get_key(KEY_MGR_HIBERNATE_WITH_ENCRYPTION, key,
+			AES256_KEY_SIZE, &key_len_out);
+	if (qtee_ret)
+		pr_err("%s: Failed to get Key: %d\n", __func__, qtee_ret);
+
+free_key_info:
+	kfree(key_info);
+
+	return qtee_ret;
+}
+EXPORT_SYMBOL_GPL(get_key_for_hib);
+
 static int hibernate_pm_notifier(struct notifier_block *nb,
 				unsigned long event, void *unused)
 {
@@ -475,7 +690,7 @@ static int hibernate_pm_notifier(struct notifier_block *nb,
 			goto err_aead;
 		}
 
-		ret = init_ta_and_set_key();
+		ret = init_and_set_key();
 		if (ret) {
 			pr_err("%s: Failed to init TA: %d\n", __func__, ret);
 			goto err_setkey;
@@ -492,6 +707,21 @@ static int hibernate_pm_notifier(struct notifier_block *nb,
 
 	case (PM_POST_HIBERNATION):
 		deinit_aes_encrypt();
+		cleanup_cmp_blk_array();
+		break;
+
+	case (PM_RESTORE_PREPARE):
+		ret = key_restore();
+		if (ret) {
+			pr_err("%s: PM_RESTORE_PREPARE: Unable to restore key from QTEE: %d\n",
+					__func__, ret);
+			return NOTIFY_STOP;
+		}
+		break;
+
+	case (PM_POST_RESTORE):
+		deinit_aes_encrypt();
+		cleanup_cmp_blk_array();
 		break;
 
 	default:
@@ -543,7 +773,46 @@ err_auth:
 	kfree(params);
 }
 
-static int __init qcom_secure_hibernattion_init(void)
+/*
+ * Bit(part of swsusp_header_flags) to indicate if the image is uncompressed
+ * or not. This is inline with SF_NOCOMPRESS_MODE defined in
+ * kernel/power/power.h.
+ */
+#define SF_NOCOMPRESS_MODE      2
+
+static void hibernated_do_mem_alloc(void *data, unsigned long pages,
+	unsigned int swsusp_header_flags, int *ret)
+{
+	uint32_t size;
+
+	/* total no. of pages in the snapshot image */
+	nr_pages = pages;
+	if (!(swsusp_header_flags & SF_NOCOMPRESS_MODE)) {
+		size = get_size_of_compression_block_array(pages);
+		compressed_blk_array = kvzalloc(size, GFP_KERNEL);
+		if (!compressed_blk_array) {
+			*ret = -ENOMEM;
+			return;
+		}
+
+		/* Allocate memory to hold authentication slot start */
+		auth_slot = (void *)get_zeroed_page(GFP_KERNEL);
+		if (!auth_slot) {
+			pr_err("Failed to allocate page for storing authentication tag slot number\n");
+			*ret = -ENOMEM;
+		}
+	}
+}
+
+static void hibernate_save_cmp_len(void *data, size_t cmp_len)
+{
+	uint8_t pages;
+
+	pages = DIV_ROUND_UP(cmp_len, PAGE_SIZE);
+	compressed_blk_array[blk_array_pos++] = pages;
+}
+
+static int __init qcom_secure_hibernation_init(void)
 {
 	int ret;
 
@@ -551,7 +820,8 @@ static int __init qcom_secure_hibernattion_init(void)
 	register_trace_android_vh_init_aes_encrypt(init_aes_encrypt, NULL);
 	register_trace_android_vh_skip_swap_map_write(skip_swap_map_write, NULL);
 	register_trace_android_vh_post_image_save(save_params_to_disk, NULL);
-
+	register_trace_android_vh_hibernate_save_cmp_len(hibernate_save_cmp_len, NULL);
+	register_trace_android_vh_hibernated_do_mem_alloc(hibernated_do_mem_alloc, NULL);
 	ret = register_pm_notifier(&pm_nb);
 	if (ret) {
 		pr_err("%s: Failed to register nb: %d\n", __func__, ret);
@@ -566,7 +836,7 @@ static int __init qcom_secure_hibernattion_init(void)
 	return 0;
 }
 
-module_init(qcom_secure_hibernattion_init);
+module_init(qcom_secure_hibernation_init);
 
 MODULE_DESCRIPTION("Framework to encrypt a page using a trusted application");
 MODULE_LICENSE("GPL");

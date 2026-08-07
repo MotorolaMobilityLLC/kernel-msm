@@ -1,6 +1,6 @@
-load(":target_variants.bzl", "la_variants")
-load(":msm_kernel_la.bzl", "define_msm_la")
 load(":image_opts.bzl", "boot_image_opts")
+load(":msm_kernel_la.bzl", "define_msm_la")
+load(":target_variants.bzl", "la_variants")
 
 target_name = "sdmsteppeauto"
 
@@ -25,6 +25,7 @@ def define_sdmsteppeauto():
         "drivers/cpufreq/qcom-cpufreq-hw.ko",
         "drivers/cpuidle/governors/qcom_lpm.ko",
         "drivers/dma-buf/heaps/qcom_dma_heaps.ko",
+        "drivers/dma/qcom/msm_gpi.ko",
         "drivers/extcon/extcon-usb-gpio.ko",
         "drivers/firmware/qcom-scm.ko",
         "drivers/gpu/drm/bridge/analogix/anx7625.ko",
@@ -73,10 +74,15 @@ def define_sdmsteppeauto():
         "drivers/mailbox/msm_qmp.ko",
         "drivers/mailbox/qcom-apcs-ipc-mailbox.ko",
         "drivers/mfd/qcom-spmi-pmic.ko",
+        "drivers/misc/bootmarker_proxy.ko",
         "drivers/misc/qseecom_proxy.ko",
         "drivers/mmc/host/cqhci.ko",
         "drivers/mmc/host/sdhci-msm.ko",
-        "drivers/mmc/host/sdhci-msm-scaling.ko",
+        "drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-eth.ko",
+        "drivers/net/ethernet/stmicro/stmmac/stmmac.ko",
+        "drivers/net/ethernet/stmicro/stmmac/stmmac-platform.ko",
+        "drivers/net/pcs/pcs_xpcs.ko",
+        "drivers/net/phy/micrel.ko",
         "drivers/nvmem/nvmem_qcom-spmi-sdam.ko",
         "drivers/nvmem/nvmem_qfprom.ko",
         "drivers/pci/controller/pci-msm-drv.ko",
@@ -132,6 +138,7 @@ def define_sdmsteppeauto():
         "drivers/soc/qcom/minidump.ko",
         "drivers/soc/qcom/msm_performance.ko",
         "drivers/soc/qcom/pdr_interface.ko",
+        "drivers/soc/qcom/qcom-geni-se-ssc.ko",
         "drivers/soc/qcom/qcom_aoss.ko",
         "drivers/soc/qcom/qcom_cpu_vendor_hooks.ko",
         "drivers/soc/qcom/qcom_hib.ko",
@@ -141,9 +148,11 @@ def define_sdmsteppeauto():
         "drivers/soc/qcom/qcom_soc_wdt.ko",
         "drivers/soc/qcom/qcom_stats.ko",
         "drivers/soc/qcom/qcom_wdt_core.ko",
+        "drivers/soc/qcom/qfprom-sys.ko",
         "drivers/soc/qcom/qmi_helpers.ko",
         "drivers/soc/qcom/qsee_ipc_irq_bridge.ko",
         "drivers/soc/qcom/rpmhpd.ko",
+        "drivers/soc/qcom/rq_stats.ko",
         "drivers/soc/qcom/secure_buffer.ko",
         "drivers/soc/qcom/smem.ko",
         "drivers/soc/qcom/smp2p.ko",
@@ -152,7 +161,14 @@ def define_sdmsteppeauto():
         "drivers/spi/spi-msm-geni.ko",
         "drivers/spi/spidev.ko",
         "drivers/spmi/spmi-pmic-arb.ko",
+        "drivers/thermal/qcom/cpu_hotplug.ko",
+        "drivers/thermal/qcom/cx_ipeak_cdev.ko",
+        "drivers/thermal/qcom/msm-tsens-driver.ko",
         "drivers/thermal/qcom/qcom-spmi-temp-alarm.ko",
+        "drivers/thermal/qcom/qti_cpufreq_cdev.ko",
+        "drivers/thermal/qcom/qti_qmi_cdev.ko",
+        "drivers/thermal/qcom/qti_qmi_sensor.ko",
+        "drivers/thermal/qcom/thermal_pause.ko",
         "drivers/tty/serial/msm_geni_serial.ko",
         "drivers/ufs/host/ufs_qcom.ko",
         "drivers/ufs/host/ufshcd-crypto-qti.ko",
@@ -180,6 +196,7 @@ def define_sdmsteppeauto():
     _sdmsteppeauto_consolidate_in_tree_modules = _sdmsteppeauto_in_tree_modules + [
         # keep sorted
         "drivers/misc/lkdtm/lkdtm.ko",
+        "drivers/usb/misc/lvstest.ko",
         "kernel/locking/locktorture.ko",
         "kernel/rcu/rcutorture.ko",
         "kernel/torture.ko",

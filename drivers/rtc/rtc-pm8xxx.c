@@ -11,6 +11,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/suspend.h>
 
 /* RTC Register offsets from RTC CTRL REG */
 #define PM8XXX_ALARM_CTRL_OFFSET	0x01
@@ -54,6 +55,7 @@ struct pm8xxx_rtc_regs {
  * @regs:		rtc registers description.
  * @rtc_dev:		device structure.
  * @ctrl_reg_lock:	spinlock protecting access to ctrl_reg.
+ * @deepsleep_support:	deepsleep_support used to check the status of enablement
  */
 struct pm8xxx_rtc {
 	struct rtc_device *rtc;
@@ -63,6 +65,7 @@ struct pm8xxx_rtc {
 	const struct pm8xxx_rtc_regs *regs;
 	struct device *rtc_dev;
 	spinlock_t ctrl_reg_lock;
+	bool deepsleep_support;
 };
 
 /*
@@ -452,6 +455,16 @@ static const struct pm8xxx_rtc_regs pmk8350_regs = {
 	.alarm_en	= BIT(7),
 };
 
+static const struct pm8xxx_rtc_regs pm5100_regs = {
+	.ctrl		= 0x6446,
+	.write		= 0x6440,
+	.read		= 0x6448,
+	.alarm_rw	= 0x6540,
+	.alarm_ctrl	= 0x6546,
+	.alarm_ctrl2	= 0x6548,
+	.alarm_en	= BIT(7),
+};
+
 /*
  * Hardcoded RTC bases until IORESOURCE_REG mapping is figured out
  */
@@ -461,6 +474,7 @@ static const struct of_device_id pm8xxx_id_table[] = {
 	{ .compatible = "qcom,pm8058-rtc", .data = &pm8058_regs },
 	{ .compatible = "qcom,pm8941-rtc", .data = &pm8941_regs },
 	{ .compatible = "qcom,pmk8350-rtc", .data = &pmk8350_regs },
+	{ .compatible = "qcom,pm5100-rtc", .data = &pm5100_regs },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, pm8xxx_id_table);
@@ -534,6 +548,9 @@ static int pm8xxx_rtc_probe(struct platform_device *pdev)
 			return rc;
 	}
 
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,support-deepsleep"))
+		rtc_dd->deepsleep_support = true;
+
 	return 0;
 }
 
@@ -571,9 +588,29 @@ static int pm8xxx_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int pm8xxx_rtc_resume(struct device *dev)
+{
+	struct pm8xxx_rtc *rtc_dd = dev_get_drvdata(dev);
+
+	if (rtc_dd->deepsleep_support && (pm_suspend_target_state == PM_SUSPEND_MEM))
+		return pm8xxx_rtc_restore(dev);
+	return 0;
+}
+
+static int pm8xxx_rtc_suspend(struct device *dev)
+{
+	struct pm8xxx_rtc *rtc_dd = dev_get_drvdata(dev);
+
+	if (rtc_dd->deepsleep_support && (pm_suspend_target_state == PM_SUSPEND_MEM))
+		return pm8xxx_rtc_freeze(dev);
+	return 0;
+}
+
 static const struct dev_pm_ops pm8xxx_rtc_pm_ops = {
 	.freeze = pm8xxx_rtc_freeze,
 	.restore = pm8xxx_rtc_restore,
+	.suspend = pm8xxx_rtc_suspend,
+	.resume = pm8xxx_rtc_resume,
 };
 
 static struct platform_driver pm8xxx_rtc_driver = {

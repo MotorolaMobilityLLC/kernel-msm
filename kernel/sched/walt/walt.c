@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/syscore_ops.h>
@@ -1105,15 +1105,16 @@ static void migrate_busy_time_subtraction(struct task_struct *p, int new_cpu)
 	wallclock = walt_sched_clock();
 	walt_update_task_ravg(p, task_rq(p), TASK_MIGRATE, wallclock, 0);
 
+	/*
+	 * Update task's cycles wrt to the new cpu.
+	 */
+	wts->cpu_cycles = qcom_cpufreq_get_cpu_cycle_counter(new_cpu);
+
 	if (wts->window_start != src_wrq->window_start)
 		WALT_BUG(WALT_BUG_WALT, p,
 				"CPU%d: %s task %s(%d)'s ws=%llu not equal to src_rq %d's ws=%llu",
 				raw_smp_processor_id(), __func__, p->comm, p->pid,
 				wts->window_start, src_rq->cpu, src_wrq->window_start);
-
-
-	/* safe to update the task cyc cntr for new_cpu without the new_cpu rq_lock */
-	update_task_cpu_cycles(p, new_cpu, wallclock);
 
 	new_task = is_new_task(p);
 	/* Protected by rq_lock */
@@ -1399,8 +1400,7 @@ static void update_task_pred_demand(struct rq *rq, struct task_struct *p, int ev
 	new_pred_demand_scaled = get_pred_busy(p, busy_to_bucket(curr_window_scaled),
 			     curr_window_scaled, wts->bucket_bitmask);
 
-	if (task_on_rq_queued(p) && (!task_has_dl_policy(p) ||
-				!p->dl.dl_throttled))
+	if (task_on_rq_queued(p))
 		fixup_walt_sched_stats_common(rq, p,
 				wts->demand_scaled,
 				new_pred_demand_scaled);
@@ -2113,9 +2113,8 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	demand_scaled = scale_time_to_util(demand);
 
 	/*
-	 * A throttled deadline sched class task gets dequeued without
-	 * changing p->on_rq. Since the dequeue decrements walt stats
-	 * avoid decrementing it here again.
+	 * Avoid double accounting of task demand as demand will be updated
+	 * to CRA as part of enqueue/dequeue.
 	 *
 	 * When window is rolled over, the cumulative window demand
 	 * is reset to the cumulative runnable average (contribution from
@@ -2124,11 +2123,9 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	 * average. So add the task demand separately to cumulative window
 	 * demand.
 	 */
-	if (!task_has_dl_policy(p) || !p->dl.dl_throttled) {
-		if (task_on_rq_queued(p))
-			fixup_walt_sched_stats_common(rq, p,
-					demand_scaled, pred_demand_scaled);
-	}
+	if (task_on_rq_queued(p))
+		fixup_walt_sched_stats_common(rq, p,
+					      demand_scaled, pred_demand_scaled);
 
 	wts->demand = demand;
 	wts->demand_scaled = demand_scaled;
@@ -2567,7 +2564,6 @@ static struct walt_sched_cluster init_cluster = {
 	.max_possible_freq	= 1,
 	.aggr_grp_load		= 0,
 	.found_ts		= 0,
-	.smart_fmax_cap		= 1,
 };
 
 static void init_clusters(void)
@@ -2609,7 +2605,7 @@ static struct walt_sched_cluster *alloc_new_cluster(const struct cpumask *cpus)
 	raw_spin_lock_init(&cluster->load_lock);
 	cluster->cpus			= *cpus;
 	cluster->found_ts		= 0;
-	cluster->smart_fmax_cap		= 1;
+	cluster->sibling_cluster	= -1;
 
 	return cluster;
 }
@@ -4583,7 +4579,7 @@ void walt_rotation_checkpoint(int nr_big)
 			fmax_cap[HIGH_PERF_CAP][i] = FREQ_QOS_MAX_DEFAULT_VALUE;
 	}
 
-	update_fmax_cap_capacities(HIGH_PERF_CAP);
+	update_fmax_cap_capacities();
 }
 
 #define WAKEUP_CTR_THRESH 50
@@ -4598,17 +4594,23 @@ bool thres_based_uncap(u64 window_start)
 
 	for (i = 0; i < num_sched_clusters; i++) {
 		bool cluster_high_load = false;
+		unsigned long fmax_capacity, tgt_cap;
 
 		cluster = sched_cluster[i];
+		fmax_capacity = arch_scale_cpu_capacity(cpumask_first(&cluster->cpus));
+		tgt_cap = mult_frac(fmax_capacity, sysctl_fmax_cap[cluster->id],
+					cluster->max_possible_freq);
 
 		for_each_cpu(cpu, &cluster->cpus) {
 			wrq = &per_cpu(walt_rq, cpu);
-			if (wrq->util >= mult_frac(UTIL_THRES, cluster->smart_fmax_cap, 100)) {
+			if (wrq->util >= mult_frac(tgt_cap, UTIL_THRES, 100)) {
 				cluster_high_load = true;
 				if (!cluster->found_ts)
 					cluster->found_ts = window_start;
 				else if ((window_start - cluster->found_ts) >= UNCAP_THRES)
 					return true;
+
+				break;
 			}
 		}
 		if (!cluster_high_load)
@@ -4623,7 +4625,6 @@ void fmax_uncap_checkpoint(int nr_big, u64 window_start, u32 wakeup_ctr_sum)
 	bool fmax_uncap_load_detected;
 	static u64 fmax_uncap_timestamp;
 	int i;
-	bool change = false;
 
 	fmax_uncap_load_detected = (nr_big >= 7 && wakeup_ctr_sum < WAKEUP_CTR_THRESH) ||
 			is_full_throttle_boost() ||
@@ -4635,22 +4636,21 @@ void fmax_uncap_checkpoint(int nr_big, u64 window_start, u32 wakeup_ctr_sum)
 			for (i = 0; i < num_sched_clusters; i++)
 				fmax_cap[SMART_FMAX_CAP][i] = FREQ_QOS_MAX_DEFAULT_VALUE;
 		fmax_uncap_timestamp = window_start;
-	} else {
-		for (int i = 0; i < num_sched_clusters; i++) {
-			if (fmax_cap[SMART_FMAX_CAP][i] != sysctl_fmax_cap[i]) {
-				change = true;
-				break;
-			}
-		}
-		if (change || (fmax_uncap_timestamp &&
-			(window_start > fmax_uncap_timestamp + FMAX_CAP_HYSTERESIS))) {
+	} else if (fmax_uncap_timestamp) {
+		/*
+		 * Enter to check for capping again only if we have already uncapped
+		 * Apply fmax capping if we are continuously running at lower
+		 * load for more than FMAX_CAP_HYSTERESIS.
+		 */
+		if (window_start > fmax_uncap_timestamp + FMAX_CAP_HYSTERESIS) {
 			for (int i = 0; i < num_sched_clusters; i++)
 				fmax_cap[SMART_FMAX_CAP][i] = sysctl_fmax_cap[i];
+
 			fmax_uncap_timestamp = 0;
 		}
 	}
 
-	update_fmax_cap_capacities(SMART_FMAX_CAP);
+	update_fmax_cap_capacities();
 
 	trace_sched_fmax_uncap(nr_big, window_start, wakeup_ctr_sum,
 			fmax_uncap_load_detected, fmax_uncap_timestamp);
@@ -4659,18 +4659,33 @@ void fmax_uncap_checkpoint(int nr_big, u64 window_start, u32 wakeup_ctr_sum)
 void update_freq_relation(struct walt_sched_cluster *cluster)
 {
 	int cluster_id = cluster->id;
-	int tgt_cpu, i;
-	unsigned int tgt_freq;
+	int tgt_cpu, i, cpu;
+	unsigned int tgt_freq = 0;
 	struct walt_sched_cluster *tgt_cluster;
 	unsigned int prev_cap = fmax_cap[FREQ_REL_CAP][cluster_id];
+	bool cluster_active = false;
 
 	for (i = 0; i < MAX_FREQ_RELATIONS; i++) {
+		cluster_active = false;
+		tgt_freq = 0;
 		tgt_cpu = relation_data[cluster_id][i].target_cluster_cpu;
 		if (tgt_cpu < 0)
 			break;
 		tgt_cluster = cpu_cluster(tgt_cpu);
-		tgt_freq = (arch_scale_freq_capacity(tgt_cpu) *
-			(unsigned long)tgt_cluster->max_possible_freq) >> SCHED_CAPACITY_SHIFT;
+		/* frequency is valid only if we are running something */
+		for_each_cpu(cpu, &tgt_cluster->cpus) {
+			struct rq *rq = cpu_rq(cpu);
+
+			if (rq->nr_running) {
+				cluster_active = true;
+				break;
+			}
+		}
+
+		if (cluster_active)
+			tgt_freq = (arch_scale_freq_capacity(tgt_cpu) *
+				    (unsigned long)tgt_cluster->max_possible_freq) >>
+					SCHED_CAPACITY_SHIFT;
 
 		if (tgt_freq < relation_data[cluster_id][i].tgt_freq) {
 			fmax_cap[FREQ_REL_CAP][cluster_id] = relation_data[cluster_id][i].src_freq;
@@ -4687,7 +4702,7 @@ void update_freq_relation(struct walt_sched_cluster *cluster)
 		fmax_cap[FREQ_REL_CAP][cluster_id] = FREQ_QOS_MAX_DEFAULT_VALUE;
 
 	if (prev_cap != fmax_cap[FREQ_REL_CAP][cluster_id])
-		update_fmax_cap_capacities(FREQ_REL_CAP);
+		update_fmax_cap_capacities();
 }
 
 void walt_fill_ta_data(struct core_ctl_notif_data *data)
@@ -4825,6 +4840,9 @@ static void walt_sched_init_rq(struct rq *rq)
 
 	wrq->num_mvp_tasks = 0;
 	INIT_LIST_HEAD(&wrq->mvp_tasks);
+	wrq->mvp_arrival_time = 0;
+	wrq->mvp_throttle_time = 0;
+	wrq->skip_mvp = false;
 }
 
 void sched_window_nr_ticks_change(void)
@@ -5254,8 +5272,6 @@ static void android_rvh_sched_exec(void *unused, bool *cond)
 
 static void android_rvh_build_perf_domains(void *unused, bool *eas_check)
 {
-	if (unlikely(walt_disabled))
-		return;
 	*eas_check = true;
 }
 
@@ -5496,6 +5512,20 @@ static void walt_init_tg_pointers(void)
 	rcu_read_unlock();
 }
 
+static void walt_remove_cpufreq_efficiencies_available(void)
+{
+	struct cpufreq_policy *policy;
+	struct walt_sched_cluster *cluster;
+
+	for_each_sched_cluster(cluster) {
+		policy = cpufreq_cpu_get(cluster_first_cpu(cluster));
+		if (policy) {
+			policy->efficiencies_available = false;
+			cpufreq_cpu_put(policy);
+		}
+	}
+}
+
 static void walt_init(struct work_struct *work)
 {
 	struct ctl_table_header *hdr;
@@ -5528,7 +5558,7 @@ static void walt_init(struct work_struct *work)
 
 	wait_for_completion_interruptible(&tick_sched_clock_completion);
 
-	if (!rcu_dereference(rd->pd)) {
+	if (!rcu_access_pointer(rd->pd)) {
 		/*
 		 * perf domains not properly configured.  this is a must as
 		 * create_util_to_cost depends on rd->pd being properly
@@ -5537,7 +5567,7 @@ static void walt_init(struct work_struct *work)
 		schedule_work(&rebuild_sd_work);
 		wait_for_completion_interruptible(&rebuild_domains_completion);
 	}
-
+	walt_remove_cpufreq_efficiencies_available();
 	stop_machine(walt_init_stop_handler, NULL, NULL);
 
 	/*
@@ -5547,7 +5577,7 @@ static void walt_init(struct work_struct *work)
 	 * see walt_find_energy_efficient_cpu(), and
 	 * create_util_to_cost().
 	 */
-	if (!rcu_dereference(rd->pd) && num_sched_clusters > 1)
+	if (!rcu_access_pointer(rd->pd) && num_sched_clusters > 1)
 		WALT_BUG(WALT_BUG_WALT, NULL,
 			 "root domain's perf-domain values not initialized rd->pd=%d.",
 			 rd->pd);

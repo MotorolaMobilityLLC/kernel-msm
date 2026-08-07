@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2013, 2016-2018, 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -1210,6 +1210,8 @@ static const struct frac_entry frac_table_pixel[] = {
 	{ 4, 9 },
 	{ 1, 1 },
 	{ 2, 3 },
+	{ 16, 35},
+	{ 4, 15},
 	{ }
 };
 
@@ -2032,6 +2034,7 @@ static long clk_rcg2_crmc_list_rate(struct clk_hw *hw, unsigned int n,
 static struct clk_regmap_ops clk_rcg2_crmc_regmap_ops = {
 	.set_crm_rate = clk_rcg2_crmc_hw_set_rate,
 	.list_rate = clk_rcg2_crmc_list_rate,
+	.list_registers = clk_rcg2_list_registers,
 };
 
 static int clk_rcg2_crmc_init(struct clk_hw *hw)
@@ -2118,7 +2121,7 @@ int clk_rcg2_crmb_prepare(struct clk_hw *hw)
 	struct clk_rcg2 *rcg = to_clk_rcg2(hw);
 	struct clk_crm *crm = rcg->clkr.crm;
 
-	if (!rcg->freq_tbl && !crm->initialized)
+	if (!rcg->freq_tbl || !crm->initialized)
 		return 0;
 
 	return clk_rcg2_vote_bw(hw, rcg->current_freq);
@@ -2205,6 +2208,7 @@ unsigned long clk_rcg2_crmb_hw_set_bw(struct clk_hw *hw,
 static struct clk_regmap_ops clk_rcg2_crmb_regmap_ops = {
 	.set_crm_rate = clk_rcg2_crmb_hw_set_bw,
 	.list_rate = clk_rcg2_list_rate,
+	.list_registers = clk_rcg2_list_registers,
 };
 
 static int clk_rcg2_crmb_init(struct clk_hw *hw)

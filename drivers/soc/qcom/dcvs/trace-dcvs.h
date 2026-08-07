@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #if !defined(_TRACE_DCVS_H) || defined(TRACE_HEADER_MULTI_READ)
@@ -257,6 +258,78 @@ TRACE_EVENT(bw_hwmon_debug,
 		__entry->hist_mem,
 		__entry->hyst_mbps,
 		__entry->hyst_len)
+);
+
+TRACE_EVENT(bwprof_last_sample,
+
+	TP_PROTO(const char *name, const char *client, ktime_t ts, u32 meas_mbps,
+			u32 max_mbps, u32 mem_freq),
+
+	TP_ARGS(name, client, ts, meas_mbps, max_mbps, mem_freq),
+
+	TP_STRUCT__entry(
+		__string(name, name)
+		__string(client, client)
+		__field(ktime_t, ts)
+		__field(u32, meas_mbps)
+		__field(u32, max_mbps)
+		__field(u32, mem_freq)
+	),
+
+	TP_fast_assign(
+		__assign_str(name, name);
+		__assign_str(client, client);
+		__entry->ts = ts;
+		__entry->meas_mbps = meas_mbps;
+		__entry->max_mbps = max_mbps;
+		__entry->mem_freq = mem_freq;
+	),
+
+	TP_printk("dev=%s client=%s ts=%llu meas_mbps=%u max_mbps=%u mem_freq=%u",
+		__get_str(name),
+		__get_str(client),
+		__entry->ts,
+		__entry->meas_mbps,
+		__entry->max_mbps,
+		__entry->mem_freq)
+);
+
+TRACE_EVENT(bwprof_last_sample_meas,
+
+	TP_PROTO(const char *name, u64 ts, u32 meas_mbps_0, u32 meas_mbps_1,
+			u32 meas_mbps_2, u32 max_mbps, u32 mem_freq),
+
+	TP_ARGS(name, ts, meas_mbps_0, meas_mbps_1, meas_mbps_2, max_mbps,
+				mem_freq),
+
+	TP_STRUCT__entry(
+		__string(name, name)
+		__field(u64, ts)
+		__field(u32, meas_mbps_0)
+		__field(u32, meas_mbps_1)
+		__field(u32, meas_mbps_2)
+		__field(u32, max_mbps)
+		__field(u32, mem_freq)
+	),
+
+	TP_fast_assign(
+		__assign_str(name, name);
+		__entry->ts = ts;
+		__entry->meas_mbps_0 = meas_mbps_0;
+		__entry->meas_mbps_1 = meas_mbps_1;
+		__entry->meas_mbps_2 = meas_mbps_2;
+		__entry->max_mbps = max_mbps;
+		__entry->mem_freq = mem_freq;
+	),
+
+	TP_printk("dev=%s ts=%llu meas_mbps_0=%u meas_mbps_1=%u meas_mbps_2=%u max_mbps=%u mem_freq=%u",
+		__get_str(name),
+		__entry->ts,
+		__entry->meas_mbps_0,
+		__entry->meas_mbps_1,
+		__entry->meas_mbps_2,
+		__entry->max_mbps,
+		__entry->mem_freq)
 );
 
 #endif /* _TRACE_DCVS_H */

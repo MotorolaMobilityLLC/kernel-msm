@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "gic-router: %s: " fmt, __func__
@@ -281,6 +281,9 @@ static void trace_gic_v3_set_affinity(void *unused, struct irq_data *d,
 	u32 gicr_ctlr_val;
 	void __iomem *cpu_gicr_ctlr_addr;
 
+	if (d->hwirq < 32 || d->hwirq >= MAX_IRQS)
+		return;
+
 	pr_debug("irq : %d mask: %*pb current affinity: %*pb\n",
 		d->hwirq, cpumask_pr_args(cpu_affinity),
 		cpumask_pr_args(current_affinity));
@@ -349,15 +352,14 @@ static void trace_gic_v3_set_affinity(void *unused, struct irq_data *d,
 
 	/* Do not set InterruptRouting for single CPU affinity mask */
 	if (cpumask_weight(cpu_affinity) <= 1)
-		goto clear_class;
+		return;
 
 	cpumask_or(&all_cpus, &gic_routing_data.gic_routing_class0_cpus,
 			      &gic_routing_data.gic_routing_class1_cpus);
 
-	if (!cpumask_equal(&gic_routing_data.gic_routing_class0_cpus,
-			   cpu_affinity) &&
-	    !cpumask_equal(&gic_routing_data.gic_routing_class1_cpus,
-			   cpu_affinity) &&
+	if (!cpumask_subset(cpu_affinity, &gic_routing_data.gic_routing_class0_cpus) &&
+	    !cpumask_equal(&gic_routing_data.gic_routing_class0_cpus, cpu_affinity) &&
+	    !cpumask_equal(&gic_routing_data.gic_routing_class1_cpus, cpu_affinity) &&
 	    !cpumask_equal(&all_cpus, cpu_affinity)) {
 		pr_debug("irq: %d has subset affinity, skip class setting\n", d->hwirq);
 		goto clear_class;
@@ -427,7 +429,7 @@ static bool need_affinity_setting(struct irq_desc *desc,
 	struct irq_data *data = irq_desc_get_irq_data(desc);
 	u32 irq = data->hwirq - 32;
 
-	if (irq < 0 || irq >= MAX_IRQS)
+	if (data->hwirq < 32 || data->hwirq >= MAX_IRQS)
 		return false;
 
 	need_affinity = is_gic_chip(desc, gic_chip);
@@ -628,29 +630,45 @@ void gic_irq_handler_entry_notifer(void *ignore, int irq,
 
 static int gic_intr_routing_probe(struct platform_device *pdev)
 {
-
-	int i, cpus_len;
+	struct device_node *dev_phandle;
+	int i, cpus_len, cpu;
 	int rc = 0;
-	u32 class0_cpus[NUM_CLASS_CPUS] = {0};
-	u32 class1_cpus[NUM_CLASS_CPUS] = {0};
 
-	cpus_len = of_property_read_variable_u32_array(
-					pdev->dev.of_node,
-					"qcom,gic-class0-cpus",
-					class0_cpus, 0, NUM_CLASS_CPUS);
-	for (i = 0; i < cpus_len; i++)
-		if (class0_cpus[i] < num_possible_cpus())
-			cpumask_set_cpu(class0_cpus[i],
-			&gic_routing_data.gic_routing_class0_cpus);
+	cpus_len = of_count_phandle_with_args(pdev->dev.of_node, "qcom,gic-class0-cpus", NULL);
+	if (cpus_len <= 0) {
+		pr_err("%s: Failed to get qcom,gic-class0-cpus DT property\n",
+				__func__);
+		return -EINVAL;
+	}
 
-	cpus_len = of_property_read_variable_u32_array(
-					pdev->dev.of_node,
-					"qcom,gic-class1-cpus",
-					class1_cpus, 0, NUM_CLASS_CPUS);
-	for (i = 0; i < cpus_len; i++)
-		if (class1_cpus[i] < num_possible_cpus())
-			cpumask_set_cpu(class1_cpus[i],
-			&gic_routing_data.gic_routing_class1_cpus);
+	for (i = 0; i < cpus_len; i++) {
+		dev_phandle = of_parse_phandle(pdev->dev.of_node, "qcom,gic-class0-cpus", i);
+		if (dev_phandle) {
+			cpu = of_cpu_node_to_id(dev_phandle);
+			if (cpu >= 0)
+				cpumask_set_cpu(cpu,
+						&gic_routing_data.gic_routing_class0_cpus);
+		}
+		of_node_put(dev_phandle);
+	}
+
+	cpus_len = of_count_phandle_with_args(pdev->dev.of_node, "qcom,gic-class1-cpus", NULL);
+	if (cpus_len <= 0) {
+		pr_err("%s: Failed to get qcom,gic-class1-cpus DT property\n",
+				__func__);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < cpus_len; i++) {
+		dev_phandle = of_parse_phandle(pdev->dev.of_node, "qcom,gic-class1-cpus", i);
+		if (dev_phandle) {
+			cpu = of_cpu_node_to_id(dev_phandle);
+			if (cpu >= 0)
+				cpumask_set_cpu(cpu,
+						&gic_routing_data.gic_routing_class1_cpus);
+		}
+		of_node_put(dev_phandle);
+	}
 
 	register_trace_android_rvh_gic_v3_set_affinity(
 		trace_gic_v3_set_affinity, NULL);

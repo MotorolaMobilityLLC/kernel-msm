@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __QCOM_STATS_H__
@@ -33,10 +33,12 @@ int ddr_stats_get_residency(int freq_count, struct ddr_freq_residency *data);
 
 bool has_system_slept(void);
 bool has_subsystem_slept(void);
+bool current_subsystem_sleep(void);
 void subsystem_sleep_debug_enable(bool enable);
 
 int cx_stats_get_ss_vote_info(int ss_count,
 			       struct qcom_stats_cx_vote_info *vote_info);
+uint64_t get_aosd_sleep_exit_time(void);
 
 #else
 
@@ -56,11 +58,15 @@ bool has_system_slept(void)
 { return false; }
 bool has_subsystem_slept(void)
 { return false; }
+bool current_subsystem_sleep(void)
+{ return false; }
 void subsystem_sleep_debug_enable(bool enable)
 { return; }
 
 static inline int cx_stats_get_ss_vote_info(int ss_count,
 			       struct qcom_stats_cx_vote_info *vote_info)
+{ return -ENODEV; }
+uint64_t get_aosd_sleep_exit_time(void)
 { return -ENODEV; }
 
 #endif

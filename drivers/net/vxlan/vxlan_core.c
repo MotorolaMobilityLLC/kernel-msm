@@ -2998,6 +2998,7 @@ static int vxlan_init(struct net_device *dev)
 	if (err)
 		goto err_free_percpu;
 
+	netdev_lockdep_set_classes(dev);
 	return 0;
 
 err_free_percpu:

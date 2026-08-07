@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -198,6 +198,14 @@ static void nb7vpq904m_dev_aux_set(struct nb7vpq904m_redriver *redriver)
 static int nb7vpq904m_gen_dev_set(struct nb7vpq904m_redriver *redriver)
 {
 	u8 val = 0;
+	int orientation = redriver->typec_orientation;
+
+	if (redriver->lane_channel_swap) {
+		if (orientation == ORIENTATION_CC1)
+			orientation = ORIENTATION_CC2;
+		else
+			orientation = ORIENTATION_CC1;
+	}
 
 	switch (redriver->op_mode) {
 	case OP_MODE_DEFAULT:
@@ -209,13 +217,11 @@ static int nb7vpq904m_gen_dev_set(struct nb7vpq904m_redriver *redriver)
 		break;
 	case OP_MODE_USB:
 		/* Use source side I/O mapping */
-		if (redriver->typec_orientation
-				== ORIENTATION_CC1) {
+		if (orientation == ORIENTATION_CC1) {
 			/* Enable channel C and D */
 			val &= ~(CHNA_EN | CHNB_EN);
 			val |= (CHNC_EN | CHND_EN);
-		} else if (redriver->typec_orientation
-				== ORIENTATION_CC2) {
+		} else if (orientation == ORIENTATION_CC2) {
 			/* Enable channel A and B*/
 			val |= (CHNA_EN | CHNB_EN);
 			val &= ~(CHNC_EN | CHND_EN);
@@ -240,11 +246,9 @@ static int nb7vpq904m_gen_dev_set(struct nb7vpq904m_redriver *redriver)
 		val |= (CHNC_EN | CHND_EN);
 		val |= CHIP_EN;
 
-		if (redriver->typec_orientation
-				== ORIENTATION_CC1)
+		if (orientation == ORIENTATION_CC1)
 			val |= (0x1 << OP_MODE_SHIFT);
-		else if (redriver->typec_orientation
-				== ORIENTATION_CC2)
+		else if (orientation == ORIENTATION_CC2)
 			val |= (0x0 << OP_MODE_SHIFT);
 
 		break;
@@ -341,6 +345,14 @@ static int nb7vpq904m_channel_update(struct nb7vpq904m_redriver *redriver)
 {
 	int ret;
 	u8 i, chan_mode;
+	int orientation = redriver->typec_orientation;
+
+	if (redriver->lane_channel_swap) {
+		if (orientation == ORIENTATION_CC1)
+			orientation = ORIENTATION_CC2;
+		else
+			orientation = ORIENTATION_CC1;
+	}
 
 	switch (redriver->op_mode) {
 	case OP_MODE_DEFAULT:
@@ -350,7 +362,7 @@ static int nb7vpq904m_channel_update(struct nb7vpq904m_redriver *redriver)
 		redriver->chan_mode[CHND_INDEX] = CHAN_MODE_USB;
 		break;
 	case OP_MODE_USB:
-		if (redriver->typec_orientation == ORIENTATION_CC1) {
+		if (orientation == ORIENTATION_CC1) {
 			redriver->chan_mode[CHNA_INDEX] = CHAN_MODE_DISABLE;
 			redriver->chan_mode[CHNB_INDEX] = CHAN_MODE_DISABLE;
 			redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_USB;
@@ -363,7 +375,7 @@ static int nb7vpq904m_channel_update(struct nb7vpq904m_redriver *redriver)
 		}
 		break;
 	case OP_MODE_USB_AND_DP:
-		if (redriver->typec_orientation == ORIENTATION_CC1) {
+		if (orientation == ORIENTATION_CC1) {
 			redriver->chan_mode[CHNA_INDEX] = CHAN_MODE_DP;
 			redriver->chan_mode[CHNB_INDEX] = CHAN_MODE_DP;
 			redriver->chan_mode[CHNC_INDEX] = CHAN_MODE_USB;
@@ -465,18 +477,6 @@ err:
 	return ret;
 }
 
-static inline void orientation_set(struct nb7vpq904m_redriver *redriver, int ort)
-{
-	redriver->typec_orientation = ort;
-
-	if (redriver->lane_channel_swap) {
-		if (redriver->typec_orientation == ORIENTATION_CC1)
-			redriver->typec_orientation = ORIENTATION_CC2;
-		else
-			redriver->typec_orientation = ORIENTATION_CC1;
-	}
-}
-
 static int nb7vpq904m_notify_connect(struct usb_redriver *r, int ort)
 {
 	struct nb7vpq904m_redriver *redriver =
@@ -492,9 +492,9 @@ static int nb7vpq904m_notify_connect(struct usb_redriver *r, int ort)
 	if (redriver->op_mode == OP_MODE_NONE)
 		redriver->op_mode = OP_MODE_USB;
 
-	orientation_set(redriver, ort);
-
+	redriver->typec_orientation = ort;
 	nb7vpq904m_gen_dev_set(redriver);
+	nb7vpq904m_dev_aux_set(redriver);
 	nb7vpq904m_channel_update(redriver);
 
 	return 0;
@@ -502,6 +502,7 @@ static int nb7vpq904m_notify_connect(struct usb_redriver *r, int ort)
 
 static int nb7vpq904m_notify_disconnect(struct usb_redriver *r)
 {
+	int ret = 0;
 	struct nb7vpq904m_redriver *redriver =
 		container_of(r, struct nb7vpq904m_redriver, r);
 
@@ -512,9 +513,10 @@ static int nb7vpq904m_notify_disconnect(struct usb_redriver *r)
 		return 0;
 
 	redriver->op_mode = OP_MODE_NONE;
-	nb7vpq904m_reg_set(redriver, GEN_DEV_SET_REG, 0);
+	ret = nb7vpq904m_reg_set(redriver, GEN_DEV_SET_REG, 0);
 
-	nb7vpq904m_vdd_enable(redriver, false);
+	if (!ret)
+		nb7vpq904m_vdd_enable(redriver, false);
 
 	return 0;
 }
@@ -535,8 +537,7 @@ static int nb7vpq904m_release_usb_lanes(struct usb_redriver *r, int ort, int num
 
 	nb7vpq904m_vdd_enable(redriver, true);
 
-	/* in case it need aux function from redriver and the first call is release lane */
-	orientation_set(redriver, ort);
+	redriver->typec_orientation = ort;
 
 	nb7vpq904m_gen_dev_set(redriver);
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/module.h>
@@ -56,6 +56,9 @@ static int qcom_dma_heap_probe(struct platform_device *pdev)
 			break;
 		case HEAP_TYPE_CARVEOUT:
 			ret = qcom_carveout_heap_create(heap_data);
+			break;
+		case HEAP_TYPE_SC_TCM_CARVEOUT:
+			ret = qcom_sc_tcm_carveout_heap_create(heap_data);
 			break;
 		case HEAP_TYPE_CMA:
 			ret = qcom_add_cma_heap(heap_data);
@@ -139,6 +142,7 @@ static int qcom_dma_heaps_restore(struct device *dev)
 
 static const struct dev_pm_ops qcom_dma_heaps_pm_ops = {
 	.freeze_late = qcom_dma_heaps_freeze,
+	.thaw_early  = qcom_dma_heaps_restore,
 	.restore_early = qcom_dma_heaps_restore,
 };
 

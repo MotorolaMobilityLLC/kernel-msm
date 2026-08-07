@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2010-2015,2019,2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __QCOM_SCM_INT_H
 #define __QCOM_SCM_INT_H
@@ -112,6 +112,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 #define QCOM_SCM_BOOT_SET_ADDR		0x01
 #define QCOM_SCM_BOOT_TERMINATE_PC	0x02
 #define QCOM_SCM_BOOT_SET_DLOAD_MODE	0x10
+#define QCOM_SCM_BOOT_SET_ADDR_MC               0x11
 #define QCOM_SCM_BOOT_SEC_WDOG_DIS		0x07
 #define QCOM_SCM_BOOT_SEC_WDOG_TRIGGER		0x08
 #define QCOM_SCM_BOOT_WDOG_DEBUG_PART		0x09
@@ -180,6 +181,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 #define QCOM_SCM_DCVS_INIT_V2			0x0b
 #define QCOM_SCM_DCVS_INIT_CA_V2		0x0c
 #define QCOM_SCM_DCVS_UPDATE_CA_V2		0x0d
+#define QCOM_SCM_DCVS_TUNING			0x0e
 
 #define QCOM_SCM_SVC_OCMEM		0x0f
 #define QCOM_SCM_OCMEM_LOCK_CMD		0x01
@@ -191,6 +193,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 #define QCOM_SCM_ES_CONFIG_SET_ICE_KEY_V2	0x05
 #define QCOM_SCM_ES_CLEAR_ICE_KEY		0x06
 #define QCOM_SCM_ES_DERIVE_RAW_SECRET	0x07
+#define QCOM_SCM_ES_HIBERNATE_EXIT	0xB
 
 #define QCOM_SCM_SVC_HDCP		0x11
 #define QCOM_SCM_HDCP_INVOKE		0x01
@@ -216,6 +219,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 #define QCOM_SCM_SVC_CAMERA			0x18
 #define QCOM_SCM_CAMERA_PROTECT_ALL		0x06
 #define QCOM_SCM_CAMERA_PROTECT_PHY_LANES	0x07
+#define QCOM_SCM_CAMERA_UPDATE_CAMNOC_QOS	0x0A
 
 #define QCOM_SCM_SVC_WAITQ			0x24
 #define QCOM_SCM_WAITQ_ACK			0x01
@@ -238,6 +242,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 #define QCOM_SCM_QSEELOG_REGISTER		0x06
 #define QCOM_SCM_QUERY_ENCR_LOG_FEAT_ID		0x0b
 #define QCOM_SCM_REQUEST_ENCR_LOG_ID		0x0c
+#define QCOM_SCM_QUERY_LOG_STATUS		0x0F
 
 #define QCOM_SCM_SVC_KEYSTORE			0x05
 #define QCOM_SCM_ICE_RESTORE_KEY_ID		0x06
@@ -246,6 +251,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 #define QCOM_SCM_SMCINVOKE_INVOKE_LEGACY	0x00
 #define QCOM_SCM_SMCINVOKE_INVOKE		0x02
 #define QCOM_SCM_SMCINVOKE_CB_RSP		0x01
+#define QCOM_SCM_SMCINVOKE_DOORBELL_ACK		0x06
 
 /* Feature IDs for QCOM_SCM_INFO_GET_FEAT_VERSION */
 #define QCOM_SCM_TZ_DBG_ETM_FEAT_ID		0x08
@@ -254,6 +260,13 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
 
 #define QCOM_SCM_SVC_CPUCFG			0x29
 #define QCOM_SCM_CPUCFG_PREFETCH_TGT_CMD	0x1
+#define QCOM_SCM_GET_MEM_LAT_STATS_ID		0x15
+#define QCOM_SCM_SVC_MEM_LAT			0x06
+
+#define QCOM_SCM_SVC_MISSRATE			0x06
+#define QCOM_SCM_GET_LLCC_MISSRATE_STATS_ID	0x14
+#define QCOM_SCM_SVC_LLCC_OCCUPANCY		0x06
+#define QCOM_SCM_GET_LLCC_OCCUPANCY_STATS_ID	0x13
 
 extern void __qcom_scm_init(void);
 extern void __qcom_scm_qcpe_exit(void);

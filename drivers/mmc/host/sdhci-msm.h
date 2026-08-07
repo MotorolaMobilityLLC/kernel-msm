@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2013-2014,2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #ifndef _DRIVERS_MMC_SDHCI_MSM_H
@@ -199,13 +199,10 @@ struct sdhci_msm_host {
 	bool skip_bus_bw_voting;
 	struct sdhci_msm_bus_vote_data *bus_vote_data;
 	struct delayed_work bus_vote_work;
-	struct delayed_work clk_gating_work;
 	struct workqueue_struct *workq;	/* QoS work queue */
 	struct sdhci_msm_qos_req *sdhci_qos;
 	struct irq_affinity_notify affinity_notify;
-	struct device_attribute clk_gating;
 	struct device_attribute pm_qos;
-	u32 clk_gating_delay;
 	u32 pm_qos_delay;
 	bool cqhci_offset_changed;
 	bool reg_store;
@@ -252,6 +249,9 @@ struct sdhci_msm_host {
 	u8 raw_ext_csd_bus_width;
 	u8 raw_ext_csd_hs_timing;
 	struct mmc_ios cached_ios;
+	bool is_partial_init_broken;
+	bool rst_n_disable;
+	struct notifier_block sdhci_msm_pm_notifier;
 };
 
 struct mmc_pwrseq_ops {

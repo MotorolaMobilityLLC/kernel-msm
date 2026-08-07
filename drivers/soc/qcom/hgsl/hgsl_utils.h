@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef __HGSL_UTILS_H
 #define __HGSL_UTILS_H
@@ -12,6 +12,7 @@
 #include <linux/types.h>
 #include <linux/sched/signal.h>
 #include <linux/stdarg.h>
+#include <linux/regmap.h>
 
 enum {
 	LOG_LEVEL_ERROR,
@@ -95,6 +96,48 @@ static inline void hgsl_log(unsigned int level, const char * const fun,
 	va_end(arglist);
 
 	pr_err("%s\n", buffer);
+}
+
+static inline u32 hgsl_regmap_read(struct regmap *regmap, u32 offset)
+{
+	u32 val;
+
+	regmap_read(regmap, offset, &val);
+	/* Ensure all previous reads has completed before return */
+	rmb();
+	return val;
+}
+
+static inline void hgsl_regmap_write(struct regmap *regmap, u32 offset, u32 value)
+{
+	/* Ensure all previous writes has completed */
+	wmb();
+	regmap_write(regmap, offset, value);
+}
+
+static inline int hgsl_check_userparams(
+	uint64_t uaddr64,
+	uint32_t usize)
+{
+	unsigned long uaddr, size, end;
+
+	if (!uaddr64 || !usize)
+		return -EINVAL;
+
+	uaddr = (unsigned long)untagged_addr(uaddr64);
+	size = (unsigned long)usize;
+
+	/* Check for integer overflow */
+	if (uaddr > ULONG_MAX - size)
+		return -EINVAL;
+
+	end = uaddr + size;
+
+	/* Quick check user addr limit */
+	if (uaddr >= TASK_SIZE_MAX || end > TASK_SIZE_MAX)
+		return -EFAULT;
+
+	return 0;
 }
 
 #endif  /* __HGSL_UTILS_H */

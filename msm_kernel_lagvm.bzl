@@ -25,6 +25,7 @@ load(
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load(":msm_common.bzl", "define_top_level_config", "gen_config_without_source_lines", "get_out_dir")
 load(":msm_dtc.bzl", "define_dtc_dist")
+load(":msm_abl.bzl", "define_abl_dist")
 load(":avb_boot_img.bzl", "avb_sign_boot_image")
 load(":image_opts.bzl", "boot_image_opts")
 load(":target_variants.bzl", "lxc_variants")
@@ -45,6 +46,11 @@ def _define_build_config(
       variant: variant of kernel to build (e.g. "gki")
     """
 
+    # keep earlycon addr in earlycon cmdline param only when provided explicitly in target's bazel file
+    # otherwise, rely on stdout-path
+    earlycon_param = "={}".format(boot_image_opts.earlycon_addr) if boot_image_opts.earlycon_addr != None else ""
+    earlycon_param = '[ "$KERNEL_CMDLINE_CONSOLE_AUTO" != "0" ] && KERNEL_VENDOR_CMDLINE+=\' earlycon{} \''.format(earlycon_param)
+
     write_file(
         name = "{}_build_config_bazel".format(target),
         out = "build.config.msm.{}.generated".format(target),
@@ -64,7 +70,7 @@ def _define_build_config(
             "BUILD_INIT_BOOT_IMG=1",
             "LZ4_RAMDISK={}".format(int(boot_image_opts.lz4_ramdisk)),
             '[ -z "$DT_OVERLAY_SUPPORT" ] && DT_OVERLAY_SUPPORT=1',
-            '[ "$KERNEL_CMDLINE_CONSOLE_AUTO" != "0" ] && KERNEL_VENDOR_CMDLINE+=\' earlycon={} \''.format(boot_image_opts.earlycon_addr),
+            earlycon_param,
             "KERNEL_VENDOR_CMDLINE+=' {} '".format(" ".join(boot_image_opts.kernel_vendor_cmdline_extras)),
             "VENDOR_BOOTCONFIG+='androidboot.first_stage_console=1 androidboot.hardware=qcom_kp'",
             "",  # Needed for newline at end of file
@@ -409,6 +415,8 @@ def define_msm_lagvm(
     )
 
     _define_uapi_library(target)
+
+    define_abl_dist(target, msm_target, variant)
 
     define_dtc_dist(target, msm_target, variant)
 

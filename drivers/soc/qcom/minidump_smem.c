@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -38,7 +38,6 @@ struct md_table {
 };
 
 /* Protect elfheader and smem table from deferred calls contention */
-static DEFINE_SPINLOCK(mdt_lock);
 static DEFINE_RWLOCK(mdt_remove_lock);
 static struct md_table		minidump_table;
 static struct md_global_toc *md_global_toc;
@@ -220,30 +219,6 @@ static int md_smem_init_md_table(void)
 	return ret;
 }
 
-/* Update elf header */
-static void md_smem_add_elf_header(const struct md_region *entry)
-{
-	struct elfhdr *hdr = minidump_elfheader.ehdr;
-	struct elf_shdr *shdr = elf_section(hdr, hdr->e_shnum++);
-	struct elf_phdr *phdr = elf_program(hdr, hdr->e_phnum++);
-
-	shdr->sh_type = SHT_PROGBITS;
-	shdr->sh_name = set_section_name(entry->name);
-	shdr->sh_addr = (elf_addr_t)entry->virt_addr;
-	shdr->sh_size = entry->size;
-	shdr->sh_flags = SHF_WRITE;
-	shdr->sh_offset = minidump_elfheader.elf_offset;
-	shdr->sh_entsize = 0;
-
-	phdr->p_type = PT_LOAD;
-	phdr->p_offset = minidump_elfheader.elf_offset;
-	phdr->p_vaddr = entry->virt_addr;
-	phdr->p_paddr = entry->phys_addr;
-	phdr->p_filesz = phdr->p_memsz = entry->size;
-	phdr->p_flags = PF_R | PF_W;
-	minidump_elfheader.elf_offset += shdr->sh_size;
-}
-
 static int md_smem_add_pending_entry(struct list_head *pending_list)
 {
 	unsigned int region_number;
@@ -262,7 +237,7 @@ static int md_smem_add_pending_entry(struct list_head *pending_list)
 		minidump_table.entry[region_number] =
 			pending_region->entry;
 		md_add_ss_toc(&minidump_table.entry[region_number], true);
-		md_smem_add_elf_header(&minidump_table.entry[region_number]);
+		md_add_elf_header(&minidump_table.entry[region_number]);
 		list_del(&pending_region->list);
 		kfree(pending_region);
 		region_number++;
@@ -319,6 +294,15 @@ static int md_smem_add_region(const struct md_region *entry)
 {
 	u32 toc_init;
 	int ret = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mdt_lock, flags);
+
+	if (md_num_regions >= MAX_NUM_ENTRIES) {
+		printk_deferred("Maximum entries reached\n");
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	toc_init = 0;
 	if (minidump_table.md_ss_toc &&
@@ -327,7 +311,7 @@ static int md_smem_add_region(const struct md_region *entry)
 		if (minidump_table.md_ss_toc->ss_region_count >= MAX_NUM_ENTRIES) {
 			printk_deferred("Maximum regions in minidump table reached\n");
 			ret = -ENOMEM;
-			return ret;
+			goto out;
 		}
 	}
 
@@ -335,11 +319,16 @@ static int md_smem_add_region(const struct md_region *entry)
 		if (md_entry_num(entry) >= 0) {
 			printk_deferred("Entry name already exist\n");
 			ret = -EEXIST;
-			return ret;
+			goto out;
 		}
 		md_add_ss_toc(entry, false);
-		md_smem_add_elf_header(entry);
+		md_add_elf_header(entry);
 	}
+	ret = md_num_regions;
+	md_num_regions++;
+
+out:
+	spin_unlock_irqrestore(&mdt_lock, flags);
 
 	return ret;
 }

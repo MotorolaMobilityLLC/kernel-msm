@@ -19,6 +19,13 @@ DEFAULT_MSM_EXTENSIONS_SRC = "../msm-kernel/msm_kernel_extensions.bzl"
 DEFAULT_ABL_EXTENSIONS_SRC = "../bootable/bootloader/edk2/abl_extensions.bzl"
 DEFAULT_OUT_DIR = "{workspace}/out/msm-kernel-{target}-{variant}"
 
+CURR_DIR = os.getcwd()
+DEFAULT_CACHE_DIR = os.path.join(CURR_DIR, 'kernel_platform/out/bazel/output_user_root')
+if not os.path.exists(DEFAULT_CACHE_DIR):
+   os.makedirs(DEFAULT_CACHE_DIR)
+
+os.environ['TEST_TMPDIR'] = DEFAULT_CACHE_DIR
+
 class Target:
     def __init__(self, workspace, target, variant, bazel_label, out_dir=None):
         self.workspace = workspace
@@ -53,8 +60,7 @@ class Target:
 
 class BazelBuilder:
     """Helper class for building with Bazel"""
-
-    def __init__(self, target_list, skip_list, out_dir, dry_run, user_opts, abl_only):
+    def __init__(self, target_list, skip_list, out_dir, dry_run, target_build_variant, user_opts, abl_only):
         self.workspace = os.path.realpath(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
         )
@@ -74,6 +80,7 @@ class BazelBuilder:
         self.target_list = target_list
         self.skip_list = skip_list
         self.dry_run = dry_run
+        self.target_build_variant = target_build_variant
         self.user_opts = user_opts
         self.abl_only = abl_only
         self.process_list = []
@@ -218,7 +225,23 @@ class BazelBuilder:
         bazel_target_opts=None,
     ):
         """Execute a bazel command"""
+        if os.environ.get("BAZEL_BUILD_TRACER"):
+            pkg_path = os.environ.get("PATH_TO_FILER")
+            cmd = "python3 %s/init_bazel_tracing.py --working-dir %s" % (pkg_path, os.getcwd())
+            print ("Running %s" % (cmd))
+            cmd_proc = subprocess.Popen(cmd, shell=True)
+            self.process_list.append(cmd_proc)
+            cmd_proc.wait()
+            try:
+                if cmd_proc.returncode != 0:
+                    print("BAZEL_BUILD_TRACER: Failed to run %s" %(cmd))
+                    sys.exit(cmd_proc.returncode)
+            except Exception as e:
+                logging.error(e)
+                sys.exit(1)
+            print("BAZEL_BUILD_TRACER: Tracer has been initialized")
         cmdline = [self.bazel_bin, bazel_subcommand]
+        logging.info('targets = "%s"', [t.bazel_label for t in targets])
         if extra_options:
             cmdline.extend(extra_options)
         cmdline.extend([t.bazel_label for t in targets])
@@ -285,6 +308,10 @@ class BazelBuilder:
 
         if self.skip_list:
             self.user_opts.extend(["--//msm-kernel:skip_{}=true".format(s) for s in self.skip_list])
+
+        if self.target_build_variant:
+          self.user_opts.extend(["--//bootable/bootloader/edk2:target_build_variant={}".format(self.target_build_variant)])
+          logging.info('The target_build_variant = %s', self.target_build_variant)
 
         self.user_opts.extend([
             "--user_kmi_symbol_lists=//msm-kernel:android/abi_gki_aarch64_qcom",
@@ -359,6 +386,11 @@ def main():
         action="store_true",
         help="Perform a dry-run of the build which will perform loading/analysis of build files",
     )
+    parser.add_argument(
+        "--target_build_variant",
+        choices=["userdebug", "user", "eng"],
+        help="target build variant (userdebug, user, eng)",
+    )
 
     args, user_opts = parser.parse_known_args(sys.argv[1:])
 
@@ -369,7 +401,7 @@ def main():
 
     args.skip.extend(DEFAULT_SKIP_LIST)
 
-    builder = BazelBuilder(args.target, args.skip, args.out_dir, args.dry_run, user_opts, args.abl_only)
+    builder = BazelBuilder(args.target, args.skip, args.out_dir, args.dry_run, args.target_build_variant, user_opts, args.abl_only)
     try:
         if args.menuconfig:
             builder.run_menuconfig()

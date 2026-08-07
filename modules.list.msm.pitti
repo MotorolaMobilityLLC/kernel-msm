@@ -1,16 +1,24 @@
 # SPDX-License-Identifier: GPL-2.0-only
-# Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 
 qcom_wdt_core.ko
 gh_virt_wdt.ko
 qcom-scm.ko
 qcom-mpm.ko
+glink_pkt.ko
+qcom_glink.ko
+qcom_glink_rpm.ko
+qcom_glink_smem.ko
 rpm-smd.ko
 pinctrl-msm.ko
 pinctrl-pitti.ko
+qcom_ipc_logging.ko
 debug_symbol.ko
 qcom_cpu_vendor_hooks.ko
 minidump.ko
+qcom_va_minidump.ko
+qcom_logbuf_vendor_hooks.ko
+qcom_logbuf_boot_log.ko
 qcom_hwspinlock.ko
 smem.ko
 socinfo.ko
@@ -29,7 +37,6 @@ pinctrl-spmi-gpio.ko
 nvmem_qcom-spmi-sdam.ko
 rtc-pm8xxx.ko
 msm-poweroff.ko
-pmic-pon-log.ko
 qcom-ipcc.ko
 clk-dummy.ko
 clk-qcom.ko
@@ -45,21 +52,19 @@ mem-hooks.ko
 mem_buf_dev.ko
 mem_buf.ko
 qcom_dma_heaps.ko
+gh_mem_notifier.ko
 qcom-pmu-lib.ko
 qcom-dcvs.ko
 dcc_v2.ko
 memory_dump_v2.ko
 msm_dma_iommu_mapping.ko
+kryo_arm64_edac.ko
 gcc-pitti.ko
 icc-debug.ko
 icc-rpm.ko
 qnoc-pitti.ko
 qnoc-qos-rpm.ko
 msm_qmp.ko
-gh_arm_drv.ko
-gh_rm_drv.ko
-gunyah_loader.ko
-mdt_loader.ko
 nvmem_qfprom.ko
 phy-qcom-ufs.ko
 phy-qcom-ufs-qrbtc-sdm845.ko
@@ -71,3 +76,4 @@ dispcc-pitti.ko
 qcom-cpufreq-hw.ko
 clk-smd-rpm.ko
 secure_buffer.ko
+ufshcd-crypto-qti.ko

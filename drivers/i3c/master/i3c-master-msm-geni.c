@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/clk.h>
@@ -218,6 +218,17 @@
 #define IBI_SW_RESET_MAX_SLEEP 2000
 
 #define MAX_I3C_SE		2
+#define I3C_START_ADDR		8
+
+/* I3C OD mode frequency config values */
+enum geni_i3c_od_mode {
+	I2C_MAX_STANDARD_MODE,
+	I2C_MAX_FAST_MODE,
+	I2C_MAX_FAST_MODE_PLUS,
+	I2C_MAX_TURBO_MODE,
+	I2C_MAX_HIGH_SPEED,
+	I2C_MAX_ULTRA_FAST_MODE,
+};
 
 /* For multi descriptor, gsi irq will generate for every 64 tre's */
 #define NUM_I3C_TRE_MSGS_PER_INTR (64)
@@ -310,13 +321,15 @@ struct geni_i3c_dev {
 	u32 se_mode;
 	struct i3c_master_controller ctrlr;
 	void *ipcl;
+	void *ipc_log_kpi;
+	int i3c_kpi;
 	struct completion done;
 	struct mutex lock;
+	struct mutex i3c_ibi_lock; /* ibi master request lock */
 	struct gsi_common gsi;
 	dma_addr_t rx_phy;
 	bool gsi_err;
 	bool cfg_sent; /* gsi config sent flag */
-	bool disable_free_run_clks;
 	spinlock_t spinlock;
 	u32 clk_src_freq;
 	u32 dfs_idx;
@@ -325,6 +338,7 @@ struct geni_i3c_dev {
 	enum i3c_trans_dir cur_rnw;
 	int cur_len;
 	int cur_idx;
+	int num_xfers;
 	unsigned long newaddrslots[(I3C_ADDR_MASK + 1) / BITS_PER_LONG];
 	const struct geni_i3c_clk_fld *clk_fld;
 	const struct geni_i3c_clk_fld *clk_od_fld;
@@ -336,6 +350,8 @@ struct geni_i3c_dev {
 	struct geni_i3c_ver_info ver_info;
 	struct msm_geni_i3c_rsc i3c_rsc;
 	struct device *wrapper_dev;
+	bool is_shared;
+	bool is_i2c_xfer; /* i2c transfer flag */
 };
 
 struct geni_i3c_i2c_dev_data {
@@ -386,6 +402,7 @@ static int geni_i3c_gsi_stop_on_bus(struct geni_i3c_dev *gi3c);
 static void geni_i3c_enable_ibi_ctrl(struct geni_i3c_dev *gi3c, bool enable);
 static void geni_i3c_enable_ibi_irq(struct geni_i3c_dev *gi3c, bool enable);
 static int geni_i3c_enable_naon_ibi_clks(struct geni_i3c_dev *gi3c, bool enable);
+static int qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus_phase);
 
 static struct geni_i3c_dev *i3c_geni_dev[MAX_I3C_SE];
 static int i3c_nos;
@@ -422,7 +439,21 @@ static const struct geni_i3c_clk_fld geni_i3c_clk_map[] = {
 	{ KHZ(1920),   19200,  1,  4,  9,  7,  8,  19},
 	{ KHZ(3500),   19200,  1, 72, 168, 3, 4,  300},
 	{ KHZ(370),   100000, 20,  4,  7,  8, 14,  14},
-	{ KHZ(12500), 100000,  1, 72, 168, 6,  7, 300},
+	{ KHZ(12500), 100000, 1, 45, 63, 6, 7, 110},
+	{ KHZ(8300), 64000, 1, 36, 46, 4, 7, 78},
+};
+
+/* stand alone i2c counter settings*/
+struct geni_i2c_clk_fld {
+	u32	clk_freq_out;
+	u8	clk_div;
+	u8	t_high;
+	u8	t_low;
+	u8	t_cycle;
+};
+
+static struct geni_i2c_clk_fld geni_i2c_clk_map[] = {
+	{KHZ(1000), 1, 2,  8, 18},
 };
 
 #define GENI_SE_I3C_ERR(log_ctx, print, dev, x...) do { \
@@ -475,6 +506,65 @@ void i3c_trace_log(struct device *dev, const char *fmt, ...)
 	va_end(args);
 }
 
+/*
+ * geni_i3c_ibi_dump_dbg_regs() - Dumps IBI related important debug registers
+ * @gi3c: I3C device handle
+ *
+ * Return: None
+ */
+static void geni_i3c_ibi_dump_dbg_regs(struct geni_i3c_dev *gi3c)
+{
+	u32 ibi_gen_config, gpii_ibi_en, ibi_gen_irq_status;
+	u32 ibi_unexpect_ibi_info, ibi_legacy_mode, ibi_irq_status_0;
+
+	if (!gi3c->ibi.hw_support && !gi3c->ibi.is_init)
+		return;
+
+	ibi_gen_config = geni_read_reg(gi3c->ibi.ibi_base, IBI_GEN_CONFIG);
+	gpii_ibi_en = geni_read_reg(gi3c->ibi.ibi_base, IBI_GPII_IBI_EN);
+	ibi_gen_irq_status = geni_read_reg(gi3c->ibi.ibi_base, IBI_GEN_IRQ_STATUS);
+	ibi_unexpect_ibi_info = geni_read_reg(gi3c->ibi.ibi_base, IBI_UNEXPECT_IBI_INFO);
+	ibi_legacy_mode = geni_read_reg(gi3c->ibi.ibi_base, IBI_LEGACY_MODE);
+	ibi_irq_status_0 = geni_read_reg(gi3c->ibi.ibi_base, IBI_IRQ_STATUS(0));
+
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "ibi_gen_config:0x%x, gpii_ibi_en:0x%x, ibi_gen_irq_status:0x%x\n",
+		    ibi_gen_config, gpii_ibi_en, ibi_gen_irq_status);
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "ibi_unexpect_ibi_info:0x%x, ibi_legacy_mode:0x%x, ibi_irq_status_0:0x%x\n",
+		    ibi_unexpect_ibi_info, ibi_legacy_mode, ibi_irq_status_0);
+}
+
+/*
+ * geni_i3c_ibi_test_bus_dump_regs() - Dumps IBI related test bus registers
+ * @gi3c: I3C device handle
+ * @ibi_test_bus_num: Test bus number as passed by caller for debug
+ * @ibi_test_bus_sel: Test bus select number as passed by caller for debug
+ *
+ * Return: None
+ */
+static void geni_i3c_ibi_test_bus_dump_regs(struct geni_i3c_dev *gi3c,
+					    int bus_num, int bus_sel)
+{
+	u32 ibi_test_bus_en, ibi_test_bus_sel, ibi_test_bus_reg;
+
+	if (!gi3c->ibi.hw_support && !gi3c->ibi.is_init)
+		return;
+
+	 /* IBI TEST BUS */
+	geni_write_reg(bus_num, gi3c->ibi.ibi_base, IBI_TEST_BUS_EN);
+	geni_write_reg(bus_sel, gi3c->ibi.ibi_base, IBI_TEST_BUS_SEL);
+
+	ibi_test_bus_en = geni_read_reg(gi3c->ibi.ibi_base, IBI_TEST_BUS_EN);
+	ibi_test_bus_sel = geni_read_reg(gi3c->ibi.ibi_base, IBI_TEST_BUS_SEL);
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "ibi_test_bus_en:0x%x, ibi_test_bus_sel:0x%x\n",
+		    ibi_test_bus_en, ibi_test_bus_sel);
+
+	ibi_test_bus_reg = geni_read_reg(gi3c->ibi.ibi_base, IBI_TEST_BUS_REG);
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "ibi_test_bus_reg:0x%x\n",
+		    ibi_test_bus_reg);
+}
 /**
  * geni_i3c_se_dump_dbg_regs() - Print relevant registers that capture most
  *			accurately the state of an SE.
@@ -557,6 +647,87 @@ void geni_i3c_se_dump_dbg_regs(struct geni_se *se, void __iomem *base,
 	geni_dma_tx_ptr_l, geni_dma_tx_ptr_h);
 }
 
+/**
+ * geni_i3c_dump_dbg_regs() - capture SE, IBI and test bus dumps
+ *			accurately the state of an SE.
+ *
+ * @gi3c: I3C device handle
+ *
+ * Return: None
+ */
+static void geni_i3c_dump_dbg_regs(struct geni_i3c_dev *gi3c)
+{
+	/* se dumps*/
+	geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+
+	/* ibi and test bus dumps */
+	geni_i3c_ibi_dump_dbg_regs(gi3c);
+	geni_i3c_ibi_test_bus_dump_regs(gi3c, 0x11, 0);
+
+	/*gpi dumps*/
+	if (gi3c->se_mode == GENI_GPI_DMA && gi3c->gsi.tx.ch)
+		gpi_dump_for_geni(gi3c->gsi.tx.ch);
+}
+
+/*
+ * capture_kpi_show() - Prints the value stored in capture_kpi sysfs entry
+ *
+ * @dev: pointer to device
+ * @attr: device attributes
+ * @buf: buffer to store the capture_kpi_value
+ *
+ * Return: prints capture_kpi value or error value
+ */
+static ssize_t capture_kpi_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct geni_i3c_dev *gi3c = platform_get_drvdata(pdev);
+
+	if (!gi3c)
+		return -EINVAL;
+
+	return scnprintf(buf, sizeof(int), "%d\n", gi3c->i3c_kpi);
+}
+
+/*
+ * capture_kpi_store() - store the capture_kpi sysfs value
+ *
+ * @dev: pointer to device
+ * @attr: device attributes
+ * @buf: buffer to store the capture_kpi_value
+ * @size: returns the value of size.
+ *
+ * Return: Size copied in the buffer or error value
+ */
+static ssize_t capture_kpi_store(struct device *dev,
+				 struct device_attribute *attr, const char *buf,
+				 size_t size)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct geni_i3c_dev *gi3c = platform_get_drvdata(pdev);
+	char name[36];
+
+	if (!gi3c)
+		return -EINVAL;
+
+	if (kstrtoint(buf, 0, &gi3c->i3c_kpi)) {
+		dev_err(dev, "Invalid input\n");
+		return -EINVAL;
+	}
+
+	if (gi3c->i3c_kpi && !gi3c->ipc_log_kpi) {
+		memset(name, 0, sizeof(name));
+		scnprintf(name, sizeof(name), "%s%s", dev_name(gi3c->se.dev), "_kpi");
+		gi3c->ipc_log_kpi = ipc_log_context_create(IPC_LOG_KPI_PAGES, name, 0);
+		if (!gi3c->ipc_log_kpi && IS_ENABLED(CONFIG_IPC_LOGGING))
+			dev_err(&pdev->dev, "Error creating kpi IPC logs\n");
+	}
+
+	return size;
+}
+static DEVICE_ATTR_RW(capture_kpi);
+
 /*
  * geni_i3c_err() - updates i3c global gsi error
  *
@@ -577,7 +748,7 @@ static void geni_i3c_err(struct geni_i3c_dev *gi3c, int err)
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s\n", gi3c_log[err].msg);
 	gi3c->err = gi3c_log[err].err;
 
-	geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+	geni_i3c_dump_dbg_regs(gi3c);
 }
 
 /*
@@ -742,6 +913,62 @@ static void gi3c_gsi_rx_cb(void *ptr)
 }
 
 /*
+ * i3c_setup_lock_tre() - setup lock tre
+ *
+ * @gi3c: i3c master device handle
+ *
+ * Return: None
+ */
+static void i3c_setup_lock_tre(struct geni_i3c_dev *gi3c)
+{
+	struct msm_gpi_tre *lock_t = &gi3c->gsi.tx.tre.lock_t;
+	bool gsi_bei = false;
+
+	/* lock: chain bit set */
+	lock_t->dword[0] = MSM_GPI_LOCK_TRE_DWORD0;
+	lock_t->dword[1] = MSM_GPI_LOCK_TRE_DWORD1;
+	lock_t->dword[2] = MSM_GPI_LOCK_TRE_DWORD2;
+
+	if (gi3c->gsi.tx.tre_queue.is_multi_descriptor)
+		gsi_bei = true;
+
+	/* For shared se queueing all the TRE's combinedly with chain bit(lock,config,go,dma).
+	 * For other usecases bei bit is set to get complete irq.
+	 */
+	if (gi3c->is_shared)
+		lock_t->dword[3] = MSM_GPI_LOCK_TRE_DWORD3(0, gsi_bei, 0, 0, 1);
+	else
+		lock_t->dword[3] = MSM_GPI_LOCK_TRE_DWORD3(0, gsi_bei, 0, 1, 0);
+
+	gi3c->gsi.tx.tre.flags |= LOCK_TRE_SET;
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "%s: dword[0]:0x%x dword[1]:0x%x dword[2]:0x%x dword[3]:0x%x\n", __func__,
+		    lock_t->dword[0], lock_t->dword[1], lock_t->dword[2], lock_t->dword[3]);
+}
+
+/*
+ * i3c_setup_unlock_tre() - setup unlock tre
+ *
+ * @gi3c: i3c master device handle
+ *
+ * Return: None
+ */
+static void i3c_setup_unlock_tre(struct geni_i3c_dev *gi3c)
+{
+	struct msm_gpi_tre *unlock_t = &gi3c->gsi.tx.tre.unlock_t;
+
+	/* unlock tre: ieob set */
+	unlock_t->dword[0] = MSM_GPI_UNLOCK_TRE_DWORD0;
+	unlock_t->dword[1] = MSM_GPI_UNLOCK_TRE_DWORD1;
+	unlock_t->dword[2] = MSM_GPI_UNLOCK_TRE_DWORD2;
+	unlock_t->dword[3] = MSM_GPI_UNLOCK_TRE_DWORD3(0, 0, 0, 1, 0);
+	gi3c->gsi.tx.tre.flags |= UNLOCK_TRE_SET;
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "%s: dword[0]:0x%x dword[1]:0x%x dword[2]:0x%x dword[3]:0x%x\n", __func__,
+		    unlock_t->dword[0], unlock_t->dword[1], unlock_t->dword[2], unlock_t->dword[3]);
+}
+
+/*
  * i3c_setup_cfg0_tre() - Populates gsi config tre parameters
  *
  * @gi3c: i3c master device handle
@@ -756,6 +983,7 @@ static void i3c_setup_cfg0_tre(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_p
 			       int idx, bool gsi_bei, bool multi_tre_tx_xfer)
 {
 	const struct geni_i3c_clk_fld *itr = gi3c->clk_fld;
+	struct geni_i2c_clk_fld *itr_i2c;
 	struct msm_gpi_tre *cfg0_t = &gi3c->gsi.tx.tre.config_t;
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	u32 cur_len;
@@ -765,12 +993,22 @@ static void i3c_setup_cfg0_tre(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_p
 	else
 		cur_len = gi3c->cur_len;
 
-	/* config0 */
-	cfg0_t->dword[0] = MSM_GPI_I3C_CONFIG0_TRE_DWORD0(I3C_PACK_EN, itr->i2c_t_cycle_cnt,
-							  itr->i2c_t_high_cnt, itr->i2c_t_low_cnt);
-	cfg0_t->dword[1] = MSM_GPI_I3C_CONFIG0_TRE_DWORD1(0, itr->i3c_t_cycle_cnt,
-							  itr->i3c_t_high_cnt);
-	cfg0_t->dword[2] = MSM_GPI_I3C_CONFIG0_TRE_DWORD2(gi3c->dfs_idx, itr->clk_div);
+	/* config0 for i2c and i3c*/
+	if (gi3c->is_i2c_xfer) {
+		itr_i2c = geni_i2c_clk_map;
+		cfg0_t->dword[0] = MSM_GPI_I2C_CONFIG0_TRE_DWORD0(I3C_PACK_EN,
+								  itr_i2c->t_cycle, itr_i2c->t_high,
+								  itr_i2c->t_low);
+		cfg0_t->dword[1] = MSM_GPI_I2C_CONFIG0_TRE_DWORD1(0, 0);
+		cfg0_t->dword[2] = MSM_GPI_I2C_CONFIG0_TRE_DWORD2(0, itr_i2c->clk_div);
+	} else {
+		cfg0_t->dword[0] = MSM_GPI_I3C_CONFIG0_TRE_DWORD0(I3C_PACK_EN, itr->i2c_t_cycle_cnt,
+								  itr->i2c_t_high_cnt,
+								  itr->i2c_t_low_cnt);
+		cfg0_t->dword[1] = MSM_GPI_I3C_CONFIG0_TRE_DWORD1(0, itr->i3c_t_cycle_cnt,
+								  itr->i3c_t_high_cnt);
+		cfg0_t->dword[2] = MSM_GPI_I3C_CONFIG0_TRE_DWORD2(gi3c->dfs_idx, itr->clk_div);
+	}
 	cfg0_t->dword[3] = MSM_GPI_I3C_CONFIG0_TRE_DWORD3(0, gsi_bei, 0, 0, 1);
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s: dfs:%d div:%d len:%d\n",
@@ -796,25 +1034,45 @@ static void i3c_setup_go_tre(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 {
 	struct msm_gpi_tre *go_t = &gi3c->gsi.tx.tre.go_t;
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
-	bool use_7e = (xfer->m_param & USE_7E) ? 1 : 0;
-	bool nack_ibi = (xfer->m_param & IBI_NACK_TBL_CTRL) ? 1 : 0;
-	bool cont_mode = (xfer->m_param & CONTINUOUS_MODE_DAA) ? 1 : 0;
-	bool bypass_addrspace = (xfer->m_param & BYPASS_ADDR_PHASE) ? 1 : 0;
+	u8 use_7e = (xfer->m_param & USE_7E) ? 1 : 0;
+	u8 nack_ibi = (xfer->m_param & IBI_NACK_TBL_CTRL) ? 1 : 0;
+	u8 cont_mode = (xfer->m_param & CONTINUOUS_MODE_DAA) ? 1 : 0;
+	u8 bypass_addrspace = (xfer->m_param & BYPASS_ADDR_PHASE) ? 1 : 0;
 	u8 addr =  (xfer->m_param >> SLV_ADDR_SHFT) & I3C_ADDR_MASK;
 	u8 ccc = (xfer->m_param & CCC_HDR_CMD_MSK) >> CCC_HDR_CMD_SHFT;
 	u32 cur_len;
+	u8 stretch;
+
+	/*
+	 * Currently implemented as SWA.
+	 * Fix is present from qup-core version 4.0.0 onwards[major = 4, minor = 0].
+	 * So below SWA is not applicable from qup-core version 4.0.0 onwards.
+	 */
+	if (gi3c->ver_info.hw_major_ver < 4)
+		stretch = 1;
+	else
+		stretch = (xfer->m_param & STOP_STRETCH) ? 1 : 0;
 
 	if (multi_tre_tx_xfer)
 		cur_len = tx_tre_q->len[idx % GSI_MAX_NUM_TRE_MSGS];
 	else
 		cur_len = gi3c->cur_len;
 
-	go_t->dword[0] = MSM_GPI_I3C_GO_TRE_DWORD0((1 << 2 | bypass_addrspace << 7), ccc,
+	go_t->dword[0] = MSM_GPI_I3C_GO_TRE_DWORD0((stretch << 2 | bypass_addrspace << 7), ccc,
 						   addr, xfer->m_cmd);
 	go_t->dword[1] = MSM_GPI_I3C_GO_TRE_DWORD1(use_7e << 0 | nack_ibi << 1 | cont_mode << 2);
 	if (gi3c->cur_rnw == READ_TRANSACTION) {
 		go_t->dword[2] = MSM_GPI_I3C_GO_TRE_DWORD2(cur_len);
-		go_t->dword[3] = MSM_GPI_I3C_GO_TRE_DWORD3(1, 0, 0, 1, 0);
+		/*
+		 * For Rx Go TRE: Set ieob always for non-shared SE.
+		 * For last message shared SE case unlock TRE is followed by
+		 * rx go TRE with ieob mask. So for shared SE don't set ieob
+		 * for last transfer, unlock_TRE will take care ieob mask.
+		 */
+		if (!gi3c->is_shared || (gi3c->is_shared && idx != gi3c->num_xfers - 1))
+			go_t->dword[3] = MSM_GPI_I2C_GO_TRE_DWORD3(1, 0, 0, 1, 0);
+		else
+			go_t->dword[3] = MSM_GPI_I2C_GO_TRE_DWORD3(1, 0, 0, 0, 0);
 	} else {
 		/* For Tx Go tre: ieob is not set, chain bit is set */
 		go_t->dword[2] = MSM_GPI_I3C_GO_TRE_DWORD2(cur_len);
@@ -891,6 +1149,7 @@ static void i3c_setup_tx_tre(struct geni_i3c_dev *gi3c, int tx_idx, bool gsi_bei
 	struct msm_gpi_tre *tx_t = &gi3c->gsi.tx.tre.dma_t;
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	u32 cur_len = 0;
+	bool chain_bit = false;
 	int xfer_tx_idx = tx_idx % GSI_MAX_NUM_TRE_MSGS;
 
 	if (multi_tre_tx_xfer)
@@ -904,12 +1163,24 @@ static void i3c_setup_tx_tre(struct geni_i3c_dev *gi3c, int tx_idx, bool gsi_bei
 		geni_i3c_fill_immediate_dma_data((u8 *)&tx_t->dword[0],
 						 (u8 *)tx_tre_q->virt_buf[xfer_tx_idx], cur_len);
 		tx_t->dword[2] = MSM_GPI_DMA_IMMEDIATE_TRE_DWORD2(cur_len);
-		tx_t->dword[3] = MSM_GPI_DMA_IMMEDIATE_TRE_DWORD3(0, gsi_bei, 1, 0, 0);
+		/*
+		 * For Tx: unlock TRE is send for last transfer.
+		 * so set chain bit for last transfer DMA TRE.
+		 */
+		if (gi3c->is_shared && tx_idx == gi3c->num_xfers - 1)
+			chain_bit = true;
+		tx_t->dword[3] = MSM_GPI_DMA_IMMEDIATE_TRE_DWORD3(0, gsi_bei, 1, 0, chain_bit);
 	} else {
 		tx_t->dword[0] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD0(tx_tre_q->dma_buf[xfer_tx_idx]);
 		tx_t->dword[1] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD1(tx_tre_q->dma_buf[xfer_tx_idx]);
 		tx_t->dword[2] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD2(cur_len);
-		tx_t->dword[3] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD3(0, gsi_bei, 1, 0, 0);
+		/*
+		 * For Tx: unlock TRE is send for last transfer.
+		 * so set chain bit for last transfer DMA TRE.
+		 */
+		if (gi3c->is_shared && tx_idx == gi3c->num_xfers - 1)
+			chain_bit = true;
+		tx_t->dword[3] = MSM_GPI_DMA_W_BUFFER_TRE_DWORD3(0, gsi_bei, 1, 0, chain_bit);
 	}
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
 		    "%s: dword[0]:0x%x dword[1]:0x%x dword[2]:0x%x dword[3]:0x%x tx_idx:%d gsi_bei:%d\n",
@@ -952,12 +1223,11 @@ static int geni_i3c_err_prep_sg(struct geni_i3c_dev *gi3c)
  *
  * @gi3c: i3c master device handle
  * @xfer: i3c tx transfer parameters pointer
- * @num_xfers: total number of tx transfers
  *
  * Return: 0 on success, error code on failure
  */
 static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
-				    struct geni_i3c_xfer_params *xfer, int num_xfers)
+				    struct geni_i3c_xfer_params *xfer)
 {
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	bool tx_chan = true, skip_callbacks = false;
@@ -966,7 +1236,7 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 
 	I3C_LOG_DBG(gi3c->ipcl, true, gi3c->se.dev,
 		    "%s Enter num_xfer=%d idx=%d len=%d\n", __func__,
-		    num_xfers, xfer->tx_idx, tx_tre_q->len[xfer_tx_idx]);
+		    gi3c->num_xfers, xfer->tx_idx, tx_tre_q->len[xfer_tx_idx]);
 
 	gi3c->err = 0;
 	gi3c->gsi_err = false;
@@ -979,10 +1249,26 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 	}
 
 	xfer->gsi_bei = false;
-	if (((xfer->tx_idx + 1) % NUM_I3C_TRE_MSGS_PER_INTR) && (xfer->tx_idx != num_xfers - 1)) {
+	if (((xfer->tx_idx + 1) % NUM_I3C_TRE_MSGS_PER_INTR) &&
+	    (xfer->tx_idx != gi3c->num_xfers - 1)) {
 		xfer->gsi_bei = true;
 		skip_callbacks = true;
 	}
+
+	/* Set BEI = true, indicating no interrupt expected for all
+	 * transfers except last transfers.
+	 * For shared SE case last submitted TRE is unlock TRE, hence continue
+	 * to have BEI = TRUE for DMA TX TRE. BEI = 0, is taken care by
+	 * setup_unlock_tre().
+	 */
+	if (gi3c->is_shared && xfer->tx_idx == gi3c->num_xfers - 1) {
+		xfer->gsi_bei = true;
+		skip_callbacks = false;
+	}
+
+	/* For shared SE, apply lock tre before the first message */
+	if (gi3c->is_shared && xfer->tx_idx == 0)
+		i3c_setup_lock_tre(gi3c);
 
 	/* Send cfg tre when cfg not sent already */
 	if (!gi3c->cfg_sent) {
@@ -1010,6 +1296,10 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 		gi3c->gsi.tx.tre.flags |= DMA_TRE_SET;
 	}
 
+	/* For shared SE, apply un_lock tre at the end of last message */
+	if (gi3c->is_shared && (xfer->tx_idx == gi3c->num_xfers - 1))
+		i3c_setup_unlock_tre(gi3c);
+
 	tre_cnt = gsi_common_fill_tre_buf(&gi3c->gsi, tx_chan);
 	gi3c->gsi.tx.tre_queue.msg_cnt++;
 	ret = gsi_common_prep_desc_and_submit(&gi3c->gsi, tre_cnt, tx_chan, skip_callbacks);
@@ -1021,12 +1311,12 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 	if (!gi3c->cfg_sent)
 		gi3c->cfg_sent = true;
 
-	if ((xfer->tx_idx != num_xfers - 1) &&
+	if ((xfer->tx_idx != gi3c->num_xfers - 1) &&
 	    (gi3c->gsi.tx.tre_queue.msg_cnt <
 	     GSI_MAX_NUM_TRE_MSGS + gi3c->gsi.tx.tre_queue.freed_msg_cnt))
 		return 0;
 
-	time_remaining = gsi_common_tx_tre_optimization(&gi3c->gsi, num_xfers,
+	time_remaining = gsi_common_tx_tre_optimization(&gi3c->gsi, gi3c->num_xfers,
 							NUM_I3C_TRE_MSGS_PER_INTR,
 							msecs_to_jiffies(XFER_TIMEOUT),
 							gi3c->wrapper_dev);
@@ -1034,17 +1324,16 @@ static int geni_i3c_gsi_multi_write(struct geni_i3c_dev *gi3c,
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			    "%s:wait_for_completion timedout\n", __func__);
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
 		reinit_completion(&gi3c->done);
 		goto geni_i3c_err_prep;
 	}
 	I3C_LOG_DBG(gi3c->ipcl, true, gi3c->se.dev,
 		    "%s Completed xfer->tx_idx=%d num_xfers=%d gsi_bei=%d\n",
-		    __func__, xfer->tx_idx, num_xfers, xfer->gsi_bei);
+		    __func__, xfer->tx_idx, gi3c->num_xfers, xfer->gsi_bei);
 geni_i3c_err_prep:
 	geni_i3c_err_prep_sg(gi3c);
 	if (gi3c->err) {
-		gsi_common_tre_process(&gi3c->gsi, num_xfers, NUM_I3C_TRE_MSGS_PER_INTR,
+		gsi_common_tre_process(&gi3c->gsi, gi3c->num_xfers, NUM_I3C_TRE_MSGS_PER_INTR,
 				       gi3c->wrapper_dev);
 		ret = (gi3c->err == -EBUSY) ? I3C_ERROR_M2 : gi3c->err;
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
@@ -1082,27 +1371,37 @@ static int geni_i3c_gsi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_pa
 	gi3c->gsi.tx.tre.flags = 0;
 	reinit_completion(&gi3c->done);
 
+	/* For shared SE, apply lock tre before the first message */
+	if (gi3c->is_shared && xfer->tx_idx == 0)
+		i3c_setup_lock_tre(gi3c);
+
 	/* Send cfg tre when cfg not sent already */
 	if (!gi3c->cfg_sent) {
 		i3c_setup_cfg0_tre(gi3c, xfer, 0, false, false);
 		gi3c->gsi.tx.tre.flags |= CONFIG_TRE_SET;
 	}
 
-	i3c_setup_go_tre(gi3c, xfer, 0, false, false);
+	i3c_setup_go_tre(gi3c, xfer, xfer->tx_idx, false, false);
 	gi3c->gsi.tx.tre.flags |= GO_TRE_SET;
 
-	ret = geni_se_common_iommu_map_buf(gi3c->wrapper_dev, &tx_tre_q->dma_buf[0],
-					   gi3c->cur_buf, gi3c->cur_len, DMA_TO_DEVICE);
-	if (ret) {
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			    "%s:geni_se_common_iommu_map_buf failed ret:%d\n", __func__, ret);
-		goto geni_i3c_gsi_write_xfer_out;
-	}
-
 	if (gi3c->cur_len) {
+		ret = geni_se_common_iommu_map_buf(gi3c->wrapper_dev, &tx_tre_q->dma_buf[0],
+						   gi3c->cur_buf, gi3c->cur_len, DMA_TO_DEVICE);
+		if (ret) {
+			I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
+				    "%s:geni_se_common_iommu_map_buf failed ret:%d\n",
+				    __func__, ret);
+			goto geni_i3c_gsi_write_xfer_out;
+		}
+
 		i3c_setup_tx_tre(gi3c, 0, false, false);
 		gi3c->gsi.tx.tre.flags |= DMA_TRE_SET;
 	}
+
+	/* For shared SE, apply un_lock tre at the end of last message */
+	if (gi3c->is_shared && (xfer->tx_idx == gi3c->num_xfers - 1))
+		i3c_setup_unlock_tre(gi3c);
+
 	tre_cnt = gsi_common_fill_tre_buf(&gi3c->gsi, tx_chan);
 	ret = gsi_common_prep_desc_and_submit(&gi3c->gsi,  tre_cnt, tx_chan, false);
 	if (ret < 0) {
@@ -1115,9 +1414,7 @@ static int geni_i3c_gsi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_pa
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			    "%s:wait_for_completion timed out\n", __func__);
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
 		gi3c->cur_buf = NULL;
-		gi3c->cur_len = 0;
 		gi3c->cur_idx = 0;
 		gi3c->cur_rnw = 0;
 		reinit_completion(&gi3c->done);
@@ -1128,9 +1425,11 @@ static int geni_i3c_gsi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_pa
 		gi3c->cfg_sent = true;
 geni_i3c_err_prep:
 	ret = geni_i3c_err_prep_sg(gi3c);
-	geni_se_common_iommu_unmap_buf(gi3c->wrapper_dev, &tx_tre_q->dma_buf[0],
-				       gi3c->cur_len, DMA_TO_DEVICE);
+	if (gi3c->cur_len)
+		geni_se_common_iommu_unmap_buf(gi3c->wrapper_dev, &tx_tre_q->dma_buf[0],
+					       gi3c->cur_len, DMA_TO_DEVICE);
 	if (gi3c->err) {
+		gi3c->cur_len = 0;
 		ret = (gi3c->err == -EBUSY) ? I3C_ERROR_M2 : gi3c->err;
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
 			    "%s:I3C transaction error :%d\n", __func__, gi3c->err);
@@ -1167,25 +1466,37 @@ static int geni_i3c_gsi_read(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 	gi3c->gsi.rx.tre.flags = 0;
 	reinit_completion(&gi3c->done);
 
+	/* For shared SE, apply lock tre before the first message */
+	if (gi3c->is_shared && xfer->tx_idx == 0)
+		i3c_setup_lock_tre(gi3c);
+
 	/* Send cfg tre only once */
 	if (!gi3c->cfg_sent) {
 		i3c_setup_cfg0_tre(gi3c, xfer, 0, false, false);
 		gi3c->gsi.tx.tre.flags |= CONFIG_TRE_SET;
 	}
 
-	i3c_setup_go_tre(gi3c, xfer, 0, false, false);
+	i3c_setup_go_tre(gi3c, xfer, xfer->tx_idx, false, false);
 	gi3c->gsi.tx.tre.flags |= GO_TRE_SET;
 
-	ret = geni_se_common_iommu_map_buf(gi3c->wrapper_dev, &gi3c->rx_phy, gi3c->cur_buf,
-					   gi3c->cur_len, DMA_FROM_DEVICE);
-	if (ret) {
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			    "%s:geni_se_common_iommu_map_buf failed ret:%d\n", __func__, ret);
-		goto geni_i3c_gsi_read_xfer_out;
+	if (gi3c->cur_len) {
+		ret = geni_se_common_iommu_map_buf(gi3c->wrapper_dev, &gi3c->rx_phy,
+						   gi3c->cur_buf, gi3c->cur_len, DMA_FROM_DEVICE);
+		if (ret) {
+			I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
+				    "%s:geni_se_common_iommu_map_buf failed ret:%d\n",
+				    __func__, ret);
+			goto geni_i3c_gsi_read_xfer_out;
+		}
 	}
 
 	i3c_setup_rx_tre(gi3c);
 	gi3c->gsi.rx.tre.flags |= DMA_TRE_SET;
+
+	/* For shared SE, apply un_lock tre at the end of last message */
+	if (gi3c->is_shared && (xfer->tx_idx == gi3c->num_xfers - 1))
+		i3c_setup_unlock_tre(gi3c);
+
 	tre_cnt = gsi_common_fill_tre_buf(&gi3c->gsi, !tx_chan);
 	ret = gsi_common_prep_desc_and_submit(&gi3c->gsi, tre_cnt, !tx_chan, false);
 	if (ret < 0) {
@@ -1206,9 +1517,7 @@ static int geni_i3c_gsi_read(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			    "%s:wait_for_completion timed out\n", __func__);
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
 		gi3c->cur_buf = NULL;
-		gi3c->cur_len = 0;
 		gi3c->cur_idx = 0;
 		gi3c->cur_rnw = 0;
 		reinit_completion(&gi3c->done);
@@ -1219,9 +1528,11 @@ static int geni_i3c_gsi_read(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_par
 		gi3c->cfg_sent = true;
 geni_i3c_err_prep:
 	ret = geni_i3c_err_prep_sg(gi3c);
-	geni_se_common_iommu_unmap_buf(gi3c->wrapper_dev, &gi3c->rx_phy,
-				       gi3c->cur_len, DMA_FROM_DEVICE);
+	if (gi3c->cur_len)
+		geni_se_common_iommu_unmap_buf(gi3c->wrapper_dev, &gi3c->rx_phy,
+					       gi3c->cur_len, DMA_FROM_DEVICE);
 	if (gi3c->err) {
+		gi3c->cur_len = 0;
 		ret = (gi3c->err == -EBUSY) ? I3C_ERROR_M2 : gi3c->err;
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
 			    "%s:I3C transaction error:%d\n", __func__, gi3c->err);
@@ -1300,7 +1611,6 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 	if (!time_remaining) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "wait_for_completion timed out\n");
 		geni_i3c_err(gi3c, GENI_TIMEOUT);
-		geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
 		gi3c->cur_buf = NULL;
 		gi3c->cur_len = 0;
 		gi3c->cur_idx = 0;
@@ -1316,7 +1626,7 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 		if (!time_remaining) {
 			I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 				    "%s:Cancel failed: Aborting\n", __func__);
-			geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+			geni_i3c_dump_dbg_regs(gi3c);
 			reinit_completion(&gi3c->done);
 			spin_lock_irqsave(&gi3c->spinlock, flags);
 			geni_se_abort_m_cmd(&gi3c->se);
@@ -1325,7 +1635,7 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 			if (!time_remaining) {
 				I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 					    "%s:Abort Failed\n", __func__);
-				geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+				geni_i3c_dump_dbg_regs(gi3c);
 			}
 		}
 	}
@@ -1342,7 +1652,7 @@ static int geni_i3c_fifo_dma_xfer(struct geni_i3c_dev *gi3c, struct geni_i3c_xfe
 			if (!time_remaining) {
 				I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 					    "Timeout:FSM Reset, rnw:%d\n", rnw);
-				geni_i3c_se_dump_dbg_regs(&gi3c->se, gi3c->se.base, gi3c->ipcl);
+				geni_i3c_dump_dbg_regs(gi3c);
 			}
 		}
 
@@ -1425,7 +1735,7 @@ static bool is_new_addr_slot_set(unsigned long *addrslot, u8 addr)
 	return ((*ptr & (1 << (addr % BITS_PER_LONG))) != 0);
 }
 
-static void qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus_phase)
+static int qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus_phase)
 {
 	const struct geni_i3c_clk_fld *itr = gi3c->clk_fld;
 	u32 val;
@@ -1449,9 +1759,21 @@ static void qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus
 			    __func__, gi3c->dfs_idx, gi3c->prev_dfs_idx);
 	}
 
+	/* for i2c using low_svs source clock */
+	if (gi3c->is_i2c_xfer)
+		freq = 19200000;
+
+	ret = clk_set_rate(gi3c->se.clk, freq);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:clock set rate failed:%d\n",
+			    __func__, ret);
+		return ret;
+	}
+
 	gi3c->prev_dfs_idx = gi3c->dfs_idx;
 	if (gi3c->se_mode == GENI_GPI_DMA)
-		return;
+		return 0;
 	writel_relaxed(gi3c->dfs_idx, gi3c->se.base + SE_GENI_CLK_SEL);
 
 	val = itr->clk_div << CLK_DEV_VALUE_SHFT;
@@ -1465,13 +1787,17 @@ static void qcom_geni_i3c_conf(struct geni_i3c_dev *gi3c, enum i3c_bus_phase bus
 
 	writel_relaxed(itr->i3c_t_cycle_cnt, gi3c->se.base + SE_I3C_SCL_CYCLE);
 	writel_relaxed(itr->i3c_t_high_cnt, gi3c->se.base + SE_I3C_SCL_HIGH);
+	return 0;
 }
 
 static void geni_i3c_hotjoin(struct work_struct *work)
 {
 	int ret;
 	struct geni_i3c_dev *gi3c = container_of(work, struct geni_i3c_dev, hj_wd);
+	unsigned long long start_time;
 
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 	pm_stay_awake(gi3c->se.dev);
 
 	ret = i3c_master_do_daa(&gi3c->ctrlr);
@@ -1479,63 +1805,62 @@ static void geni_i3c_hotjoin(struct work_struct *work)
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "hotjoin:daa failed %d\n", ret);
 
 	pm_relax(gi3c->se.dev);
+
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
-static void geni_i3c_handle_received_ibi(struct geni_i3c_dev *gi3c)
+static void geni_i3c_handle_received_ibi(struct geni_i3c_dev *gi3c, u8 slot_index)
 {
 	struct geni_i3c_i2c_dev_data *data;
 	struct i3c_ibi_slot *slot;
-	struct i3c_dev_desc *dev = gi3c->ibi.slots[0];
-	u32 val, i;
-
-	val = readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_STATUS(0));
+	struct i3c_dev_desc *dev = gi3c->ibi.slots[slot_index];
 
 	if (!dev || !dev->ibi) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "Invalid IBI device\n");
-		goto no_free_slot;
+		return;
 	}
 
 	data = i3c_dev_get_master_data(dev);
 	slot = i3c_generic_ibi_get_free_slot(data->ibi_pool);
 	if (!slot) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "no free slot\n");
-		goto no_free_slot;
+		return;
 	}
 
-	for (i = 0; i < gi3c->ibi.num_slots; i++) {
-		if (!(val & (1u << i)))
-			continue;
 
-		gi3c->ibi.data.info.info =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_INFO_ENTRY(0, i));
-		gi3c->ibi.data.ts =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_TS_LSB_ENTRY(0, i));
-		gi3c->ibi.data.payload =
-			readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_DATA_ENTRY_REG0(0, i));
+	gi3c->ibi.data.info.info =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_INFO_ENTRY(0, slot_index));
+	gi3c->ibi.data.ts =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_TS_LSB_ENTRY(0, slot_index));
+	gi3c->ibi.data.payload =
+		readl_relaxed(gi3c->ibi.ibi_base + IBI_RCVD_IBI_DATA_ENTRY_REG0(0, slot_index));
 
-		if (slot->data)
-			memcpy(slot->data, &gi3c->ibi.data.payload, dev->ibi->max_payload_len);
+	if (slot->data)
+		memcpy(slot->data, &gi3c->ibi.data.payload, dev->ibi->max_payload_len);
 
-		slot->len = min_t(unsigned int, gi3c->ibi.data.info.fields.num_bytes,
-				  dev->ibi->max_payload_len);
+	slot->len = min_t(unsigned int, gi3c->ibi.data.info.fields.num_bytes,
+			  dev->ibi->max_payload_len);
 
-		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
-			    "IBI: info: 0x%x, ts: 0x%x, Data: 0x%x\n",
-			    gi3c->ibi.data.info.info, gi3c->ibi.data.ts, gi3c->ibi.data.payload);
-	}
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+		    "IBI: info: 0x%x, ts: 0x%x, Data: 0x%x slot_id: 0x%x\n",
+		    gi3c->ibi.data.info.info, gi3c->ibi.data.ts, gi3c->ibi.data.payload,
+		    slot_index);
 
 	i3c_master_queue_ibi(dev, slot);
-no_free_slot:
-	writel_relaxed(val, gi3c->ibi.ibi_base + IBI_RCVD_IBI_CLR(0));
 }
 
 static irqreturn_t geni_i3c_ibi_irq(int irq, void *dev)
 {
 	struct geni_i3c_dev *gi3c = dev;
 	unsigned long flags;
-	u32 m_stat = 0, m_stat_mask = 0;
+	u32 m_stat = 0, m_stat_mask = 0, val = 0, rcvd_ibi_status = 0;
 	bool cmd_done = false;
+	unsigned long long start_time;
+	u8 slot_index = 0;
 
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 	spin_lock_irqsave(&gi3c->ibi.lock, flags);
 
 	if (irq == gi3c->ibi.mngr_irq) {
@@ -1566,8 +1891,19 @@ static irqreturn_t geni_i3c_ibi_irq(int irq, void *dev)
 		if (m_stat & SE_I3C_IBI_ERR)
 			gi3c->ibi.err = m_stat;
 
-		if (m_stat & IBI_RECEIVED)
-			geni_i3c_handle_received_ibi(gi3c);
+		if (m_stat & IBI_RECEIVED) {
+			rcvd_ibi_status = readl_relaxed(gi3c->ibi.ibi_base
+							+ IBI_RCVD_IBI_STATUS(0));
+			val = rcvd_ibi_status;
+			/* Handle multiple IBI interrupts/entries if any */
+			while (val) {
+				if (val & 0x1)
+					geni_i3c_handle_received_ibi(gi3c, slot_index);
+				slot_index++;
+				val >>= 1;
+			}
+			writel_relaxed(rcvd_ibi_status, gi3c->ibi.ibi_base + IBI_RCVD_IBI_CLR(0));
+		}
 
 		if (m_stat & COMMAND_DONE)
 			cmd_done = true;
@@ -1580,6 +1916,8 @@ static irqreturn_t geni_i3c_ibi_irq(int irq, void *dev)
 	if (cmd_done)
 		complete(&gi3c->ibi.done);
 	spin_unlock_irqrestore(&gi3c->ibi.lock, flags);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return IRQ_HANDLED;
 }
 
@@ -1590,7 +1928,10 @@ static irqreturn_t geni_i3c_irq(int irq, void *dev)
 	u32 m_stat, m_stat_mask, rx_st;
 	u32 dm_tx_st, dm_rx_st, dma;
 	unsigned long flags;
+	unsigned long long start_time;
 
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 	spin_lock_irqsave(&gi3c->spinlock, flags);
 
 	m_stat = readl_relaxed(gi3c->se.base + SE_GENI_M_IRQ_STATUS);
@@ -1675,6 +2016,8 @@ irqret:
 	}
 
 	spin_unlock_irqrestore(&gi3c->spinlock, flags);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return IRQ_HANDLED;
 }
 
@@ -1716,13 +2059,12 @@ static void i3c_geni_runtime_put_mutex_unlock(struct geni_i3c_dev *gi3c)
  * @gi3c: i3c master device handle
  * @xfer: i3c tx transfer parameters pointer
  * @priv_xfers: priv xfers handle
- * @num_xfers: number of xfers
  *
  * Return: 0 on success, error code on failure
  */
 static int
 i3c_geni_gsi_multi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_params *xfer,
-			 struct i3c_priv_xfer *priv_xfers, int num_xfers)
+			 struct i3c_priv_xfer *priv_xfers)
 {
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	int xfer_tx_idx = xfer->tx_idx % GSI_MAX_NUM_TRE_MSGS;
@@ -1730,7 +2072,7 @@ i3c_geni_gsi_multi_write(struct geni_i3c_dev *gi3c, struct geni_i3c_xfer_params 
 	gi3c->cur_rnw = WRITE_TRANSACTION;
 	tx_tre_q->virt_buf[xfer_tx_idx] = (u8 *)priv_xfers[xfer->tx_idx].data.out;
 	tx_tre_q->len[xfer_tx_idx] = priv_xfers[xfer->tx_idx].len;
-	return geni_i3c_gsi_multi_write(gi3c, xfer, num_xfers);
+	return geni_i3c_gsi_multi_write(gi3c, xfer);
 }
 
 /*
@@ -1795,7 +2137,7 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 {
 	struct gsi_tre_queue *tx_tre_q = &gi3c->gsi.tx.tre_queue;
 	struct geni_i3c_xfer_params xfer;
-	bool use_7e = true, stall = false, multi_tre_wr_xfer = false;
+	bool use_7e = true, stall = false;
 	int i, ret = 0;
 	unsigned long long start_time = sched_clock();
 
@@ -1804,11 +2146,15 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 		 * Do multi tre xfer write only when there are
 		 * consecutive write transactions greater than four
 		 */
-		multi_tre_wr_xfer = true;
+		tx_tre_q->is_multi_descriptor = true;
 		for (i = 0; i < num_xfers; i++)
 			if (xfers[i].rnw)
-				multi_tre_wr_xfer = false;
+				tx_tre_q->is_multi_descriptor = false;
 	}
+
+#if IS_ENABLED(CONFIG_MSM_GPI_DMA)
+	gpi_update_multi_desc_flag(gi3c->gsi.tx.ch, tx_tre_q->is_multi_descriptor, gi3c->num_xfers);
+#endif
 
 	tx_tre_q->unmap_msg_cnt = 0;
 	atomic_set(&tx_tre_q->irq_cnt, 0);
@@ -1837,8 +2183,8 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 							    xfers[i].len);
 		} else {
 			xfer.m_cmd = I3C_PRIVATE_WRITE;
-			if (multi_tre_wr_xfer)
-				ret = i3c_geni_gsi_multi_write(gi3c, &xfer, xfers, num_xfers);
+			if (tx_tre_q->is_multi_descriptor)
+				ret = i3c_geni_gsi_multi_write(gi3c, &xfer, xfers);
 			else
 				ret = i3c_geni_execute_write_command(gi3c, &xfer,
 								     (u8 *)xfers[i].data.out,
@@ -1852,6 +2198,16 @@ geni_i3c_master_gsi_priv_xfers(struct geni_i3c_dev *gi3c, struct i3c_priv_xfer *
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s Time took for %d xfers = %llu nsecs\n",
 		    __func__, num_xfers, (sched_clock() - start_time));
 	geni_i3c_gsi_stop_on_bus(gi3c);
+
+#if IS_ENABLED(CONFIG_MSM_GPI_DMA)
+	gpi_update_multi_desc_flag(gi3c->gsi.tx.ch, false, 0);
+#endif
+
+	/* For shared SE, other EE overwrites config TRE.
+	 * Send config TRE for every transfer.
+	 */
+	if (gi3c->is_shared)
+		gi3c->cfg_sent = false;
 	return ret;
 }
 
@@ -1919,6 +2275,10 @@ geni_i3c_master_priv_xfers(struct i3c_dev_desc *dev, struct i3c_priv_xfer *xfers
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	int ret;
 	u32 geni_ios;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "Enter %s num_xfer=%d\n", __func__, num_xfers);
 	if (num_xfers <= 0)
@@ -1933,7 +2293,14 @@ geni_i3c_master_priv_xfers(struct i3c_dev_desc *dev, struct i3c_priv_xfer *xfers
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
 			    "%s:IO lines:0x%x not in good state\n", __func__, geni_ios);
 
-	qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	gi3c->num_xfers = num_xfers;
+
+	ret = qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		return ret;
+	}
 
 	if (gi3c->se_mode == GENI_GPI_DMA)
 		ret = geni_i3c_master_gsi_priv_xfers(gi3c, xfers, dev->info.dyn_addr, num_xfers);
@@ -1944,6 +2311,10 @@ geni_i3c_master_priv_xfers(struct i3c_dev_desc *dev, struct i3c_priv_xfer *xfers
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s ret:%d\n", __func__, ret);
 	i3c_geni_runtime_put_mutex_unlock(gi3c);
 
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
+
+	gi3c->num_xfers = 0;
 	return ret;
 }
 
@@ -1961,7 +2332,11 @@ static int geni_i3c_master_i2c_xfers(struct i2c_dev_desc *dev, const struct i2c_
 	struct i3c_master_controller *m = i2c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	struct geni_i3c_xfer_params xfer;
-	int i, ret;
+	int i, ret = 0;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "Enter %s num xfers=%d\n", __func__, num);
 	if (!msgs) {
@@ -1973,16 +2348,28 @@ static int geni_i3c_master_i2c_xfers(struct i2c_dev_desc *dev, const struct i2c_
 	if (ret)
 		return ret;
 
-	qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	/* for i2c xfer every time updating config tre */
+	gi3c->cfg_sent = false;
+	gi3c->is_i2c_xfer = true;
+
+	ret = qcom_geni_i3c_conf(gi3c, PUSH_PULL_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		gi3c->is_i2c_xfer = false;
+		return ret;
+	}
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "i2c xfer:num:%d, msgs:len:%d,flg:%d\n",
 		    num, msgs[0].len, msgs[0].flags);
 
+	gi3c->num_xfers = num;
 	for (i = 0; i < num; i++) {
 		xfer.m_cmd    = (msgs[i].flags & I2C_M_RD) ? I2C_READ : I2C_WRITE;
 		xfer.m_param  = (i < (num - 1)) ? STOP_STRETCH : 0;
 		xfer.m_param |= ((msgs[i].addr & I3C_ADDR_MASK) << SLV_ADDR_SHFT);
 		xfer.mode     = msgs[i].len > 32 ? GENI_SE_DMA : GENI_SE_FIFO;
+		xfer.tx_idx = i;
 		if (msgs[i].flags & I2C_M_RD)
 			ret = i3c_geni_execute_read_command(gi3c, &xfer, msgs[i].buf, msgs[i].len);
 		else
@@ -1991,9 +2378,20 @@ static int geni_i3c_master_i2c_xfers(struct i2c_dev_desc *dev, const struct i2c_
 			break;
 	}
 
+	if (gi3c->se_mode == GENI_GPI_DMA)
+		geni_i3c_gsi_stop_on_bus(gi3c);
+
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "i2c: txn ret:%d\n", ret);
 
+	gi3c->cfg_sent = false;
+	gi3c->is_i2c_xfer = false;
+
+	gi3c->num_xfers = 0;
+
 	i3c_geni_runtime_put_mutex_unlock(gi3c);
+
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 
 	return ret;
 }
@@ -2010,6 +2408,10 @@ static void geni_i3c_perform_daa(struct geni_i3c_dev *gi3c)
 	struct i3c_master_controller *m = &gi3c->ctrlr;
 	int ret;
 	u8 *rx_buf, *tx_buf;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	rx_buf = kzalloc(8, GFP_DMA);
 	if (!rx_buf) {
@@ -2066,6 +2468,9 @@ static void geni_i3c_perform_daa(struct geni_i3c_dev *gi3c)
 		/* If DA is specified in DTSI, use it */
 		if (i3cboardinfo->init_dyn_addr && i3cboardinfo->init_dyn_addr < I3C_MAX_ADDR)
 			addr = init_dyn_addr = i3cboardinfo->init_dyn_addr;
+
+		if (addr < I3C_START_ADDR)
+			addr = I3C_START_ADDR;
 
 		addr = ret = i3c_master_get_free_addr(m, addr);
 
@@ -2135,6 +2540,8 @@ static void geni_i3c_perform_daa(struct geni_i3c_dev *gi3c)
 daa_err:
 	kfree(tx_buf);
 	kfree(rx_buf);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
 /*
@@ -2149,6 +2556,14 @@ static int geni_i3c_gsi_stop_on_bus(struct geni_i3c_dev *gi3c)
 	struct msm_gpi_tre *go_t = &gi3c->gsi.tx.tre.go_t;
 	int tre_cnt = 0, ret = 0, time_remaining = 0;
 	bool tx_chan = true;
+
+	/*
+	 * Currently implemented as SWA.
+	 * Fix is present from qup-core version 4.0.0 onwards[major = 4, minor = 0].
+	 * So below SWA is not applicable from qup-core version 4.0.0 onwards.
+	 */
+	if (gi3c->ver_info.hw_major_ver >= 4)
+		return 0;
 
 	gi3c->err = 0;
 	gi3c->gsi_err = false;
@@ -2197,7 +2612,11 @@ static int geni_i3c_gsi_stop_on_bus(struct geni_i3c_dev *gi3c)
 static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct i3c_ccc_cmd *cmd)
 {
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	unsigned long long start_time;
 	int i, ret;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (!(cmd->id & I3C_CCC_DIRECT) && (cmd->ndests != 1))
 		return -EINVAL;
@@ -2206,7 +2625,15 @@ static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct 
 	if (ret)
 		return ret;
 
-	qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	ret = qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		return ret;
+	}
+
+	/* every ccc command treated as one xfer */
+	gi3c->num_xfers = cmd->ndests;
 
 	for (i = 0; i < cmd->ndests; i++) {
 		int stall = (i < (cmd->ndests - 1)) ||
@@ -2216,6 +2643,8 @@ static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct 
 		xfer.m_param  = (stall ? STOP_STRETCH : 0);
 		xfer.m_param |= (cmd->id << CCC_HDR_CMD_SHFT);
 		xfer.m_param |= IBI_NACK_TBL_CTRL;
+		xfer.tx_idx = i;
+
 		if (cmd->id & I3C_CCC_DIRECT) {
 			xfer.m_param |= ((cmd->dests[i].addr & I3C_ADDR_MASK)
 					<< SLV_ADDR_SHFT);
@@ -2258,10 +2687,13 @@ static int geni_i3c_master_send_ccc_cmd(struct i3c_master_controller *m, struct 
 			geni_i3c_perform_daa(gi3c);
 	}
 
+	gi3c->num_xfers = 0;
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "i3c ccc: txn ret:%d\n", ret);
 
 	i3c_geni_runtime_put_mutex_unlock(gi3c);
 
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return ret;
 }
 
@@ -2270,6 +2702,10 @@ static int geni_i3c_master_attach_i2c_dev(struct i2c_dev_desc *dev)
 	struct i3c_master_controller *m = i2c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	struct geni_i3c_i2c_dev_data *data;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	data = devm_kzalloc(gi3c->se.dev, sizeof(*data), GFP_KERNEL);
 	if (!data) {
@@ -2280,12 +2716,23 @@ static int geni_i3c_master_attach_i2c_dev(struct i2c_dev_desc *dev)
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s %d\n", __func__, true);
 	i2c_dev_set_master_data(dev, data);
 
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
+
 	return 0;
 }
 
 static void geni_i3c_master_detach_i2c_dev(struct i2c_dev_desc *dev)
 {
+	struct i3c_master_controller *m = i2c_dev_get_master(dev);
+	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 	i2c_dev_set_master_data(dev, NULL);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
 static int geni_i3c_master_attach_i3c_dev(struct i3c_dev_desc *dev)
@@ -2294,7 +2741,10 @@ static int geni_i3c_master_attach_i3c_dev(struct i3c_dev_desc *dev)
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	struct geni_i3c_i2c_dev_data *data;
 	struct i3c_dev_boardinfo *i3cboardinfo;
+	unsigned long long start_time;
 
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 	data = devm_kzalloc(gi3c->se.dev, sizeof(*data), GFP_KERNEL);
 	if (!data) {
 		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s alloc fail return\n", __func__);
@@ -2311,6 +2761,8 @@ static int geni_i3c_master_attach_i3c_dev(struct i3c_dev_desc *dev)
 	}
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s %d\n", __func__, true);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return 0;
 }
 
@@ -2322,6 +2774,11 @@ static int geni_i3c_master_reattach_i3c_dev
 {
 	struct i3c_master_controller *m = i3c_dev_get_master(dev);
 	struct i3c_dev_boardinfo *i3cboardinfo;
+	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (!dev->boardinfo) {
 		list_for_each_entry(i3cboardinfo, &m->boardinfo.i3c, node) {
@@ -2330,12 +2787,23 @@ static int geni_i3c_master_reattach_i3c_dev
 		}
 	}
 
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
+
 	return 0;
 }
 
 static void geni_i3c_master_detach_i3c_dev(struct i3c_dev_desc *dev)
 {
+	struct i3c_master_controller *m = i3c_dev_get_master(dev);
+	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 	i3c_dev_set_master_data(dev, NULL);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
 static int geni_i3c_master_entdaa_locked(struct geni_i3c_dev *gi3c)
@@ -2369,12 +2837,42 @@ static int geni_i3c_master_do_daa(struct i3c_master_controller *m)
 	return geni_i3c_master_entdaa_locked(gi3c);
 }
 
+/*
+ * geni_i3c_config_od_mode_freq() - configure od mode frequency
+ *
+ * @gi3c: i3c master device handle
+ * @od_freq: open drain frequency value
+ *
+ * Return: None
+ */
+static void geni_i3c_config_od_mode_freq(struct geni_i3c_dev *gi3c, unsigned long od_freq)
+{
+	u32 od_val = 0;
+
+	/* Config ibi open drain mode frequency based on i2c OD frequency.
+	 * OD_MODE to ensure it is within valid range
+	 * (0: standard (100KHz), 1: fast (400KHz), 2: fast-plus (1MHz)).
+	 */
+	if (od_freq == I2C_MAX_FAST_MODE_PLUS_FREQ)
+		od_val = I2C_MAX_FAST_MODE_PLUS;
+	else if (od_freq == I2C_MAX_FAST_MODE_FREQ)
+		od_val = I2C_MAX_FAST_MODE;
+	else
+		od_val = I2C_MAX_STANDARD_MODE;
+
+	geni_write_reg(od_val, gi3c->ibi.ibi_base, IBI_SCL_OD_TYPE);
+}
+
 static int geni_i3c_master_bus_init(struct i3c_master_controller *m)
 {
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	struct i3c_bus *bus = i3c_master_get_bus(m);
 	struct i3c_device_info info = { };
 	int ret;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	ret = pm_runtime_get_sync(gi3c->se.dev);
 	if (ret < 0) {
@@ -2395,7 +2893,15 @@ static int geni_i3c_master_bus_init(struct i3c_master_controller *m)
 		goto err_cleanup;
 	}
 
-	qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	ret = qcom_geni_i3c_conf(gi3c, OPEN_DRAIN_MODE);
+	if (ret) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev,
+			    "%s:geni i3c config failed, ret:%d\n", __func__, ret);
+		return ret;
+	}
+
+	/* configure i3c OD mode frequency */
+	geni_i3c_config_od_mode_freq(gi3c, bus->scl_rate.i2c);
 
 	/* Get an address for the master. */
 	ret = i3c_master_get_free_addr(m, 0);
@@ -2417,20 +2923,14 @@ err_cleanup:
 	 *use mutex protected internal put/get sync API. Hence forcefully
 	 *disabling clocks and decrementing usage count.
 	 */
-	disable_irq(gi3c->irq);
-	ret = geni_se_resources_off(&gi3c->se);
-	if (ret)
+	ret = pm_runtime_put_sync(gi3c->se.dev);
+	if (ret < 0) {
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_se_resources_off failed%d\n", __func__, ret);
-	ret = geni_icc_disable(&gi3c->se);
-	if (ret)
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_icc_disable failed%d\n", __func__, ret);
-	pm_runtime_disable(gi3c->se.dev);
-	pm_runtime_put_noidle(gi3c->se.dev);
-	pm_runtime_set_suspended(gi3c->se.dev);
-	pm_runtime_enable(gi3c->se.dev);
-
+			"%s: error turning SE resources:%d\n", __func__, ret);
+		return ret;
+	}
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return ret;
 }
 
@@ -2445,6 +2945,10 @@ static bool geni_i3c_master_supports_ccc_cmd
 )
 {
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "Enter %s cmd->id:0x%x\n", __func__, cmd->id);
 
@@ -2477,8 +2981,6 @@ static bool geni_i3c_master_supports_ccc_cmd
 	fallthrough;
 	case I3C_CCC_DEFSLVS:
 	fallthrough;
-	case I3C_CCC_ENTHDR(0):
-	fallthrough;
 	case I3C_CCC_SETDASA:
 	fallthrough;
 	case I3C_CCC_SETNEWDA:
@@ -2500,6 +3002,8 @@ static bool geni_i3c_master_supports_ccc_cmd
 	case I3C_CCC_GETMXDS:
 	fallthrough;
 	case I3C_CCC_GETHDRCAP:
+		geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+				       gi3c->i3c_kpi, start_time, 0, 0);
 		return true;
 	default:
 		break;
@@ -2514,6 +3018,10 @@ static int geni_i3c_master_enable_ibi(struct i3c_dev_desc *dev)
 	struct i3c_master_controller *m = i3c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	int ret = 0;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (!gi3c->ibi.hw_support && !gi3c->ibi.is_init)
 		return -EPERM;
@@ -2524,6 +3032,8 @@ static int geni_i3c_master_enable_ibi(struct i3c_dev_desc *dev)
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			"%s: error while i3c_master_enec_locked\n", __func__);
 
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return ret;
 }
 
@@ -2532,6 +3042,10 @@ static int geni_i3c_master_disable_ibi(struct i3c_dev_desc *dev)
 	struct i3c_master_controller *m = i3c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	int ret = 0;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (!gi3c->ibi.hw_support && !gi3c->ibi.is_init)
 		return -EPERM;
@@ -2540,7 +3054,8 @@ static int geni_i3c_master_disable_ibi(struct i3c_dev_desc *dev)
 	if (ret)
 		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
 			"%s: error while i3c_master_disec_locked\n", __func__);
-
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return ret;
 }
 
@@ -2562,22 +3077,23 @@ static void qcom_geni_i3c_ibi_conf(struct geni_i3c_dev *gi3c)
 		}
 	}
 
-	/* set the configuration for 100Khz OD speed */
-	geni_write_reg(0x5FD74322, gi3c->ibi.ibi_base, IBI_SCL_PP_TIMING_CONFIG);
-
 	geni_i3c_enable_ibi_ctrl(gi3c, true);
 	geni_i3c_enable_ibi_irq(gi3c, true);
 	gi3c->ibi.is_init = true;
 }
 
-static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
-	const struct i3c_ibi_setup *req)
+static int geni_i3c_request_ibi(struct i3c_dev_desc *dev,
+				const struct i3c_ibi_setup *req)
 {
 	struct i3c_master_controller *m = i3c_dev_get_master(dev);
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	struct geni_i3c_i2c_dev_data *data = i3c_dev_get_master_data(dev);
 	unsigned long i, flags;
 	unsigned int payload_len = req->max_payload_len;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (!gi3c->ibi.hw_support)
 		return -EPERM;
@@ -2610,7 +3126,7 @@ static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
 		reinit_completion(&gi3c->ibi.done);
 
 		cmd = ((dev->info.dyn_addr & I3C_SLAVE_MASK)
-			<< I3C_SLAVE_ADDR_SHIFT) | I3C_SLAVE_RW | STALL;
+			<< I3C_SLAVE_ADDR_SHIFT) | I3C_SLAVE_RW;
 		cmd |= ((payload_len << NUM_OF_MDB_SHIFT) & IBI_NUM_OF_MDB_MSK);
 		geni_write_reg(cmd, gi3c->ibi.ibi_base, IBI_CMD(0));
 
@@ -2636,12 +3152,33 @@ static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
 	i3c_generic_ibi_free_pool(data->ibi_pool);
 	data->ibi_pool = NULL;
 
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
+
 	return -ENOSPC;
+}
+
+static int geni_i3c_master_request_ibi(struct i3c_dev_desc *dev,
+				       const struct i3c_ibi_setup *req)
+{
+	struct i3c_master_controller *m = i3c_dev_get_master(dev);
+	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	int ret;
+
+	mutex_lock(&gi3c->i3c_ibi_lock);
+	ret = geni_i3c_request_ibi(dev, req);
+	mutex_unlock(&gi3c->i3c_ibi_lock);
+
+	return ret;
 }
 
 static int qcom_deallocate_ibi_table_entry(struct geni_i3c_dev *gi3c)
 {
 	u32 i, timeout;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	for (i = 0; i < gi3c->ibi.num_slots; i++) {
 		u32 entry;
@@ -2668,6 +3205,9 @@ static int qcom_deallocate_ibi_table_entry(struct geni_i3c_dev *gi3c)
 			}
 		}
 	}
+
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 
 	return 0;
 }
@@ -2709,28 +3249,6 @@ static void geni_i3c_enable_ibi_irq(struct geni_i3c_dev *gi3c, bool enable)
 	}
 }
 
-/*
- * geni_i3c_disable_free_running_clock() - fix free running clock
- *
- * @gi3c: i3c master device handle
- *
- * Return: None
- */
-static void geni_i3c_disable_free_running_clock(struct geni_i3c_dev *gi3c)
-{
-	/*
-	 * Currently implemented as SWA.
-	 * Fix is present from qup-core version 4.0.0 onwards[major = 4, minor = 0].
-	 * So below SWA is not applicable from qup-core version 4.0.0 onwards.
-	 */
-	if (gi3c->ver_info.hw_major_ver < 4) {
-		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "Force default\n");
-		writel(FORCE_DEFAULT, gi3c->se.base + GENI_FORCE_DEFAULT_REG);
-		writel(0x7f, gi3c->se.base + GENI_OUTPUT_CTRL);
-	}
-	gi3c->disable_free_run_clks = true;
-}
-
 static void geni_i3c_enable_ibi_ctrl(struct geni_i3c_dev *gi3c, bool enable)
 {
 	u32 val, timeout;
@@ -2746,10 +3264,6 @@ static void geni_i3c_enable_ibi_ctrl(struct geni_i3c_dev *gi3c, bool enable)
 		/* Enable I3C IBI controller, if not in enabled state */
 		val = geni_read_reg(gi3c->ibi.ibi_base, IBI_GEN_CONFIG);
 		if (!(val & IBI_C_ENABLE)) {
-			/* SW WAR for HW BUG - Execute only once */
-			if (!gi3c->disable_free_run_clks)
-				geni_i3c_disable_free_running_clock(gi3c);
-
 			val |= IBI_C_ENABLE;
 			geni_write_reg(val, gi3c->ibi.ibi_base, IBI_GEN_CONFIG);
 
@@ -2767,9 +3281,9 @@ static void geni_i3c_enable_ibi_ctrl(struct geni_i3c_dev *gi3c, bool enable)
 	} else {
 		 /* Disable IBI controller */
 
-		/* check if any IBI is enabled, if not then disable IBI ctrl */
+		/* check if any IBI is enabled, if so disable IBI ctrl */
 		val = geni_read_reg(gi3c->ibi.ibi_base, IBI_GPII_IBI_EN);
-		if (!val) {
+		if (val) {
 			gi3c->ibi.err = 0;
 			reinit_completion(&gi3c->ibi.done);
 
@@ -2882,6 +3396,10 @@ static void geni_i3c_master_free_ibi(struct i3c_dev_desc *dev)
 	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
 	struct geni_i3c_i2c_dev_data *data = i3c_dev_get_master_data(dev);
 	unsigned long flags;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (!gi3c->ibi.hw_support && !gi3c->ibi.is_init)
 		return;
@@ -2894,6 +3412,8 @@ static void geni_i3c_master_free_ibi(struct i3c_dev_desc *dev)
 	spin_unlock_irqrestore(&gi3c->ibi.lock, flags);
 
 	i3c_generic_ibi_free_pool(data->ibi_pool);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
 static void geni_i3c_master_recycle_ibi_slot
@@ -2903,8 +3423,17 @@ static void geni_i3c_master_recycle_ibi_slot
 )
 {
 	struct geni_i3c_i2c_dev_data *data = i3c_dev_get_master_data(dev);
+	struct i3c_master_controller *m = i3c_dev_get_master(dev);
+	struct geni_i3c_dev *gi3c = to_geni_i3c_master(m);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	i3c_generic_ibi_recycle_slot(data->ibi_pool, slot);
+
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 }
 
 static const struct i3c_master_controller_ops geni_i3c_master_ops = {
@@ -3048,14 +3577,9 @@ static int i3c_geni_rsrcs_init(struct geni_i3c_dev *gi3c,
 				"geni_se_common_resources_init Failed:%d\n", ret);
 		return ret;
 	}
-	I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
-		"%s: GENI_TO_CORE:%d CPU_TO_GENI:%d GENI_TO_DDR:%d\n", __func__,
-		gi3c->se.icc_paths[GENI_TO_CORE].avg_bw,
-		gi3c->se.icc_paths[CPU_TO_GENI].avg_bw,
-		gi3c->se.icc_paths[GENI_TO_DDR].avg_bw);
 
 	 /* call set_bw for once, then do icc_enable/disable */
-	ret = geni_icc_set_bw(&gi3c->se);
+	ret = geni_common_icc_set_bw(&gi3c->se, gi3c->ipcl);
 	if (ret) {
 		dev_err(&pdev->dev, "%s: icc set bw failed ret:%d\n",
 							__func__, ret);
@@ -3225,7 +3749,6 @@ static int i3c_ibi_rsrcs_init(struct geni_i3c_dev *gi3c,
 	}
 
 	qcom_geni_i3c_ibi_conf(gi3c);
-
 	return 0;
 }
 
@@ -3269,6 +3792,7 @@ static void geni_i3c_init_gsi_common_param(struct geni_i3c_dev *gi3c)
 	gi3c->gsi.rx.cb_fun = gi3c_gsi_rx_cb;
 	gi3c->gsi.ev_cb_fun = gi3c_ev_cb;
 	gi3c->gsi.protocol_err = &gi3c->err;
+	gi3c->gsi.err = &gi3c->gsi_err;
 }
 
 /*
@@ -3401,6 +3925,7 @@ static int geni_i3c_probe(struct platform_device *pdev)
 
 	init_completion(&gi3c->done);
 	mutex_init(&gi3c->lock);
+	mutex_init(&gi3c->i3c_ibi_lock);
 	spin_lock_init(&gi3c->spinlock);
 	platform_set_drvdata(pdev, gi3c);
 
@@ -3442,7 +3967,11 @@ static int geni_i3c_probe(struct platform_device *pdev)
 	}
 
 	gi3c->i3c_rsc.proto = GENI_SE_I3C;
-	gi3c->disable_free_run_clks = false;
+
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,shared")) {
+		gi3c->is_shared = true;
+		dev_info(&pdev->dev, "SE being used by two EEs.\n");
+	}
 
 	se_mode = geni_read_reg(gi3c->se.base, GENI_IF_DISABLE_RO);
 	if (se_mode) {
@@ -3460,7 +3989,13 @@ static int geni_i3c_probe(struct platform_device *pdev)
 		goto geni_resources_off;
 	}
 
-	if (gi3c->se_mode != GENI_GPI_DMA) {
+	if (gi3c->se_mode == GENI_GPI_DMA) {
+		I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "GSI mode, applying Force default\n");
+		writel(FORCE_DEFAULT, gi3c->se.base + GENI_FORCE_DEFAULT_REG);
+		writel(0x7f, gi3c->se.base + GENI_OUTPUT_CTRL);
+	} else {
+		/* shared SE is not allowed for non GSI Mode. */
+		gi3c->is_shared = false;
 		tx_depth = geni_se_get_tx_fifo_depth(&gi3c->se);
 		gi3c->tx_wm = tx_depth - 1;
 		geni_se_init(&gi3c->se, gi3c->tx_wm, tx_depth);
@@ -3471,25 +4006,25 @@ static int geni_i3c_probe(struct platform_device *pdev)
 			    tx_depth, gi3c->se_mode);
 	}
 
-	ret = geni_se_resources_off(&gi3c->se);
-	if (ret)
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_se_resources_off failed%d\n", __func__, ret);
-	ret = geni_icc_disable(&gi3c->se);
-	if (ret)
-		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
-			"%s: geni_icc_disable failed%d\n", __func__, ret);
-
-	pm_runtime_set_suspended(gi3c->se.dev);
-	pm_runtime_set_autosuspend_delay(gi3c->se.dev, I3C_AUTO_SUSPEND_DELAY);
-	pm_runtime_use_autosuspend(gi3c->se.dev);
-	pm_runtime_enable(gi3c->se.dev);
-
 	geni_ios = geni_read_reg(gi3c->se.base, SE_GENI_IOS);
 	if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
 		I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
 		"%s: IO lines:0x%x, Ensure bus power up\n", __func__, geni_ios);
 	}
+
+	ret = geni_se_resources_off(&gi3c->se);
+	if (ret)
+		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
+			    "geni_se_resources_off failed %d\n", ret);
+	ret = geni_icc_disable(&gi3c->se);
+	if (ret)
+		I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev,
+			    "geni_icc_disable failed %d\n", ret);
+
+	pm_runtime_set_suspended(gi3c->se.dev);
+	pm_runtime_set_autosuspend_delay(gi3c->se.dev, I3C_AUTO_SUSPEND_DELAY);
+	pm_runtime_use_autosuspend(gi3c->se.dev);
+	pm_runtime_enable(gi3c->se.dev);
 
 	ret = i3c_master_register(&gi3c->ctrlr, &pdev->dev,
 		&geni_i3c_master_ops, false);
@@ -3501,7 +4036,7 @@ static int geni_i3c_probe(struct platform_device *pdev)
 		ret = 0;
 	}
 	I3C_LOG_ERR(gi3c->ipcl, false, gi3c->se.dev,
-		"I3C bus freq:%ld, I2C bus fres:%ld\n",
+		"I3C bus freq:%ld, I2C bus freq:%ld\n",
 		gi3c->ctrlr.bus.scl_rate.i3c,  gi3c->ctrlr.bus.scl_rate.i2c);
 
 	if (gi3c->se_mode == GENI_GPI_DMA) {
@@ -3523,8 +4058,9 @@ static int geni_i3c_probe(struct platform_device *pdev)
 	}
 
 	INIT_WORK(&gi3c->hj_wd, geni_i3c_hotjoin);
-	gi3c->hj_wq = alloc_workqueue("%s", 0, 0, dev_name(gi3c->se.dev));
+	gi3c->hj_wq = alloc_workqueue("%s", WQ_UNBOUND | WQ_HIGHPRI, 1, dev_name(gi3c->se.dev));
 	geni_i3c_enable_hotjoin_irq(gi3c, true);
+	device_create_file(gi3c->se.dev, &dev_attr_capture_kpi);
 
 	I3C_LOG_ERR(gi3c->ipcl, true, gi3c->se.dev, "I3C probed:%d\n", ret);
 	return ret;
@@ -3571,6 +4107,8 @@ static int geni_i3c_remove(struct platform_device *pdev)
 	/* TBD : If we need debug for previous session, Don't delete logs */
 	if (gi3c->ipcl)
 		ipc_log_context_destroy(gi3c->ipcl);
+	if (gi3c->ipc_log_kpi)
+		ipc_log_context_destroy(gi3c->ipc_log_kpi);
 
 	for (i = 0; i < i3c_nos; i++)
 		i3c_geni_dev[i] = NULL;
@@ -3582,6 +4120,10 @@ static int geni_i3c_remove(struct platform_device *pdev)
 static int geni_i3c_resume_early(struct device *dev)
 {
 	struct geni_i3c_dev *gi3c = dev_get_drvdata(dev);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (gi3c->ibi.ibic_naon && !gi3c->ibi.naon_clk_en) {
 		if (geni_i3c_enable_naon_ibi_clks(gi3c, true)) {
@@ -3591,6 +4133,8 @@ static int geni_i3c_resume_early(struct device *dev)
 		}
 	}
 
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return 0;
 }
 
@@ -3626,7 +4170,13 @@ static int geni_i3c_gpi_pause_resume(struct geni_i3c_dev *gi3c, bool is_suspend)
 static int geni_i3c_runtime_suspend(struct device *dev)
 {
 	struct geni_i3c_dev *gi3c = dev_get_drvdata(dev);
-	int ret;
+	int ret = 0;
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
+
+	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s(): ret:%d start\n", __func__, ret);
 
 	if (gi3c->se_mode != GENI_GPI_DMA) {
 		disable_irq(gi3c->irq);
@@ -3651,13 +4201,19 @@ static int geni_i3c_runtime_suspend(struct device *dev)
 
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s():ret:%d\n",
 			 __func__, ret);
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return 0;
 }
 
 static int geni_i3c_runtime_resume(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 	struct geni_i3c_dev *gi3c = dev_get_drvdata(dev);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	ret = geni_icc_enable(&gi3c->se);
 	if (ret) {
@@ -3690,12 +4246,18 @@ static int geni_i3c_runtime_resume(struct device *dev)
 	I3C_LOG_DBG(gi3c->ipcl, false, gi3c->se.dev, "%s(): ret:%d\n",
 			__func__, ret);
 	/* Enable TLMM I3C MODE registers */
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return 0;
 }
 
 static int geni_i3c_suspend_late(struct device *dev)
 {
 	struct geni_i3c_dev *gi3c = dev_get_drvdata(dev);
+	unsigned long long start_time;
+
+	start_time = geni_capture_start_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+					     gi3c->i3c_kpi);
 
 	if (gi3c->ibi.ibic_naon && gi3c->ibi.naon_clk_en) {
 		if (geni_i3c_enable_naon_ibi_clks(gi3c, false)) {
@@ -3714,6 +4276,9 @@ static int geni_i3c_suspend_late(struct device *dev)
 		pm_runtime_set_suspended(dev);
 		pm_runtime_enable(dev);
 	}
+
+	geni_capture_stop_time(&gi3c->se, gi3c->ipc_log_kpi, __func__,
+			       gi3c->i3c_kpi, start_time, 0, 0);
 	return 0;
 }
 #else

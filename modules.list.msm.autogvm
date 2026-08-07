@@ -11,9 +11,9 @@ mem_buf_dev.ko
 mem_buf_msgq.ko
 qcom_dma_heaps.ko
 rename_devices.ko
+gh_mem_notifier.ko
 gh_msgq.ko
 gh_rm_drv.ko
-boot_stats.ko
 virtio_clk_lemans.ko
 virtio_clk_direwolf.ko
 virtio_clk_sa8195p.ko
@@ -21,7 +21,6 @@ virtio_clk_sm6150.ko
 virtio_clk_sm8150.ko
 virtio_clk_monaco.ko
 virtio_clk.ko
-debug-regulator.ko
 virtio_regulator.ko
 iommu-logger.ko
 qcom_iommu_util.ko
@@ -29,3 +28,15 @@ arm_smmu.ko
 virt-arm-smmu-v3.ko
 crypto-qti-virt.ko
 virtio_blk_qti_crypto.ko
+qcom-ipcc.ko
+debug_symbol.ko
+virtio_net.ko
+net_failover.ko
+failover.ko
+stub-regulator.ko
+viospmi-pmic-arb.ko
+qcom-spmi-pmic.ko
+pinctrl-spmi-gpio.ko
+pinctrl-spmi-mpp.ko
+rtc-pm8xxx.ko
+scmi_pm_domain.ko

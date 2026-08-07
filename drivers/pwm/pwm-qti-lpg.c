@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
@@ -23,6 +23,7 @@
 #include <linux/regmap.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
+#include <linux/suspend.h>
 #include <linux/types.h>
 
 #define REG_SIZE_PER_LPG	0x100
@@ -2039,11 +2040,13 @@ static int qpnp_lpg_probe(struct platform_device *pdev)
 		lpg = &chip->lpgs[i];
 		lpg->output_type = PWM_OUTPUT_FIXED;
 
-		rc = qpnp_lpg_pwm_src_enable(lpg, false);
-		if (rc < 0) {
-			dev_err(chip->dev, "Disable PWM output failed for channel %d, rc=%d\n",
+		if (chip->lut != NULL) {
+			rc = qpnp_lpg_pwm_src_enable(lpg, false);
+			if (rc < 0) {
+				dev_err(chip->dev, "Disable PWM output failed for channel %d, rc=%d\n",
 					lpg->lpg_idx, rc);
-			return rc;
+				return rc;
+			}
 		}
 
 		if (lpg->enable_pfm) {
@@ -2087,6 +2090,74 @@ static int qpnp_lpg_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int pwm_restore(struct device *dev)
+{
+	struct qpnp_lpg_chip *chip = dev_get_drvdata(dev);
+	struct qpnp_lpg_channel *lpg;
+	struct pwm_device *pwm = chip->pwm_chip.pwms;
+	int rc = 0, i;
+
+	pr_debug("Restoring from hibernation via pwm restore\n");
+	rc = qpnp_lpg_pwm_apply(&chip->pwm_chip, pwm,
+				&pwm->state);
+	if (rc < 0)
+		return rc;
+
+	rc = qpnp_lpg_sdam_hw_init(chip);
+	if (rc < 0) {
+		dev_err(chip->dev, "SDAM HW init failed, rc=%d\n",
+				rc);
+		return rc;
+	}
+
+	for (i = 0; i < chip->num_lpgs; i++) {
+		lpg = &chip->lpgs[i];
+		lpg->output_type = PWM_OUTPUT_FIXED;
+		if (lpg->enable_pfm) {
+			rc = qpnp_lpg_write(lpg, REG_PWM_FM_MODE,
+					FM_MODE_ENABLE);
+			if (rc < 0) {
+				dev_err(chip->dev, "Write fm_mode_enable failed, rc=%d\n",
+					rc);
+				return rc;
+			}
+		}
+	}
+
+	return 0;
+
+}
+static int pwm_freeze(struct device *dev)
+{
+	pr_debug("Entering hibernation via pwm freeze\n");
+	return 0;
+}
+
+static int pwm_suspend(struct device *dev)
+{
+	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
+		pr_debug("Entering Deepsleep via pwm suspend\n");
+		return pwm_freeze(dev);
+	}
+	return 0;
+}
+
+static int pwm_resume(struct device *dev)
+{
+	if (pm_suspend_target_state == PM_SUSPEND_MEM) {
+		pr_debug("Resuming from Deepsleep via pwm resume\n");
+		return pwm_restore(dev);
+	}
+	return 0;
+}
+
+static const struct dev_pm_ops pwm_pm_ops = {
+	.freeze	= pwm_freeze,
+	.restore	= pwm_restore,
+	.suspend	= pwm_suspend,
+	.resume	= pwm_resume,
+};
+
 static const struct of_device_id qpnp_lpg_of_match[] = {
 	{ .compatible = "qcom,pwm-lpg",},
 	{ },
@@ -2096,6 +2167,7 @@ static struct platform_driver qpnp_lpg_driver = {
 	.driver		= {
 		.name		= "qcom,pwm-lpg",
 		.of_match_table	= qpnp_lpg_of_match,
+		.pm		= &pwm_pm_ops,
 	},
 	.probe		= qpnp_lpg_probe,
 	.remove		= qpnp_lpg_remove,

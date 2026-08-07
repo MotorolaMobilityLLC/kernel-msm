@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2015, The Linux Foundation. All rights reserved.
  * Copyright (c) 2019, 2020, Linaro Ltd.
- * Copyright (c) 2021-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, 2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -837,7 +837,6 @@ static const struct regmap_config tsens_srot_config = {
 static int init_cold_interrupt(struct tsens_priv *priv,
 				struct platform_device *op, u32 ver_minor)
 {
-
 	struct device *dev = priv->dev;
 	int ret = 0;
 
@@ -850,20 +849,21 @@ static int init_cold_interrupt(struct tsens_priv *priv,
 						priv->fields[COLD_STATUS]);
 		if (IS_ERR(priv->rf[COLD_STATUS])) {
 			ret = PTR_ERR(priv->rf[COLD_STATUS]);
-			goto err_put_device;
 		}
 	}
 
-err_put_device:
-	put_device(&op->dev);
 	return ret;
 }
 
+#if IS_MODULE(CONFIG_QCOM_TSENS)
+int init_common(struct tsens_priv *priv)
+#else
 int __init init_common(struct tsens_priv *priv)
+#endif
 {
 	void __iomem *tm_base, *srot_base;
 	struct device *dev = priv->dev;
-	u32 ver_minor;
+	u32 ver_minor = -1;
 	struct resource *res;
 	u32 enabled;
 	int ret, i, j;
@@ -1032,7 +1032,7 @@ int __init init_common(struct tsens_priv *priv)
 		regmap_field_write(priv->rf[CC_MON_MASK], 1);
 	}
 
-	ret = init_cold_interrupt(priv, op, ver_minor);
+	init_cold_interrupt(priv, op, ver_minor);
 
 	spin_lock_init(&priv->ul_lock);
 
@@ -1100,7 +1100,25 @@ static int __maybe_unused tsens_resume(struct device *dev)
 	return 0;
 }
 
-static SIMPLE_DEV_PM_OPS(tsens_pm_ops, tsens_suspend, tsens_resume);
+static int __maybe_unused tsens_freeze(struct device *dev)
+{
+	struct tsens_priv *priv = dev_get_drvdata(dev);
+
+	if (priv->ops && priv->ops->freeze)
+		return priv->ops->freeze(priv);
+
+	return 0;
+}
+
+static int __maybe_unused tsens_restore(struct device *dev)
+{
+	struct tsens_priv *priv = dev_get_drvdata(dev);
+
+	if (priv->ops && priv->ops->restore)
+		return priv->ops->restore(priv);
+
+	return 0;
+}
 
 static const struct of_device_id tsens_table[] = {
 	{
@@ -1144,6 +1162,7 @@ MODULE_DEVICE_TABLE(of, tsens_table);
 static const struct thermal_zone_device_ops tsens_of_ops = {
 	.get_temp = tsens_get_temp,
 	.set_trips = tsens_set_trips,
+	.get_trend = qti_tz_get_trend,
 };
 
 static const struct thermal_zone_device_ops tsens_cold_of_ops = {
@@ -1255,10 +1274,109 @@ int tsens_v2_tsens_resume(struct tsens_priv *priv)
 	return 0;
 }
 
+int tsens_v2_tsens_freeze(struct tsens_priv *priv)
+{
+
+	if (priv->uplow_irq > 0) {
+		disable_irq_nosync(priv->uplow_irq);
+		disable_irq_wake(priv->uplow_irq);
+	}
+
+	if (priv->feat->crit_int && priv->crit_irq > 0) {
+		disable_irq_nosync(priv->crit_irq);
+		disable_irq_wake(priv->crit_irq);
+	}
+
+	return 0;
+}
+
+int tsens_v2_tsens_restore(struct tsens_priv *priv)
+{
+	tsens_reinit(priv);
+
+	if (priv->uplow_irq > 0) {
+		enable_irq(priv->uplow_irq);
+		enable_irq_wake(priv->uplow_irq);
+	}
+
+	if (priv->feat->crit_int && priv->crit_irq > 0) {
+		enable_irq(priv->crit_irq);
+		enable_irq_wake(priv->crit_irq);
+	}
+
+	return 0;
+}
+
+static void tsens_thermal_zone_trip_update(struct thermal_zone_device *tz,
+					  int trip_id)
+{
+	u32 trip_delta = 0;
+
+	if (!of_thermal_is_trip_valid(tz, trip_id) || !tz->trips)
+		return;
+
+	if (tz->trips[trip_id].type == THERMAL_TRIP_CRITICAL)
+		return;
+
+	if (tz->trips[trip_id].type == THERMAL_TRIP_HOT)
+		trip_delta = TSENS_ELEVATE_HOT_DELTA;
+	else if (strnstr(tz->type, "cpu", sizeof(tz->type)))
+		trip_delta = TSENS_ELEVATE_CPU_DELTA;
+	else
+		trip_delta = TSENS_ELEVATE_DELTA;
+
+	mutex_lock(&tz->lock);
+	tz->trips[trip_id].temperature += trip_delta;
+	mutex_unlock(&tz->lock);
+
+	thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
+}
+
+static int tsens_nvmem_trip_update(struct thermal_zone_device *tz)
+{
+	int i, num_trips = 0;
+
+	if (strnstr(tz->type, "mdmss", sizeof(tz->type)))
+		return 0;
+
+	num_trips = of_thermal_get_ntrips(tz);
+	/* First trip is for userspace, update all other trips. */
+	for (i = 1; i < num_trips; i++)
+		tsens_thermal_zone_trip_update(tz, i);
+
+	return 0;
+}
+
+static bool tsens_is_nvmem_trip_update_needed(struct tsens_priv *priv)
+{
+	int ret;
+	u32 itemp = 0;
+
+	if (!of_property_read_bool(priv->dev->of_node, "nvmem-cells"))
+		return false;
+
+	ret = nvmem_cell_read_variable_le_u32(priv->dev,
+			"tsens_itemp", &itemp);
+	if (ret) {
+		dev_err(priv->dev,
+			"%s: Not able to read tsens_chipinfo nvmem, ret:%d\n",
+			__func__, ret);
+		return false;
+	}
+
+	TSENS_DBG_2(priv, "itemp fuse:0x%x", itemp);
+	if (itemp)
+		return true;
+
+	return false;
+}
+
 static int tsens_register(struct tsens_priv *priv)
 {
 	int i, temp, ret;
 	struct thermal_zone_device *tzd;
+
+	priv->need_trip_update = tsens_is_nvmem_trip_update_needed(priv);
 
 	for (i = 0;  i < priv->num_sensors; i++) {
 		priv->sensor[i].priv = priv;
@@ -1286,6 +1404,9 @@ static int tsens_register(struct tsens_priv *priv)
 		if (devm_thermal_add_hwmon_sysfs(tzd))
 			dev_warn(priv->dev,
 				 "Failed to add hwmon sysfs attributes\n");
+		/* update tsens trip based on fuse register */
+		if (priv->need_trip_update)
+			ret = tsens_nvmem_trip_update(tzd);
 		qti_update_tz_ops(tzd, true);
 	}
 
@@ -1434,6 +1555,13 @@ static int tsens_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+static const struct dev_pm_ops tsens_pm_ops = {
+	.freeze = tsens_freeze,
+	.restore = tsens_restore,
+	.suspend = tsens_suspend,
+	.resume = tsens_resume,
+};
 
 static struct platform_driver tsens_driver = {
 	.probe = tsens_probe,

@@ -57,6 +57,16 @@ config DUMMY_IRQ
 	  The sole purpose of this module is to help with debugging of systems on
 	  which spurious IRQs would happen on disabled IRQ vector.
 
+config BHS_IRQ
+	tristate "BHS IPCC IRQ handler"
+	help
+	  This driver provides support for handling IRQs associated with the
+	  IPCC SMP2P and GLINK interfaces used in the BHS (Battery Hot Swap)
+	  subsystem. It is primarily used to retrieve and manage interrupt
+	  lines that need to be disabled or enabled during battery removal
+	  and insertion events. This ensures proper synchronization and
+	  communication between processors and subsystems during power transitions.
+
 config IBM_ASM
 	tristate "Device driver for IBM RSA service processor"
 	depends on X86 && PCI && INPUT
@@ -513,6 +523,34 @@ config QSEECOM_PROXY
 	 These callback functions can be used to start, shutdown and
 	 send commands to the trusted apps.
 
+config QCOM_SMCI_PROXY
+	tristate "To enable smci proxy driver for kernel client"
+	depends on !QCOM_SI_CORE
+	help
+	 smci proxy driver serves the kernel clients by providing
+	 required ops via call back functions with a minimal framework.
+	 These callback functions can be used to get client objects from
+	 Trusted firmware.
+
+config BOOTMARKER_PROXY
+	tristate "To enable Bootmarker proxy driver for kernel client"
+	help
+	  Bootmarker proxy driver serves the kernel clients by providing
+	  required ops via call back functions with a minimal framework.
+	  These callback functions can be used to access the place marker.
+	  To compile this driver as a module, choose M here.
+	  If unsure, say N.
+
+config KINECTICS_XR_NORDIC
+	tristate "Nordic Misc driver support in XR Reference devices"
+	help
+	   This driver supports Nordic Chip in XR Reference devices.
+	   This driver interfaces with SoC to Nordic chip over SPI and contains
+	   code to power up the Nordic chip and initializes SPI interface. Also,
+	   this also parses the gpios and interrupts from device tree and sets
+	   the gpios and interrupt handler for handling the interrupt.
+
+source "drivers/misc/rtimd-i2c/Kconfig"
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -528,7 +566,9 @@ source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/bcm-vk/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/habanalabs/Kconfig"
+source "drivers/misc/isl97900_led/Kconfig"
 source "drivers/misc/uacce/Kconfig"
 source "drivers/misc/pvpanic/Kconfig"
 source "drivers/misc/mchp_pci1xxxx/Kconfig"
+source "drivers/misc/vd628x/Kconfig"
 endmenu

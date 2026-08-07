@@ -2,7 +2,7 @@
 
 /*
  * Copyright (c) 2020 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2025, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <asm/cputype.h>
@@ -71,6 +71,18 @@ static u32 qcom_cpuss_cntr_v3_offsets[] = {
 	[APSS_LPM_COUNTER_CPUx_C2D_LO_VAL]	=	0x8038,
 	[APSS_LPM_COUNTER_CPUx_C3_LO_VAL]	=	0x8070,
 	[APSS_LPM_COUNTER_CPUx_C4_LO_VAL]	=	0x80A8,
+	[APSS_CPU_LPM_RESIDENCY_CNTR_CFG_n]	=	0xC004,
+	[APSS_CL_LPM_RESIDENCY_CNTR_CFG]	=	0xC030,
+	[APSS_LPM_RESIDENCY_C2_D2_CNTR_n]	=	0xC040,
+	[APSS_LPM_RESIDENCY_C3_CNTR_n]		=	0xC090,
+	[APSS_LPM_RESIDENCY_C4_D4_CNTR_n]	=	0xC0D0,
+};
+
+static u32 qcom_cpuss_cntr_v4_offsets[] = {
+	[APSS_LPM_COUNTER_CPUx_C1_LO_VAL]	=	0x8000,
+	[APSS_LPM_COUNTER_CPUx_C2D_LO_VAL]	=	0x8030,
+	[APSS_LPM_COUNTER_CPUx_C3_LO_VAL]	=	0x8060,
+	[APSS_LPM_COUNTER_CPUx_C4_LO_VAL]	=	0x8090,
 	[APSS_CPU_LPM_RESIDENCY_CNTR_CFG_n]	=	0xC004,
 	[APSS_CL_LPM_RESIDENCY_CNTR_CFG]	=	0xC030,
 	[APSS_LPM_RESIDENCY_C2_D2_CNTR_n]	=	0xC040,
@@ -765,6 +777,7 @@ static const struct of_device_id qcom_cpuss_stats_table[] = {
 		{ .compatible = "qcom,cpuss-sleep-stats", .data = &qcom_cpuss_cntr_v1_offsets },
 		{ .compatible = "qcom,cpuss-sleep-stats-v2", .data = &qcom_cpuss_cntr_v2_offsets },
 		{ .compatible = "qcom,cpuss-sleep-stats-v3", .data = &qcom_cpuss_cntr_v3_offsets },
+		{ .compatible = "qcom,cpuss-sleep-stats-v4", .data = &qcom_cpuss_cntr_v4_offsets },
 		{ },
 };
 

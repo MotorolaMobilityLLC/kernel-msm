@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #include "hab.h"
+#include "hab_virq.h"
 
 #define CREATE_TRACE_POINTS
 #include "hab_trace_os.h"
@@ -54,13 +55,20 @@ static struct hab_device hab_devices[] = {
 	HAB_DEVICE_CNSTR(DEVICE_XVM3_NAME, MM_XVM_3, 26),
 	HAB_DEVICE_CNSTR(DEVICE_VNW1_NAME, MM_VNW_1, 27),
 	HAB_DEVICE_CNSTR(DEVICE_EXT1_NAME, MM_EXT_1, 28),
-	HAB_DEVICE_CNSTR(DEVICE_GPCE1_NAME, MM_GPCE_1, 29),
+	HAB_DEVICE_CNSTR(DEVICE_EXT2_NAME, MM_EXT_2, 29),
+	HAB_DEVICE_CNSTR(DEVICE_EXT3_NAME, MM_EXT_3, 30),
+	HAB_DEVICE_CNSTR(DEVICE_GPCE1_NAME, MM_GPCE_1, 31),
+	HAB_DEVICE_CNSTR(DEVICE_SOCCP1_NAME, MM_SOCCP_1, 32),
+	HAB_DEVICE_CNSTR(DEVICE_DPRX1_NAME, MM_DPRX_1, 33),
+	HAB_DEVICE_CNSTR(DEVICE_DPRX2_NAME, MM_DPRX_2, 34),
+	HAB_DEVICE_CNSTR(DEVICE_EVA1_NAME, MM_EVA_1, 35),
 };
 
 struct hab_driver hab_driver = {
 	.ndevices = ARRAY_SIZE(hab_devices),
 	.devp = hab_devices,
 	.uctx_list = LIST_HEAD_INIT(hab_driver.uctx_list),
+	.virq_uctx_list = LIST_HEAD_INIT(hab_driver.virq_uctx_list),
 	.drvlock = __SPIN_LOCK_UNLOCKED(hab_driver.drvlock),
 	.imp_list = LIST_HEAD_INIT(hab_driver.imp_list),
 	.imp_lock = __SPIN_LOCK_UNLOCKED(hab_driver.imp_lock),
@@ -80,7 +88,7 @@ struct uhab_context *hab_ctx_alloc(int kernel)
 	ctx->closing = 0;
 	INIT_LIST_HEAD(&ctx->vchannels);
 	INIT_LIST_HEAD(&ctx->exp_whse);
-	INIT_LIST_HEAD(&ctx->imp_whse);
+	hab_rb_init(&ctx->imp_whse);
 
 	INIT_LIST_HEAD(&ctx->exp_rxq);
 	init_waitqueue_head(&ctx->exp_wq);
@@ -143,8 +151,8 @@ void hab_ctx_free_fn(struct uhab_context *ctx)
 		list_del(&exp->node);
 		exp_super = container_of(exp, struct export_desc_super, exp);
 		if ((exp_super->remote_imported != 0) && (exp->pchan->mem_proto == 1)) {
-			pr_warn("exp id %d still imported on remote side on pchan %s\n",
-				exp->export_id, exp->pchan->name);
+			pr_warn("exp id %d still imported on remote side on %s, pcnt %d\n",
+				exp->export_id, exp->pchan->name, exp->payload_count);
 			hab_spin_lock(&hab_driver.reclaim_lock, irqs_disabled);
 			list_add_tail(&exp->node, &hab_driver.reclaim_list);
 			hab_spin_unlock(&hab_driver.reclaim_lock, irqs_disabled);
@@ -167,15 +175,23 @@ void hab_ctx_free_fn(struct uhab_context *ctx)
 	write_unlock(&ctx->exp_lock);
 
 	spin_lock_bh(&ctx->imp_lock);
-	list_for_each_entry_safe(exp, exp_tmp, &ctx->imp_whse, node) {
-		list_del(&exp->node);
+	for (exp_super = hab_rb_min(&ctx->imp_whse, struct export_desc_super, node);
+	     exp_super != NULL;
+	     exp_super = hab_rb_min(&ctx->imp_whse, struct export_desc_super, node)) {
+		exp = &exp_super->exp;
+		hab_rb_remove(&ctx->imp_whse, exp_super);
 		ctx->import_total--;
 		pr_debug("leaked imp %d vcid %X for ctx is collected total %d\n",
 			exp->export_id, exp->vcid_local,
 			ctx->import_total);
-		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, ctx->kernel);
+		ret = habmm_imp_hyp_unmap(ctx->import_ctx, exp, 1);
 		if (exp->pchan->mem_proto == 1) {
 			if (!ret) {
+				/*
+				 * even if imp_hyp_unmap return success, it is still an
+				 * unexpected scenario: HAB client exits/crashes/gets
+				 * killed before unimport all imported memory
+				 */
 				pr_warn("unimp msg sent for exp id %u on %s\n",
 					exp->export_id, exp->pchan->name);
 				HAB_HEADER_SET_TYPE(header, HAB_PAYLOAD_TYPE_UNIMPORT);
@@ -185,11 +201,15 @@ void hab_ctx_free_fn(struct uhab_context *ctx)
 				ret = physical_channel_send(exp->pchan, &header, &exp->export_id,
 						HABMM_SOCKET_SEND_FLAGS_NON_BLOCKING);
 				if (ret != 0)
-					pr_err("failed to send unimp msg %d, vcid %d, exp id %d\n",
+					pr_err("failed to send unimp msg %d, vcid %x, exp id %u\n",
 						ret, exp->vcid_local, exp->export_id);
-			} else
-				pr_err("exp id %d unmap fail on vcid %X\n",
+			} else if (ret == -EBUSY) {
+				pr_warn("exp id %u unmap fail on vcid %X, still in use. unimp msg deferred\n",
 					exp->export_id, exp->vcid_local);
+				habmem_defer_unimp_sent(exp);
+			} else
+				pr_err("unmap failed %d on vcid %X, exp id %u\n",
+					ret, exp->vcid_local, exp->export_id);
 		}
 		exp_super = container_of(exp, struct export_desc_super, exp);
 		kfree(exp_super);
@@ -334,7 +354,8 @@ struct hab_device *find_hab_device(unsigned int mm_id)
  */
 struct virtual_channel *frontend_open(struct uhab_context *ctx,
 		unsigned int mm_id,
-		int dom_id)
+		int dom_id,
+		uint32_t flags, int timeout)
 {
 	int ret, ret2, open_id = 0;
 	struct physical_channel *pchan = NULL;
@@ -387,8 +408,7 @@ struct virtual_channel *frontend_open(struct uhab_context *ctx,
 	/* Wait for Init-Ack sequence */
 	hab_open_request_init(&request, HAB_PAYLOAD_TYPE_INIT_ACK, pchan,
 		0, sub_id, open_id);
-	/* wait forever */
-	ret = hab_open_listen(ctx, dev, &request, &recv_request, 0);
+	ret = hab_open_listen(ctx, dev, &request, &recv_request, timeout, flags);
 	if (!ret && recv_request && ((recv_request->xdata.ver_fe & 0xFFFF0000)
 		!= (recv_request->xdata.ver_be & 0xFFFF0000))) {
 		/* version check */
@@ -413,8 +433,11 @@ struct virtual_channel *frontend_open(struct uhab_context *ctx,
 				   vchan->id);
 		hab_open_pending_exit(ctx, pchan, &pending_open);
 
-		if (ret != -EINTR)
+		if (ret == -EAGAIN)
+			ret = -ETIMEDOUT;
+		else if (ret != -EINTR)
 			ret = -EINVAL;
+
 		goto err;
 	}
 
@@ -454,7 +477,7 @@ err:
 }
 
 struct virtual_channel *backend_listen(struct uhab_context *ctx,
-		unsigned int mm_id, int timeout)
+		unsigned int mm_id, int timeout, uint32_t flags)
 {
 	int ret, ret2;
 	int open_id, ver_fe;
@@ -480,7 +503,7 @@ struct virtual_channel *backend_listen(struct uhab_context *ctx,
 			NULL, 0, sub_id, 0);
 		/* cancel should not happen at this moment */
 		ret = hab_open_listen(ctx, dev, &request, &recv_request,
-				timeout);
+				timeout, flags);
 		if (ret || !recv_request) {
 			if (!ret && !recv_request)
 				ret = -EINVAL;
@@ -549,7 +572,7 @@ struct virtual_channel *backend_listen(struct uhab_context *ctx,
 		hab_open_request_init(&request, HAB_PAYLOAD_TYPE_INIT_DONE,
 				pchan, 0, sub_id, open_id);
 		ret = hab_open_listen(ctx, dev, &request, &recv_request,
-			HAB_HS_TIMEOUT);
+			HAB_HS_TIMEOUT, flags);
 		hab_open_pending_exit(ctx, pchan, &pending_open);
 		if (ret && recv_request &&
 			recv_request->type == HAB_PAYLOAD_TYPE_INIT_CANCEL) {
@@ -634,9 +657,14 @@ long hab_vchan_send(struct uhab_context *ctx,
 	}
 
 	vchan = hab_get_vchan_fromvcid(vcid, ctx, 0);
-	if (!vchan || vchan->otherend_closed) {
+	if (!vchan) {
+		pr_debug("cannot get vchan\n");
+		return -ENODEV;
+	}
+	if (vchan->otherend_closed) {
+		pr_debug("vchan %x is otherend closed\n", vchan->id);
 		ret = -ENODEV;
-		goto err;
+		goto err_otherend_closed;
 	}
 
 	/**
@@ -659,7 +687,8 @@ long hab_vchan_send(struct uhab_context *ctx,
 			pr_err("wrong profiling buffer size %zd, expect %zd\n",
 				sizebytes,
 				sizeof(struct habmm_xing_vm_stat));
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 	} else if (flags & HABMM_SOCKET_XVM_SCHE_TEST) {
 		HAB_HEADER_SET_TYPE(header, HAB_PAYLOAD_TYPE_SCHE_MSG);
@@ -670,7 +699,8 @@ long hab_vchan_send(struct uhab_context *ctx,
 			pr_err("Message buffer too small, %lu bytes, expect %d\n",
 				sizebytes,
 				sizeof(unsigned long long));
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 		HAB_HEADER_SET_TYPE(header, HAB_PAYLOAD_TYPE_SCHE_RESULT_REQ);
 	} else if (flags & HABMM_SOCKET_XVM_SCHE_RESULT_RSP) {
@@ -678,7 +708,8 @@ long hab_vchan_send(struct uhab_context *ctx,
 			pr_err("Message buffer too small, %lu bytes, expect %d\n",
 				sizebytes,
 				3 * sizeof(unsigned long long));
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 		HAB_HEADER_SET_TYPE(header, HAB_PAYLOAD_TYPE_SCHE_RESULT_RSP);
 	} else {
@@ -703,13 +734,12 @@ long hab_vchan_send(struct uhab_context *ctx,
 	 */
 	if (!ret)
 		atomic64_inc(&vchan->tx_cnt);
-err:
 
+err:
 	/* log msg send timestamp: exit hab_vchan_send */
 	trace_hab_vchan_send_done(vchan);
-
-	if (vchan)
-		hab_vchan_put(vchan);
+err_otherend_closed:
+	hab_vchan_put(vchan);
 
 	return ret;
 }
@@ -784,9 +814,9 @@ int hab_vchan_open(struct uhab_context *ctx,
 
 	if (hab_is_loopback()) {
 		if (ctx->lb_be)
-			vchan = backend_listen(ctx, mmid, timeout);
+			vchan = backend_listen(ctx, mmid, timeout, flags);
 		else
-			vchan = frontend_open(ctx, mmid, LOOPBACK_DOM);
+			vchan = frontend_open(ctx, mmid, LOOPBACK_DOM, flags, timeout);
 	} else {
 		dev = find_hab_device(mmid);
 
@@ -802,10 +832,10 @@ int hab_vchan_open(struct uhab_context *ctx,
 
 				if (pchan->is_be)
 					vchan = backend_listen(ctx, mmid,
-							timeout);
+							timeout, flags);
 				else
 					vchan = frontend_open(ctx, mmid,
-							HABCFG_VMID_DONT_CARE);
+							HABCFG_VMID_DONT_CARE, flags, timeout);
 			} else {
 				pr_err("open on nonexistent pchan (mmid %x)\n",
 					mmid);
@@ -829,9 +859,8 @@ int hab_vchan_open(struct uhab_context *ctx,
 	hab_write_lock(&ctx->ctx_lock, !ctx->kernel);
 	list_add_tail(&vchan->node, &ctx->vchannels);
 	ctx->vcnt++;
-	hab_write_unlock(&ctx->ctx_lock, !ctx->kernel);
-
 	*vcid = vchan->id;
+	hab_write_unlock(&ctx->ctx_lock, !ctx->kernel);
 
 	return 0;
 }
@@ -976,6 +1005,8 @@ static int hab_generate_pchan_group(struct local_vmid *settings,
 				HABCFG_GET_KERNEL(settings, i, j));
 	}
 
+	ret += hab_create_cdev_node(HABCFG_GET_MMID(settings, i, j));
+
 	return ret;
 }
 
@@ -1039,6 +1070,15 @@ static int hab_generate_pchan(struct local_vmid *settings, int i, int j)
 	case MM_GPCE_START/100:
 		ret = hab_generate_pchan_group(settings, i, j, MM_GPCE_START, MM_GPCE_END);
 		break;
+	case MM_SOCCP_START/100:
+		ret = hab_generate_pchan_group(settings, i, j, MM_SOCCP_START, MM_SOCCP_END);
+		break;
+	case MM_DPRX_START/100:
+		ret = hab_generate_pchan_group(settings, i, j, MM_DPRX_START, MM_DPRX_END);
+		break;
+	case MM_EVA_START/100:
+		ret = hab_generate_pchan_group(settings, i, j, MM_EVA_START, MM_EVA_END);
+		break;
 	default:
 		pr_err("failed to find mmid %d, i %d, j %d\n",
 			HABCFG_GET_MMID(settings, i, j), i, j);
@@ -1069,6 +1109,45 @@ static int hab_generate_pchan_list(struct local_vmid *settings)
 					ret = hab_generate_pchan(settings,
 								i, j);
 			}
+		}
+	}
+	return ret;
+}
+
+/* This function deallocate virq based on settings */
+static int hab_dealloc_virtirq(struct local_vmid *settings)
+{
+	int i, j, ret = 0;
+
+	/* scan by valid VMs, then virtirq */
+	for (i = 0; i < HABCFG_VMID_MAX; i++) {
+		if (HABCFG_GET_VMID(settings, i) != HABCFG_VMID_INVALID &&
+				HABCFG_GET_VMID(settings, i) != settings->self) {
+			pr_debug("dealloc virtirq for vm %d\n", i);
+
+			for (j = 0; j < virqsettings.cnt_virq; j++)
+				ret = hab_virq_dealloc(j, i);
+		}
+	}
+	return ret;
+}
+
+/*
+ * This function generates virt_irq based on labels read
+ * from devicetree.
+ */
+static int hab_generate_virtirq(struct local_vmid *settings)
+{
+	int i, j, ret = 0;
+
+	/* scan by valid VMs, then virtirq */
+	for (i = 0; i < HABCFG_VMID_MAX; i++) {
+		if (HABCFG_GET_VMID(settings, i) != HABCFG_VMID_INVALID &&
+				HABCFG_GET_VMID(settings, i) != settings->self) {
+			pr_debug("create virtirq for vm %d\n", i);
+
+			for (j = 0; j < virqsettings.cnt_virq; j++)
+				ret = hab_virq_alloc(j, i, virqsettings.label[j], 0, NULL);
 		}
 	}
 	return ret;
@@ -1113,13 +1192,13 @@ int do_hab_parse(void)
 
 	/* read in hab config and create pchans*/
 	memset(&hab_driver.settings, HABCFG_VMID_INVALID,
-				sizeof(hab_driver.settings));
+		sizeof(hab_driver.settings));
 	result = hab_parse(&hab_driver.settings);
 	if (result) {
 		pr_err("hab config open failed, prepare default gvm %d settings\n",
-			   default_gvmid);
+			default_gvmid);
 		fill_default_gvm_settings(&hab_driver.settings, default_gvmid,
-						MM_AUD_START, MM_ID_MAX);
+			MM_AUD_START, MM_ID_MAX);
 	}
 
 	/* now generate hab pchan list */
@@ -1133,9 +1212,13 @@ int do_hab_parse(void)
 			device = &hab_driver.devp[i];
 			pchan_total += device->pchan_cnt;
 		}
-		pr_debug("ret %d, total %d pchans added, ndevices %d\n",
-				 result, pchan_total, hab_driver.ndevices);
+		pr_debug("ret %d total %d pchans added ndevices %d\n",
+			result, pchan_total, hab_driver.ndevices);
 	}
+
+	result = hab_generate_virtirq(&hab_driver.settings);
+	if (result)
+		pr_err("generate virtirq failed ret %d\n", result);
 
 	return result;
 }
@@ -1159,6 +1242,11 @@ void hab_hypervisor_unregister_common(void)
 			}
 		}
 	}
+
+	/* Deallocate HAB virq */
+	status = hab_dealloc_virtirq(&hab_driver.settings);
+	if (status != 0)
+		pr_err("failed to free virq setup ret %d\n", status);
 
 	/* detect leaking uctx */
 	spin_lock_bh(&hab_driver.drvlock);

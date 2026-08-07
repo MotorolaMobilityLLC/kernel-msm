@@ -14,7 +14,7 @@
  * This driver is based on idea from Hafnium Hypervisor Linux Driver,
  * but modified to work with Gunyah Hypervisor as needed.
  *
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"gh_proxy_sched: " fmt
@@ -381,12 +381,18 @@ static int gh_unpopulate_vm_vcpu_info(gh_vmid_t vmid, gh_label_t cpu_idx,
 	mutex_lock(&gh_vm_mutex);
 	vm = gh_get_vm(vmid);
 	if (vm && vm->is_vcpu_info_populated) {
+		if (vm->vcpu_wq) {
+			destroy_workqueue(vm->vcpu_wq);
+			vm->vcpu_wq = NULL;
+		}
 		vcpu = gh_get_vcpu(vm, cap_id);
 		if (vcpu) {
 			*irq = vcpu->virq;
 			free_irq(vcpu->virq, vcpu);
 			vcpu->virq = U32_MAX;
 			wakeup_source_unregister(vcpu->ws);
+			vcpu->workqueue_mode = false;
+			unregister_pm_notifier(&vcpu->suspend_nb);
 
 			if (nr_vcpus)
 				nr_vcpus--;
@@ -832,7 +838,7 @@ int gh_vcpu_run(gh_vmid_t vmid, unsigned int vcpu_id, uint64_t resume_data_0,
 
 			/* Unknown VCPU state. */
 			default:
-				pr_err("Unknown VCPU STATE: state=%d VCPU=%u of VM=%d state_data_0=0x%llx state_data_1=0x%llx state_data_2=0x%llx\n",
+				pr_err_ratelimited("Unknown VCPU STATE: state=%llu VCPU=%u of VM=%d state_data_0=0x%llx state_data_1=0x%llx state_data_2=0x%llx\n",
 					resp->vcpu_state, vcpu_id, vcpu->vm->id,
 					resp->state_data_0, resp->state_data_1, resp->state_data_2);
 				schedule();

@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2015, Sony Mobile Communications AB.
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/interrupt.h>
@@ -50,10 +50,13 @@
 #define SMP2P_MAGIC 0x504d5324
 #define SMP2P_ALL_FEATURES	SMP2P_FEATURE_SSR_ACK
 
+#define SMP2P_VERSION_1 1
+#define SMP2P_VERSION_2 2
+
 /**
  * struct smp2p_smem_item - in memory communication structure
  * @magic:		magic number
- * @version:		version - must be 1
+ * @version:		version
  * @features:		features flag - currently unused
  * @local_pid:		processor id of sending end
  * @remote_pid:		processor id of receiving end
@@ -172,6 +175,8 @@ static void *ilc;
 #define SMP2P_INFO(x, ...)	\
 	ipc_log_string(ilc, "[%s]: "x, __func__, ##__VA_ARGS__)
 
+static bool smp2p_suspend_in_progress;
+
 static void qcom_smp2p_kick(struct qcom_smp2p *smp2p)
 {
 	/* Make sure any updated data is written before the kick */
@@ -188,14 +193,23 @@ static void qcom_smp2p_kick(struct qcom_smp2p *smp2p)
 static bool qcom_smp2p_check_ssr(struct qcom_smp2p *smp2p)
 {
 	struct smp2p_smem_item *in = smp2p->in;
+	struct smp2p_entry *entry;
 	bool restart;
 
 	if (!smp2p->ssr_ack_enabled)
 		return false;
 
 	restart = in->flags & BIT(SMP2P_FLAGS_RESTART_DONE_BIT);
+	restart = restart != smp2p->ssr_ack;
+	if (restart && in->version > SMP2P_VERSION_1) {
+		list_for_each_entry(entry, &smp2p->inbound, node) {
+			if (!entry->value)
+				continue;
+			entry->last_value = 0;
+		}
+	}
 
-	return restart != smp2p->ssr_ack;
+	return restart;
 }
 
 static void qcom_smp2p_do_ssr_ack(struct qcom_smp2p *smp2p)
@@ -219,6 +233,7 @@ static void qcom_smp2p_negotiate(struct qcom_smp2p *smp2p)
 	struct smp2p_smem_item *out = smp2p->out;
 	struct smp2p_smem_item *in = smp2p->in;
 
+	SMP2P_INFO("%d: version[%d:%d]\n", smp2p->remote_pid, in->version, out->version);
 	if (in->version == out->version) {
 		out->features &= in->features;
 
@@ -229,6 +244,53 @@ static void qcom_smp2p_negotiate(struct qcom_smp2p *smp2p)
 		SMP2P_INFO("%d: state=open ssr_ack=%d\n", smp2p->remote_pid,
 			   smp2p->ssr_ack_enabled);
 	}
+}
+
+static int qcom_smp2p_in_version(struct qcom_smp2p *smp2p)
+{
+	unsigned int smem_id = smp2p->smem_items[SMP2P_INBOUND];
+	unsigned int pid = smp2p->remote_pid;
+	struct smp2p_smem_item *in;
+	size_t size;
+
+	in = qcom_smem_get(pid, smem_id, &size);
+	if (IS_ERR(in))
+		return 0;
+
+	return in->version;
+}
+
+static void qcom_smp2p_start_in(struct qcom_smp2p *smp2p)
+{
+	unsigned int smem_id = smp2p->smem_items[SMP2P_INBOUND];
+	unsigned int pid = smp2p->remote_pid;
+	char buf[SMP2P_MAX_ENTRY_NAME];
+	struct smp2p_smem_item *in;
+	struct smp2p_entry *entry;
+	size_t size;
+	int i;
+
+	in = qcom_smem_get(pid, smem_id, &size);
+	if (IS_ERR(in))
+		return;
+
+	smp2p->in = in;
+
+	/* Check if version is initialized and set to v2 */
+	if (in->version == 0)
+		return;
+
+	for (i = smp2p->valid_entries; i < in->valid_entries; i++) {
+		list_for_each_entry(entry, &smp2p->inbound, node) {
+			memcpy(buf, in->entries[i].name, sizeof(buf));
+			if (!strcmp(buf, entry->name)) {
+				entry->value = &in->entries[i].value;
+				entry->last_value = readl(entry->value);
+				break;
+			}
+		}
+	}
+	smp2p->valid_entries = i;
 }
 
 static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
@@ -282,6 +344,14 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 		/* No changes of this entry? */
 		if (!status)
 			continue;
+
+		if (smp2p_suspend_in_progress) {
+			pr_info("SMP2P [name:%s] remote: entry:%s status:%0lx\n",
+			    smp2p->irq_devname,
+			    entry->name, status);
+
+			smp2p_suspend_in_progress = false;
+		}
 
 		for_each_set_bit(i, &status, 32) {
 			if ((val & BIT(i) && test_bit(i, entry->irq_rising)) ||
@@ -393,12 +463,31 @@ static int smp2p_retrigger_irq(struct irq_data *irqd)
 	return 0;
 }
 
+static int smp2p_irq_get_irqchip_state(struct irq_data *irqd, enum irqchip_irq_state which,
+				       bool *state)
+{
+	struct smp2p_entry *entry = irq_data_get_irq_chip_data(irqd);
+	u32 val;
+
+	if (which != IRQCHIP_STATE_LINE_LEVEL)
+		return -EINVAL;
+
+	if (!entry->value)
+		return -ENODEV;
+
+	val = readl(entry->value);
+	*state = !!(val & BIT(irqd_to_hwirq(irqd)));
+
+	return 0;
+}
+
 static struct irq_chip smp2p_irq_chip = {
 	.name           = "smp2p",
 	.irq_mask       = smp2p_mask_irq,
 	.irq_unmask     = smp2p_unmask_irq,
 	.irq_set_type	= smp2p_set_irq_type,
 	.irq_retrigger	= smp2p_retrigger_irq,
+	.irq_get_irqchip_state = smp2p_irq_get_irqchip_state,
 };
 
 static int smp2p_irq_map(struct irq_domain *d,
@@ -491,6 +580,7 @@ static int qcom_smp2p_alloc_outbound_item(struct qcom_smp2p *smp2p)
 	struct smp2p_smem_item *out;
 	unsigned smem_id = smp2p->smem_items[SMP2P_OUTBOUND];
 	unsigned pid = smp2p->remote_pid;
+	u8 in_version;
 	int ret;
 
 	ret = qcom_smem_alloc(pid, smem_id, sizeof(*out));
@@ -515,12 +605,14 @@ static int qcom_smp2p_alloc_outbound_item(struct qcom_smp2p *smp2p)
 	out->valid_entries = 0;
 	out->features = SMP2P_ALL_FEATURES;
 
+	in_version = qcom_smp2p_in_version(smp2p);
+
 	/*
 	 * Make sure the rest of the header is written before we validate the
 	 * item by writing a valid version number.
 	 */
 	wmb();
-	out->version = 1;
+	out->version = (in_version) ? in_version : 1;
 
 	qcom_smp2p_kick(smp2p);
 
@@ -610,7 +702,9 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 	smp2p->mbox_client.knows_txdone = true;
 	smp2p->mbox_chan = mbox_request_channel(&smp2p->mbox_client, 0);
 	if (IS_ERR(smp2p->mbox_chan)) {
-		if (PTR_ERR(smp2p->mbox_chan) != -ENODEV)
+		if ((PTR_ERR(smp2p->mbox_chan) != -ENODEV) &&
+			(PTR_ERR(smp2p->mbox_chan) != -ENOENT) &&
+			(PTR_ERR(smp2p->mbox_chan) != -EINVAL))
 			return PTR_ERR(smp2p->mbox_chan);
 
 		smp2p->mbox_chan = NULL;
@@ -660,11 +754,15 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* Check inbound entries in the case of early boot processor */
+	qcom_smp2p_start_in(smp2p);
+
 	/* Kick the outgoing edge after allocating entries */
 	qcom_smp2p_kick(smp2p);
 
 	smp2p->irq = irq;
-	smp2p->irq_devname = kasprintf(GFP_KERNEL, "smp2p_%d", smp2p->remote_pid);
+	smp2p->irq_devname = kasprintf(GFP_KERNEL, "%s", pdev->dev.of_node->name);
+
 	if (!smp2p->irq_devname) {
 		ret = -ENOMEM;
 		goto unwind_interfaces;
@@ -827,7 +925,21 @@ static int qcom_smp2p_freeze(struct device *dev)
 	return 0;
 }
 
+static int qcom_smp2p_suspend_no_irq(struct device *dev)
+{
+	smp2p_suspend_in_progress = true;
+	return 0;
+}
+
+static int qcom_smp2p_resume(struct device *dev)
+{
+	smp2p_suspend_in_progress = false;
+	return 0;
+}
+
 static const struct dev_pm_ops qcom_smp2p_pm_ops = {
+	.suspend_noirq = qcom_smp2p_suspend_no_irq,
+	.resume = qcom_smp2p_resume,
 	.freeze = qcom_smp2p_freeze,
 	.restore = qcom_smp2p_restore,
 	.thaw = qcom_smp2p_restore,

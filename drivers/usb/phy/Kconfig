@@ -247,4 +247,29 @@ config USB_MSM_EUSB2_PHY
 
 	  To compile this driver as a module, choose M here.
 
+config USB_MSM_OTG
+	tristate "Qualcomm Technologies, Inc. on-chip USB OTG controller support"
+	depends on (USB || USB_GADGET) && (ARCH_QCOM || COMPILE_TEST)
+	depends on RESET_CONTROLLER
+	select USB_PHY
+	help
+	  Enable this to support USB OTG transceiver on Qualcomm Technologies, Inc.
+	  chips. It handles PHY initialization, clock management, and workarounds
+	  required after resetting the hardware and power management.
+	  This driver is required even for peripheral only or host only
+	  mode configurations.
+	  This driver is not supported on boards like trout which
+	  has an external PHY.
+
+config USB_M31_MSM_EUSB2_PHY
+	tristate "M31 MSM EUSB2 PHY Driver"
+	depends on ARCH_QCOM || COMPILE_TEST
+	select USB_PHY
+	help
+	  Enable this to support the M31 EUSB2 PHY on MSM chips. This driver
+	  supports reset and initialization sequence, and also perform required
+	  set of operations with used repeater for USB HS/FS/LS functionality.
+
+	  To compile this driver as a module, choose M here.
+
 endmenu

@@ -14,7 +14,7 @@
  *	- Context fault reporting
  *	- Extended Stream ID (16 bit)
  *
- * Copyright (c) 2021-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) "arm-smmu: " fmt
@@ -53,6 +53,7 @@
 #include "../../qcom-dma-iommu-generic.h"
 #include "../../qcom-io-pgtable-alloc.h"
 #include <linux/qcom-iommu-util.h>
+#include <linux/suspend.h>
 
 #define CREATE_TRACE_POINTS
 #include "arm-smmu-trace.h"
@@ -1469,6 +1470,11 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 		ret = smmu->impl->init_context(smmu_domain, pgtbl_cfg, dev);
 		if (ret)
 			goto out_clear_smmu;
+	}
+
+	if (IS_ENABLED(CONFIG_QCOM_SMMU_IRGN0_ERRATA)) {
+		if (!of_device_is_compatible(smmu->dev->of_node, "qcom,adreno-smmu"))
+			pgtbl_cfg->quirks |= IO_PGTABLE_QUIRK_QCOM_TCR_IRGN_NC;
 	}
 
 	if (smmu_domain->pgtbl_quirks)
@@ -3118,6 +3124,8 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
 	u32 id;
 	bool cttw_reg, cttw_fw = smmu->features & ARM_SMMU_FEAT_COHERENT_WALK;
 	int i, ret;
+	unsigned int num_mapping_groups_override = 0;
+	unsigned int num_context_banks_override = 0;
 
 	dev_notice(smmu->dev, "probing hardware configuration...\n");
 	dev_notice(smmu->dev, "SMMUv%d with:\n",
@@ -3207,6 +3215,15 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
 	for (i = 0; i < size; i++)
 		smmu->s2crs[i] = s2cr_init_val;
 
+	ret = of_property_read_u32(smmu->dev->of_node, "qcom,num-smr-override",
+		&num_mapping_groups_override);
+	if (!ret && size > num_mapping_groups_override) {
+		dev_dbg(smmu->dev, "%d mapping groups overridden to %d\n",
+			size, num_mapping_groups_override);
+
+		size = min(size, num_mapping_groups_override);
+	}
+
 	smmu->num_mapping_groups = size;
 	mutex_init(&smmu->stream_map_mutex);
 	spin_lock_init(&smmu->global_sync_lock);
@@ -3236,6 +3253,20 @@ static int arm_smmu_device_cfg_probe(struct arm_smmu_device *smmu)
 
 	smmu->num_s2_context_banks = FIELD_GET(ARM_SMMU_ID1_NUMS2CB, id);
 	smmu->num_context_banks = FIELD_GET(ARM_SMMU_ID1_NUMCB, id);
+
+	ret = of_property_read_u32(smmu->dev->of_node,
+		"qcom,num-context-banks-override",
+		&num_context_banks_override);
+
+	if (!ret && smmu->num_context_banks > num_context_banks_override) {
+		dev_dbg(smmu->dev, "%d context banks overridden to %d\n",
+			smmu->num_context_banks,
+			num_context_banks_override);
+
+		smmu->num_context_banks = min(smmu->num_context_banks,
+					num_context_banks_override);
+	}
+
 	if (smmu->num_s2_context_banks > smmu->num_context_banks) {
 		dev_err(smmu->dev, "impossible number of S2 context banks!\n");
 		return -ENODEV;
@@ -3752,7 +3783,7 @@ static int __maybe_unused arm_smmu_runtime_suspend(struct device *dev)
 	return 0;
 }
 
-static int __maybe_unused arm_smmu_pm_resume(struct device *dev)
+static int __maybe_unused arm_smmu_pm_resume_common(struct device *dev)
 {
 	int ret;
 	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
@@ -3779,26 +3810,10 @@ static int __maybe_unused arm_smmu_pm_resume(struct device *dev)
 	return ret;
 }
 
-static int __maybe_unused arm_smmu_pm_suspend(struct device *dev)
-{
-	int ret = 0;
-	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
-
-	if (pm_runtime_suspended(dev))
-		goto clk_unprepare;
-
-	ret = arm_smmu_runtime_suspend(dev);
-	if (ret)
-		return ret;
-
-clk_unprepare:
-	clk_bulk_unprepare(smmu->num_clks, smmu->clks);
-	return ret;
-}
-
-
 static int arm_smmu_pm_prepare(struct device *dev)
 {
+	int ret = 0;
+
 	if (!of_device_is_compatible(dev->of_node, "qcom,adreno-smmu"))
 		return 0;
 
@@ -3807,14 +3822,36 @@ static int arm_smmu_pm_prepare(struct device *dev)
 	 * cause a deadlock where cx vote is never put down causing timeout. So,
 	 * abort system suspend here if dev->power.usage_count is 1 as this indicates
 	 * rpm_suspend is in progress and prepare is the one incrementing this counter.
-	 * Now rpm_suspend can continue and put down cx vote. System suspend will resume
-	 * later and complete.
+	 * Now pm runtime put sync suspend will complete the rpm suspend and system
+	 * suspend will resume later and complete.
+	 * in case if runtime still not suspended after sync suspend also then will
+	 * retry with EGAIN by incrementing the usage count to avoid the under flow.
 	 */
 	if (pm_runtime_suspended(dev))
 		return 0;
 
-	return (atomic_read(&dev->power.usage_count) == 1) ? -EINPROGRESS : 0;
+	if (atomic_read(&dev->power.usage_count) == 1) {
+		ret = pm_runtime_put_sync_suspend(dev);
+		/*
+		 * sync suspend would decrement the usage count before rpm suspend
+		 * and this causes usage count under flow in the next sequence of
+		 * runtime suspend operations. due to this underflow, system suspend
+		 * will fail and keeps smmu alive and further it is observed by adreno
+		 * while resuming. which is  warning for every 5 seconds by dumping
+		 * these votes.
+		 * to avoid this problem incremented the usage count back to make sure
+		 * the usage count is align before prepare and after suspend when
+		 * sync supend is invoked.
+		 */
+		pm_runtime_get_noresume(dev);
+		if (ret < 0) {
+			dev_err(dev, "sync supend failed to suspend the rpm\n");
+			return -EAGAIN;
+		}
+	}
+	return 0;
 }
+
 static int __maybe_unused arm_smmu_pm_restore_early(struct device *dev)
 {
 	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
@@ -3847,10 +3884,9 @@ static int __maybe_unused arm_smmu_pm_restore_early(struct device *dev)
 		smmu_domain->pgtbl_ops = pgtbl_ops;
 		arm_smmu_init_context_bank(smmu_domain, pgtbl_cfg);
 	}
-	arm_smmu_pm_resume(dev);
-	ret = arm_smmu_runtime_suspend(dev);
+	ret = arm_smmu_pm_resume_common(dev);
 	if (ret) {
-		dev_err(dev, "Failed to suspend\n");
+		dev_err(dev, "Failed to resume\n");
 		return ret;
 	}
 	return 0;
@@ -3879,9 +3915,41 @@ static int __maybe_unused arm_smmu_pm_freeze_late(struct device *dev)
 			}
 		}
 	}
-
+	ret = arm_smmu_runtime_suspend(dev);
+	if (ret) {
+		dev_err(dev, "Failed to suspend\n");
+		return ret;
+	}
 	arm_smmu_power_off(smmu, smmu->pwr);
 	return 0;
+}
+
+static int __maybe_unused arm_smmu_pm_suspend(struct device *dev)
+{
+	int ret = 0;
+	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
+
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return arm_smmu_pm_freeze_late(dev);
+
+	if (pm_runtime_suspended(dev))
+		goto clk_unprepare;
+
+	ret = arm_smmu_runtime_suspend(dev);
+	if (ret)
+		return ret;
+
+clk_unprepare:
+	clk_bulk_unprepare(smmu->num_clks, smmu->clks);
+	return ret;
+}
+
+static int __maybe_unused arm_smmu_pm_resume(struct device *dev)
+{
+	if (pm_suspend_target_state == PM_SUSPEND_MEM)
+		return arm_smmu_pm_restore_early(dev);
+	else
+		return arm_smmu_pm_resume_common(dev);
 }
 
 static const struct dev_pm_ops arm_smmu_pm_ops = {

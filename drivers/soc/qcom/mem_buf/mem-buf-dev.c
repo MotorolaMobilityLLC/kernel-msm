@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/kernel.h>
+#include <linux/debugfs.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -22,6 +23,9 @@ EXPORT_SYMBOL(mem_buf_dev);
 
 unsigned char mem_buf_capability;
 EXPORT_SYMBOL(mem_buf_capability);
+
+struct dentry *mem_buf_debugfs_root;
+EXPORT_SYMBOL_GPL(mem_buf_debugfs_root);
 
 int mem_buf_hyp_assign_table(struct sg_table *sgt, u32 *src_vmid, int source_nelems,
 			     int *dest_vmids, int *dest_perms, int dest_nelems)
@@ -53,6 +57,8 @@ int mem_buf_assign_mem(u32 op, struct sg_table *sgt,
 
 	if (!sgt || !arg->nr_acl_entries || !arg->vmids || !arg->perms)
 		return -EINVAL;
+
+	arg->memparcel_hdl = MEM_BUF_MEMPARCEL_INVALID;
 
 	ret = mem_buf_hyp_assign_table(sgt, src_vmid, ARRAY_SIZE(src_vmid), arg->vmids, arg->perms,
 					arg->nr_acl_entries);
@@ -103,6 +109,10 @@ static int mem_buf_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	u64 dma_mask = IS_ENABLED(CONFIG_ARM64) ? DMA_BIT_MASK(64) :
 		DMA_BIT_MASK(32);
+
+	ret = mem_buf_dma_buf_init();
+	if (ret)
+		return dev_err_probe(dev, ret, "mem_buf_dma_buf_init failed\n");
 
 	if (of_property_match_string(dev->of_node, "qcom,mem-buf-capabilities",
 				     "supplier") >= 0)
@@ -164,6 +174,9 @@ static struct platform_driver mem_buf_driver = {
 
 static int __init mem_buf_dev_init(void)
 {
+	/* This returns an error if CONFIG_DEBUG_FS is disabled. Ignore it. */
+	mem_buf_debugfs_root = debugfs_create_dir("mem_buf", NULL);
+
 	return platform_driver_register(&mem_buf_driver);
 }
 module_init(mem_buf_dev_init);
@@ -172,6 +185,7 @@ static void __exit mem_buf_dev_exit(void)
 {
 	mem_buf_vm_exit();
 	platform_driver_unregister(&mem_buf_driver);
+	debugfs_remove_recursive(mem_buf_debugfs_root);
 }
 module_exit(mem_buf_dev_exit);
 

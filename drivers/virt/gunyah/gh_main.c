@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -42,6 +42,9 @@ static int gh_##name(struct gh_vm *vm, int vm_status)			 \
 
 gh_rm_call_and_set_status(vm_start);
 
+#define gh_wait_for_vm_status(vm, wait_status)				\
+	wait_event(vm->vm_status_wait, (vm->status.vm_status == wait_status))
+
 int gh_register_vm_notifier(struct notifier_block *nb)
 {
 	return srcu_notifier_chain_register(&gh_vm_notifier, nb);
@@ -66,13 +69,28 @@ static void gh_notif_vm_status(struct gh_vm *vm,
 		return;
 
 	/* Wake up the waiters only if there's a change in any of the states */
-	if (status->vm_status != vm->status.vm_status &&
-	   (status->vm_status == GH_RM_VM_STATUS_RESET ||
-	   status->vm_status == GH_RM_VM_STATUS_READY)) {
-		pr_info("VM: %d status %d complete\n", vm->vmid,
+	if (status->vm_status != vm->status.vm_status) {
+		switch (status->vm_status) {
+		case GH_RM_VM_STATUS_RESET:
+		case GH_RM_VM_STATUS_READY:
+			pr_info("VM: %d status %d complete\n", vm->vmid,
 							status->vm_status);
-		vm->status.vm_status = status->vm_status;
-		wake_up_interruptible(&vm->vm_status_wait);
+			vm->status.vm_status = status->vm_status;
+			wake_up(&vm->vm_status_wait);
+			break;
+		case GH_RM_VM_STATUS_RESET_FAILED:
+			pr_err("VM %d RESET failed with status %d\n",
+					vm->vmid, status->vm_status);
+			/*
+			 * Forcibly set the vm_status to RESET so that
+			 * the VM can be destroyed and the next start
+			 * of the VM will be unsuccessful and userspace
+			 * can make the right decision.
+			 */
+			vm->status.vm_status = GH_RM_VM_STATUS_RESET;
+			wake_up(&vm->vm_status_wait);
+			break;
+		}
 	}
 }
 
@@ -84,22 +102,18 @@ static void gh_notif_vm_exited(struct gh_vm *vm,
 
 	mutex_lock(&vm->vm_lock);
 	vm->exit_type = vm_exited->exit_type;
+	switch (vm_exited->exit_type) {
+	case GH_RM_VM_EXIT_TYPE_WDT_BITE:
+	case GH_RM_VM_EXIT_TYPE_HYP_ERROR:
+	case GH_RM_VM_EXIT_TYPE_ASYNC_EXT_ABORT:
+		gh_notify_clients(vm, GH_VM_CRASH);
+		break;
+	}
+
 	vm->status.vm_status = GH_RM_VM_STATUS_EXITED;
 	gh_wakeup_all_vcpus(vm->vmid);
-	wake_up_interruptible(&vm->vm_status_wait);
+	wake_up(&vm->vm_status_wait);
 	mutex_unlock(&vm->vm_lock);
-}
-
-int gh_wait_for_vm_status(struct gh_vm *vm, int wait_status)
-{
-	int ret = 0;
-
-	ret = wait_event_interruptible(vm->vm_status_wait,
-			vm->status.vm_status == wait_status);
-	if (ret < 0)
-		pr_err("Wait for VM_STATUS %d interrupted\n", wait_status);
-
-	return ret;
 }
 
 static int gh_vm_rm_notifier_fn(struct notifier_block *nb,
@@ -131,22 +145,23 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 	case GH_RM_VM_STATUS_EXITED:
 	case GH_RM_VM_STATUS_RUNNING:
 	case GH_RM_VM_STATUS_READY:
+		gh_notify_clients(vm, GH_VM_EXITED);
 		ret = gh_rm_unpopulate_hyp_res(vmid, vm->fw_name);
 		if (ret)
 			pr_warn("Failed to unpopulate hyp resources: %d\n", ret);
-		ret = gh_virtio_mmio_exit(vmid, vm->fw_name);
-		if (ret)
-			pr_warn("Failed to free virtio resources : %d\n", ret);
 		fallthrough;
 	case GH_RM_VM_STATUS_INIT:
 	case GH_RM_VM_STATUS_AUTH:
 		ret = ghd_rm_vm_reset(vmid);
 		if (!ret) {
-			ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_RESET);
-			if (ret < 0)
-				pr_err("wait for VM_STATUS_RESET interrupted %d\n", ret);
+			gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_RESET);
 		} else
 			pr_warn("Reset is unsuccessful for VM:%d\n", vmid);
+
+		gh_notify_clients(vm, GH_VM_EARLY_POWEROFF);
+		ret = gh_virtio_mmio_exit(vmid, vm->fw_name);
+		if (ret)
+			pr_warn("Failed to free virtio resources : %d\n", ret);
 
 		if (vm->is_secure_vm) {
 			ret = gh_secure_vm_loader_reclaim_fw(vm);
@@ -158,7 +173,6 @@ static void gh_vm_cleanup(struct gh_vm *vm)
 		ret = gh_rm_vm_dealloc_vmid(vmid);
 		if (ret)
 			pr_warn("Failed to dealloc VMID: %d: %d\n", vmid, ret);
-		vm->vmid = 0;
 	}
 
 	vm->status.vm_status = GH_RM_VM_STATUS_NO_STATE;
@@ -173,7 +187,11 @@ static int gh_exit_vm(struct gh_vm *vm, u32 stop_reason, u8 stop_flags)
 		return -ENODEV;
 
 	mutex_lock(&vm->vm_lock);
-	if (vm->status.vm_status != GH_RM_VM_STATUS_RUNNING) {
+	if (vm->status.vm_status == GH_RM_VM_STATUS_EXITED) {
+		pr_info("VM:%d already exited\n", vmid);
+		mutex_unlock(&vm->vm_lock);
+		return 0;
+	} else if (vm->status.vm_status != GH_RM_VM_STATUS_RUNNING) {
 		pr_err("VM:%d is not running\n", vmid);
 		mutex_unlock(&vm->vm_lock);
 		return -ENODEV;
@@ -187,9 +205,7 @@ static int gh_exit_vm(struct gh_vm *vm, u32 stop_reason, u8 stop_flags)
 	}
 	mutex_unlock(&vm->vm_lock);
 
-	ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
-	if (ret)
-		pr_err("VM:%d stop operation is interrupted\n", vmid);
+	gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
 
 	return ret;
 }
@@ -199,7 +215,13 @@ static int gh_stop_vm(struct gh_vm *vm)
 	gh_vmid_t vmid = vm->vmid;
 	int ret = -EINVAL;
 
-	ret = gh_exit_vm(vm, GH_VM_STOP_RESTART, 0);
+	if (vm->proxy_vm && !(vm->keep_running == true &&
+			      vm->status.vm_status == GH_RM_VM_STATUS_RUNNING))
+		ret = gh_exit_vm(vm, GH_VM_STOP_RESTART,
+					GH_RM_VM_STOP_FLAG_FORCE_STOP);
+	else
+		ret = gh_exit_vm(vm, GH_VM_STOP_RESTART, 0);
+
 	if (ret && ret != -ENODEV)
 		goto err_vm_force_stop;
 
@@ -223,14 +245,16 @@ void gh_destroy_vcpu(struct gh_vcpu *vcpu)
 	vm->created_vcpus--;
 }
 
-void gh_destroy_vm(struct gh_vm *vm)
+int gh_destroy_vm(struct gh_vm *vm)
 {
-	int vcpu_id = 0;
+	int vcpu_id = 0, ret;
 
 	if (vm->status.vm_status == GH_RM_VM_STATUS_NO_STATE)
 		goto clean_vm;
 
-	gh_stop_vm(vm);
+	ret = gh_stop_vm(vm);
+	if (ret)
+		return ret;
 
 	while (vm->created_vcpus && vcpu_id < GH_MAX_VCPUS) {
 		if (!vm->vcpus[vcpu_id])
@@ -239,17 +263,18 @@ void gh_destroy_vm(struct gh_vm *vm)
 		vcpu_id++;
 	}
 
-	gh_notify_clients(vm, GH_VM_EARLY_POWEROFF);
 	gh_vm_cleanup(vm);
+	gh_notify_clients(vm, GH_VM_POWEROFF);
 
 	gh_uevent_notify_change(GH_EVENT_DESTROY_VM, vm);
-	gh_notify_clients(vm, GH_VM_POWEROFF);
 	memset(vm->fw_name, 0, GH_VM_FW_NAME_MAX);
+	vm->vmid = 0;
 
 clean_vm:
 	gh_rm_unregister_notifier(&vm->rm_nb);
 	mutex_destroy(&vm->vm_lock);
 	kfree(vm);
+	return 0;
 }
 
 static void gh_get_vm(struct gh_vm *vm)
@@ -257,10 +282,18 @@ static void gh_get_vm(struct gh_vm *vm)
 	refcount_inc(&vm->users_count);
 }
 
-static void gh_put_vm(struct gh_vm *vm)
+static int gh_put_vm(struct gh_vm *vm)
 {
-	if (refcount_dec_and_test(&vm->users_count))
-		gh_destroy_vm(vm);
+	int ret = 0;
+
+	if (refcount_dec_and_test(&vm->users_count)) {
+		ret = gh_destroy_vm(vm);
+		if (ret)
+			pr_err("Failed to destroy VM:%d ret %d\n", vm->vmid,
+			       ret);
+	}
+
+	return ret;
 }
 
 static int gh_vcpu_release(struct inode *inode, struct file *filp)
@@ -268,10 +301,12 @@ static int gh_vcpu_release(struct inode *inode, struct file *filp)
 	struct gh_vcpu *vcpu = filp->private_data;
 
 	/* need to create workqueue if critical vm */
-	if (vcpu->vm->keep_running)
+	if (vcpu->vm->keep_running && (!vcpu->vm->rebootable ||
+	    vcpu->vm->status.vm_status == GH_RM_VM_STATUS_RUNNING))
 		gh_vcpu_create_wq(vcpu->vm->vmid, vcpu->vcpu_id);
-	else
-		gh_put_vm(vcpu->vm);
+
+	if (vcpu->vm->rebootable || !vcpu->vm->keep_running)
+		return gh_put_vm(vcpu->vm);
 
 	return 0;
 }
@@ -332,19 +367,26 @@ start_vcpu_run:
 	 * proxy scheduling APIs
 	 */
 	if (gh_vm_supports_proxy_sched(vm->vmid)) {
+		vm->proxy_vm = true;
 		ret = gh_vcpu_run(vm->vmid, vcpu->vcpu_id,
 						0, 0, 0, &vcpu_run);
 		if (ret < 0) {
 			pr_err("Failed vcpu_run %d\n", ret);
 			return ret;
 		}
+	} else {
+		/*
+		 * wait_event is not allowing the process to freez,
+		 * results in device suspend failure. Use wait_event_freezable
+		 * so that device suspends while wait for event.
+		 */
+		ret = wait_event_freezable(vm->vm_status_wait,
+			(vm->status.vm_status == GH_RM_VM_STATUS_EXITED));
+		if (ret < 0)
+			return ret;
+		ret = vm->exit_type;
 	}
 
-	ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_EXITED);
-	if (ret)
-		return ret;
-
-	ret = vm->exit_type;
 	return ret;
 
 err_powerup:
@@ -612,9 +654,7 @@ long gh_vm_configure(u16 auth_mech, u64 image_offset,
 		return ret;
 	}
 
-	ret = gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_READY);
-		if (ret < 0)
-			pr_err("wait for VM_STATUS_RESET interrupted %d\n", ret);
+	gh_wait_for_vm_status(vm, GH_RM_VM_STATUS_READY);
 
 	ret = gh_rm_populate_hyp_res(vm->vmid, fw_name);
 	if (ret < 0) {
@@ -679,8 +719,9 @@ static int gh_vm_release(struct inode *inode, struct file *filp)
 {
 	struct gh_vm *vm = filp->private_data;
 
-	if (!vm->keep_running)
-		gh_put_vm(vm);
+	if (vm->rebootable || !vm->keep_running)
+		return gh_put_vm(vm);
+
 	return 0;
 }
 

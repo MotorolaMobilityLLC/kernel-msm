@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016, 2019-2021, The Linux Foundation. All rights reserved. */
-/* Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved. */
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. */
 
 #include <linux/clk.h>
 #include <linux/export.h>
@@ -232,6 +232,8 @@ static int clk_find_and_set_parent(struct clk_hw *mux, struct clk_hw *clk)
 			continue;
 
 		parent = clk_hw_get_parent_by_index(mux, i);
+		if (!parent)
+			return -EINVAL;
 
 		if (!clk_find_and_set_parent(parent, clk))
 			return clk_set_parent(mux->clk, parent->clk);
@@ -288,10 +290,11 @@ static int clk_debug_mux_set_parent(struct clk_hw *hw, u8 index)
 	if (ret)
 		goto err;
 
-	/* Set the mux's post divider bits */
-	ret = regmap_update_bits(mux->regmap, mux->post_div_offset,
-				 mux->post_div_mask,
-				 (mux->post_div_val - 1) << mux->post_div_shift);
+	if (mux->post_div_offset != U32_MAX)
+		/* Set the mux's post divider bits */
+		ret = regmap_update_bits(mux->regmap, mux->post_div_offset,
+					 mux->post_div_mask,
+					 (mux->post_div_val - 1) << mux->post_div_shift);
 
 err:
 	clk_runtime_put_debug_mux(mux);

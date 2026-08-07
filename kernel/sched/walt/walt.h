@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _WALT_H
@@ -149,8 +149,13 @@ struct walt_rq {
 	u64			last_cc_update;
 	u64			cycles;
 	u64			util;
+	/* MVP */
 	struct list_head	mvp_tasks;
 	int                     num_mvp_tasks;
+	u64			mvp_arrival_time; /* ts when 1st mvp task selected on this cpu */
+	u64			mvp_throttle_time; /* ts when mvp were throttled */
+	bool			skip_mvp;
+
 	u64			latest_clock;
 	u32			enqueue_counter;
 };
@@ -173,7 +178,7 @@ struct walt_sched_cluster {
 	u64			aggr_grp_load;
 	unsigned long		util_to_cost[1024];
 	u64			found_ts;
-	unsigned int		smart_fmax_cap;
+	int8_t			sibling_cluster;
 };
 
 struct freq_relation_map {
@@ -626,8 +631,10 @@ static inline unsigned long capacity_of(int cpu)
 
 static inline bool __cpu_overutilized(int cpu, int delta)
 {
-	return (capacity_orig_of(cpu) * 1024) <
-		((cpu_util(cpu) + delta) * sched_capacity_margin_up[cpu]);
+	unsigned long cap = capacity_orig_of(cpu);
+
+	return cap ? ((cap * 1024) <
+			((cpu_util(cpu) + delta) * sched_capacity_margin_up[cpu])) : true;
 }
 
 static inline bool cpu_overutilized(int cpu)
@@ -1173,24 +1180,13 @@ static inline bool has_internal_freq_limit_changed(struct walt_sched_cluster *cl
 	return cluster->walt_internal_freq_limit != internal_freq;
 }
 
-static inline void update_smart_fmax_capacity(struct walt_sched_cluster *cluster)
-{
-	unsigned long fmax_capacity = arch_scale_cpu_capacity(cpumask_first(&cluster->cpus));
-
-	cluster->smart_fmax_cap = mult_frac(fmax_capacity,
-			fmax_cap[SMART_FMAX_CAP][cluster->id],
-						 cluster->max_possible_freq);
-}
-
-static inline void update_fmax_cap_capacities(int type)
+static inline void update_fmax_cap_capacities(void)
 {
 	struct walt_sched_cluster *cluster;
 	int cpu;
 
 	for_each_sched_cluster(cluster) {
 		if (has_internal_freq_limit_changed(cluster)) {
-			if (type == SMART_FMAX_CAP)
-				update_smart_fmax_capacity(cluster);
 			for_each_cpu(cpu, &cluster->cpus)
 				update_cpu_capacity_helper(cpu);
 		}

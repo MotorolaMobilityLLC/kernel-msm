@@ -3,7 +3,7 @@
  * Copyright (C) 2006-2007 Adam Belay <abelay@novell.com>
  * Copyright (C) 2009 Intel Corporation
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/cpu.h>
@@ -241,6 +241,7 @@ static void cpu_predict(struct lpm_cpu *cpu_gov, u64 duration_ns)
 	struct cpuidle_state *min_state = &drv->states[0];
 	struct history_lpm *lpm_history = &cpu_gov->lpm_history;
 	struct history_ipi *ipi_history = &cpu_gov->ipi_history;
+	unsigned long flags;
 
 	if (prediction_disabled)
 		return;
@@ -313,10 +314,12 @@ static void cpu_predict(struct lpm_cpu *cpu_gov, u64 duration_ns)
 	if (cpu_gov->predicted)
 		return;
 
+	spin_lock_irqsave(&cpu_gov->lock, flags);
 	cpu_gov->predicted = find_deviation(cpu_gov, ipi_history->interval,
 					    duration_ns);
 	if (cpu_gov->predicted)
 		cpu_gov->pred_type = LPM_PRED_IPI_PATTERN;
+	spin_unlock_irqrestore(&cpu_gov->lock, flags);
 }
 
 /**
@@ -394,11 +397,10 @@ static void update_cpu_history(struct lpm_cpu *cpu_gov)
 		lpm_history->samples_idx = 0;
 }
 
-void update_ipi_history(int cpu)
+void update_ipi_history(int cpu, ktime_t now)
 {
 	struct lpm_cpu *cpu_gov = per_cpu_ptr(&lpm_cpu_data, cpu);
 	struct history_ipi *history = &cpu_gov->ipi_history;
-	ktime_t now = ktime_get();
 
 	history->interval[history->current_ptr] =
 			ktime_to_us(ktime_sub(now,
@@ -474,15 +476,17 @@ static void ipi_raise(void *ignore, const struct cpumask *mask, const char *unus
 	if (suspend_in_progress)
 		return;
 
+	ktime_t now = ktime_get();
 	for_each_cpu(cpu, mask) {
 		cpu_gov = &(per_cpu(lpm_cpu_data, cpu));
 		if (!cpu_gov->enable)
 			return;
 
-		spin_lock_irqsave(&cpu_gov->lock, flags);
-		cpu_gov->ipi_pending = true;
-		spin_unlock_irqrestore(&cpu_gov->lock, flags);
-		update_ipi_history(cpu);
+		if (spin_trylock_irqsave(&cpu_gov->lock, flags)) {
+			cpu_gov->ipi_pending = true;
+			update_ipi_history(cpu, now);
+			spin_unlock_irqrestore(&cpu_gov->lock, flags);
+		}
 	}
 }
 
@@ -707,6 +711,28 @@ static void lpm_idle_exit(void *unused, int state, struct cpuidle_device *dev)
 	}
 }
 
+static int suspend_lpm_notify(struct notifier_block *nb,
+			      unsigned long mode, void *_unused)
+{
+	int cpu;
+
+	switch (mode) {
+	case PM_SUSPEND_PREPARE:
+		suspend_in_progress = true;
+		break;
+	case PM_POST_SUSPEND:
+		suspend_in_progress = false;
+		break;
+	default:
+		break;
+	}
+
+	for_each_online_cpu(cpu)
+		wake_up_if_idle(cpu);
+
+	return 0;
+}
+
 /**
  * lpm_enable_device() - Initialize the governor's data for the CPU
  * @drv:      cpuidle driver
@@ -831,6 +857,10 @@ static struct cpuidle_governor lpm_governor = {
 	.reflect =	lpm_reflect,
 };
 
+static struct notifier_block suspend_lpm_nb = {
+	.notifier_call = suspend_lpm_notify,
+};
+
 static int __init qcom_lpm_governor_init(void)
 {
 	int ret;
@@ -855,6 +885,8 @@ static int __init qcom_lpm_governor_init(void)
 				lpm_online_cpu, lpm_offline_cpu);
 	if (ret < 0)
 		goto cpuhp_setup_fail;
+
+	register_pm_notifier(&suspend_lpm_nb);
 
 	return 0;
 

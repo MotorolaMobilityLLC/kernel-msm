@@ -37,7 +37,7 @@
  *	Andrew F. Davis <afd@ti.com>
  *
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/dma-buf.h>
@@ -53,6 +53,7 @@
 #include <linux/kthread.h>
 #include <linux/qcom_dma_heap.h>
 #include <uapi/linux/sched/types.h>
+#include <linux/page_owner.h>
 
 #include "qcom_dma_heap_secure_utils.h"
 #include "qcom_dynamic_page_pool.h"
@@ -431,6 +432,8 @@ struct page *qcom_sys_heap_alloc_largest_available(struct dynamic_page_pool **po
 		if (dynamic_pool_needs_refill(pools[i]))
 			wake_up_process(pools[i]->refill_worker);
 
+		set_page_owner(page, pools[i]->order, GFP_KERNEL);
+
 		return page;
 	}
 	return NULL;
@@ -452,8 +455,7 @@ int system_qcom_sg_buffer_alloc(struct dma_heap *heap,
 
 	sys_heap = dma_heap_get_drvdata(heap);
 
-	INIT_LIST_HEAD(&buffer->attachments);
-	mutex_init(&buffer->lock);
+	qcom_sg_buffer_init(buffer);
 	buffer->heap = heap;
 	buffer->len = len;
 	buffer->uncached = sys_heap->uncached;
@@ -535,7 +537,8 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 	if (ret)
 		goto free_buf_struct;
 
-	buffer->vmperm = mem_buf_vmperm_alloc(&buffer->sg_table);
+	buffer->vmperm = mem_buf_vmperm_alloc(&buffer->sg_table,
+				qcom_sg_release, &buffer->kref);
 	if (IS_ERR(buffer->vmperm)) {
 		ret = PTR_ERR(buffer->vmperm);
 		goto free_sys_heap_mem;
@@ -555,7 +558,7 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 	return dmabuf;
 
 free_vmperm:
-	mem_buf_vmperm_release(buffer->vmperm);
+	mem_buf_vmperm_free(buffer->vmperm);
 free_sys_heap_mem:
 	qcom_system_heap_free(buffer);
 	return ERR_PTR(ret);

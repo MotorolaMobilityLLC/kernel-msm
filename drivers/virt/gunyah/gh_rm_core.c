@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
- *
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 
 #include <linux/of.h>
@@ -25,6 +24,7 @@
 #include <linux/gunyah/gh_common.h>
 #include <linux/gunyah/gh_rm_drv.h>
 
+#include "gh_guest_pops.h"
 #include "gh_rm_drv_private.h"
 
 #define GH_RM_MAX_NUM_FRAGMENTS	62
@@ -76,6 +76,8 @@ const static struct {
 	{GH_TRUSTED_VM, "trustedvm", "qcom,trustedvm"},
 	{GH_CPUSYS_VM, "cpusys_vm", "qcom,cpusysvm"},
 	{GH_OEM_VM, "oem_vm", "qcom,oemvm"},
+	{GH_AUTO_VM, "autoghgvm", "qcom,autoghgvm"},
+	{GH_AUTO_VM_LV, "autoghgvmlv", "qcom,autoghgvmlv"},
 };
 
 static gh_virtio_mmio_cb_t gh_virtio_mmio_fn;
@@ -790,8 +792,10 @@ static void gh_vm_check_peer(struct device *dev, struct device_node *rm_root)
 	uuid_t vm_guid;
 
 	peers_cnt = of_property_count_strings(rm_root, "qcom,peers");
-	if (!peers_cnt)
+	if (peers_cnt < 0) {
+		dev_info(dev, "No qcom,peers found\n");
 		return;
+	}
 
 	peers_array = kcalloc(peers_cnt, sizeof(char *), GFP_KERNEL);
 	if (!peers_array) {
@@ -989,12 +993,17 @@ static int gh_rm_drv_probe(struct auxiliary_device *adev,
 	if (ret < 0 && ret != -ENODEV)
 		return ret;
 
+	ret = gh_guest_pops_init();
+	if (ret < 0 && ret != -ENODEV)
+		return ret;
+
 	return 0;
 
 }
 
 static void gh_rm_drv_remove(struct auxiliary_device *adev)
 {
+	gh_guest_pops_remove();
 	gh_rm_notifier_unregister(rm, &gh_rm_core_notifier_blk);
 	idr_destroy(&gh_rm_call_idr);
 }

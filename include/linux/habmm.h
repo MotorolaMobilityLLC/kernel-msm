@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
  */
 #ifndef HABMM_H
 #define HABMM_H
@@ -42,6 +42,15 @@
 #define HABMM_SOCKET_OPEN_FLAGS_SINGLE_BE_SINGLE_DOMU      0x00000001
 /* one BE for all the domUs */
 #define HABMM_SOCKET_OPEN_FLAGS_SINGLE_BE_MULTI_DOMUS      0x00000002
+
+/* This option is only available for HAB clients in kernel space, and it will
+ * be HAB clients responsibility in kernel space to avoid calling any unexpected
+ * uninterruptible habmm_socket_open() since it is not killable.
+ */
+#define HABMM_SOCKET_OPEN_FLAGS_UNINTERRUPTIBLE            0x00000004
+
+/* Callback function for virq rx register api */
+typedef int32_t (*virq_rx_cb_t)(int32_t irq, void *priv_data, uint32_t flags);
 
 int32_t habmm_socket_open(int32_t *handle, uint32_t mm_ip_id,
 		uint32_t timeout, uint32_t flags);
@@ -248,10 +257,38 @@ int32_t habmm_socket_recvfrom(int32_t handle, void *dst_buff,
 #define HABMM_EXP_MEM_TYPE_DMA 0x00000001
 
 /*
+ * Exporting loopback memory type.
+ *
+ * Loopback memory refers to memory originally exported from a remote HAB,
+ * imported locally, and then re-exported back to the same remote HAB.
+ *
+ * This flag must be used in combination with one of the following:
+ *   - HABMM_EXPIMP_FLAGS_FD
+ *   - HABMM_EXPIMP_FLAGS_DMABUF
+ *
+ * Only memory handles are supported for loopback export. Virtual addresses
+ * without an associated dma-buf or pmem handle are not supported.
+ */
+#define HABMM_EXP_MEM_TYPE_LOOPBACK 0x00000002U
+
+/*
  * this flag is used for export from dma_buf fd or import to dma_buf fd
  */
 #define HABMM_EXPIMP_FLAGS_FD     0x00010000
 #define HABMM_EXPIMP_FLAGS_DMABUF 0x00020000
+
+/*
+ * this flag is used when a HAB client imports memory to fd, and closes the
+ * fd on client side before calling hab unimport. Client can close fd once
+ * the dmabuf is imported into client driver, in order to reduce active fd
+ * number in a process. In this case, client should set this flag during
+ * calling habmm_unimport() to prevent excessive dma-buf fd closure in uhab
+ * from happening.
+ *
+ * TODO: move this flag to hab_ioctl.h as it is only applicable for user space
+ * HAB client.
+ */
+#define HABMM_UNIMP_FLAGS_FD_ALREADY_CLOSED  0x00040000U
 
 #define HAB_MAX_EXPORT_SIZE 0x8000000
 
@@ -299,11 +336,23 @@ int32_t habmm_unexport(int32_t handle, uint32_t export_id, uint32_t flags);
  *
  * Import the exporter's shared reference ID.
  * The importing is per process space.
+ * A dma-buf is created for both invokers calling from khab and uhab.
+ * For those invokers from khab, the dma-buf is returned directly.
+ * For those invokers from uhab, a fd corresponding to the dma-buf file is
+ * returned.
+ *
+ * AoU:
+ * As a HAB clients from kernel,
+ * 1. Increase the dma-buf file count by one before any usage and put it after usage.
+ * 2. If the generated dma_buf is shared to user space via fd, it is mandatory to
+ * increase the dma_buf file count by one.
  *
  * Params:
  *
  * in handle - communication channel created by habmm_socket_open
  * out buff_shared - buffer to be imported. returned upon success
+ *                   dma_buf pointer if calling from khab
+ *                   dma_buf fd if calling from uhab
  * in size_bytes - size of the imported buffer in bytes. It should match the
  *                 original exported buffer size
  * in export_id - received when exporter sent its exporting ID through
@@ -342,6 +391,70 @@ int32_t habmm_import(int32_t handle, void **buff_shared, uint32_t size_bytes,
  */
 int32_t habmm_unimport(int32_t handle, uint32_t export_id, void *buff_shared,
 		uint32_t flags);
+
+/* flags used to differentiate between rx/tx for virtual IRQ */
+#define HABMM_VIRQ_FLAGS_TX       0x00000001
+#define HABMM_VIRQ_FLAGS_RX       0x00000002
+
+/*
+ * Description:
+ *
+ * HABMM_VIRQ_REGISTER
+ *
+ * Register virq resource of rx/tx  with HAB using the underlying hypervisor
+ * doorbell api.
+ *
+ * Params:
+ *
+ * handle - handle returned by habmm_virq_register
+ * vmid - Remote vm_id
+ * virq_num - Associated virq id to be used to register and return the handle
+ * rx_cb - Client to register its callback function
+ * rx_priv - Client private data
+ * flags - rx/tx flag
+ *
+ * Return:
+ * status (success/fail)
+ *
+ */
+int32_t habmm_virq_register(int32_t *handle, uint32_t vmid, uint32_t virq_num,
+		virq_rx_cb_t rx_cb, void *rx_priv, uint32_t flags);
+
+/*
+ * Description:
+ *
+ * HABMM_SEND_VIRQ
+ *
+ * Send virq to GVM after tx is registered .
+ *
+ * Params:
+ *
+ * handle - handle returned by habmm_virq_register
+ * flags - future extension
+ *
+ * Return:
+ * status (success/fail)
+ *
+ */
+int32_t habmm_send_virq(int32_t handle, uint32_t flags);
+
+/*
+ * Description:
+ *
+ * HABMM_VIRQ_UNREGISTER
+ *
+ * Unregister virq resource of tx/rx
+ *
+ * Params:
+ *
+ * handle - handle returned by habmm_tvirq_register
+ * flags - decide if its rx or tx
+ *
+ * Return:
+ * status (success/fail)
+ *
+ */
+int32_t habmm_virq_unregister(int32_t handle, uint32_t flags);
 
 /*
  * Description:
