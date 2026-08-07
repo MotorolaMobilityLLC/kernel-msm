@@ -1414,12 +1414,6 @@ static int sysfs_adsp_stats_show(struct seq_buf *s)
 	if (!g_sysmon_stats.smem_init_adsp)
 		sysmon_smem_init_adsp();
 
-	/*Check again whether ADSP smem is OK*/
-	if (!g_sysmon_stats.smem_init_adsp) {
-		seq_buf_printf(s, "[NA]\n");
-		return -ENOKEY;
-	}
-
 	if (g_sysmon_stats.sysmon_event_stats_adsp) {
 		seq_buf_printf(s, "\nsysMon stats:\n\n");
 		seq_buf_printf(s, "Core clock(KHz): %d\n",
@@ -1544,12 +1538,6 @@ static int sysfs_cdsp_stats_show(struct seq_buf *s)
 
 	if (!g_sysmon_stats.smem_init_cdsp)
 		sysmon_smem_init_cdsp();
-
-	/*Check again whether CDSP smem is OK*/
-	if (!g_sysmon_stats.smem_init_cdsp) {
-		seq_buf_printf(s, "[NA]\n");
-		return -ENOKEY;
-	}
 
 	if (g_sysmon_stats.sysmon_event_stats_cdsp) {
 		seq_buf_printf(s, "\nsysMon stats:\n\n");
@@ -1700,12 +1688,6 @@ static ssize_t show_clk_stats(struct kobject *kobj,
 	if (!g_sysmon_stats.smem_init_adsp)
 		sysmon_smem_init_adsp();
 
-	/*Check again whether ADSP smem is OK*/
-	if (!g_sysmon_stats.smem_init_adsp) {
-		seq_buf_printf(&s, "[NA]");
-		goto failed;
-	}
-
 	if (g_sysmon_stats.sleep_lpi_adsp) {
 		lpi_accumulated = g_sysmon_stats.sleep_lpi_adsp->accumulated;
 
@@ -1773,8 +1755,6 @@ static ssize_t show_clk_stats(struct kobject *kobj,
 		seq_buf_printf(&s, ", %10u", g_sysmon_stats.sysmon_event_stats_adsp->Sleep_latency > 0 ?
 				g_sysmon_stats.sysmon_event_stats_adsp->Sleep_latency : U32_MAX);
 	}
-
-failed:
 	seq_buf_printf(&s, "\n");
 
 	return seq_buf_used(&s);
@@ -1847,12 +1827,6 @@ static ssize_t show_hvxclk_in_time(struct kobject *kobj,
 	if (!g_sysmon_stats.smem_init_cdsp)
 		sysmon_smem_init_cdsp();
 
-	/*Check again whether CDSP smem is OK*/
-	if (!g_sysmon_stats.smem_init_cdsp) {
-		seq_buf_printf(&s, "[NA]");
-		goto failed;
-	}
-
 	if (g_sysmon_stats.sleep_stats_cdsp) {
 		lpm_accumulated = g_sysmon_stats.sleep_stats_cdsp->accumulated;
 
@@ -1903,7 +1877,6 @@ static ssize_t show_hvxclk_in_time(struct kobject *kobj,
 			g_sysmon_stats.sysmon_event_stats_cdsp->Sleep_latency : U32_MAX);
 	}
 
-failed:
 	seq_buf_printf(&s, "\n");
 
 	return seq_buf_used(&s);
