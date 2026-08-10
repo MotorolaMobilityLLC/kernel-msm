@@ -213,6 +213,9 @@ static inline void *l2tp_session_priv(struct l2tp_session *session)
 }
 
 /* Tunnel and session refcounts */
+void l2tp_tunnel_put(struct l2tp_tunnel *tunnel);
+void l2tp_session_put(struct l2tp_session *session);
+/* ANDROID: Adding these back to protect the ABI */
 void l2tp_tunnel_inc_refcount(struct l2tp_tunnel *tunnel);
 void l2tp_tunnel_dec_refcount(struct l2tp_tunnel *tunnel);
 void l2tp_session_inc_refcount(struct l2tp_session *session);
