@@ -3504,6 +3504,8 @@ struct vm_area_struct *copy_vma(struct vm_area_struct **vmap,
 		new_vma = vm_area_dup(vma);
 		if (!new_vma)
 			goto out;
+		/* Do not preserve padding flags on the new VMA */
+		vm_flags_clear(new_vma, VM_PAD_MASK);
 		new_vma->vm_start = addr;
 		new_vma->vm_end = addr + len;
 		new_vma->vm_pgoff = pgoff;

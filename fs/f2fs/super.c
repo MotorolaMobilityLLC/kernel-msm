@@ -2297,34 +2297,57 @@ restore_flag:
 
 static int f2fs_enable_checkpoint(struct f2fs_sb_info *sbi)
 {
-	unsigned int nr_pages = get_pages(sbi, F2FS_DIRTY_DATA) / 16;
+	int retry = MAX_FLUSH_RETRY_COUNT;
 	long long start, writeback, end;
 	int ret;
+	long long skipped_write, dirty_data;
 
 	f2fs_info(sbi, "f2fs_enable_checkpoint() starts, meta: %lld, node: %lld, data: %lld",
 					get_pages(sbi, F2FS_DIRTY_META),
 					get_pages(sbi, F2FS_DIRTY_NODES),
 					get_pages(sbi, F2FS_DIRTY_DATA));
 
-	f2fs_update_time(sbi, ENABLE_TIME);
-
 	start = ktime_get();
 
+	set_sbi_flag(sbi, SBI_ENABLE_CHECKPOINT);
+
 	/* we should flush all the data to keep data consistency */
-	while (get_pages(sbi, F2FS_DIRTY_DATA)) {
-		writeback_inodes_sb_nr(sbi->sb, nr_pages, WB_REASON_SYNC);
+	do {
+		skipped_write = get_pages(sbi, F2FS_SKIPPED_WRITE);
+		dirty_data = get_pages(sbi, F2FS_DIRTY_DATA);
+
+		sync_inodes_sb(sbi->sb);
 		f2fs_io_schedule_timeout(DEFAULT_IO_TIMEOUT);
 
-		if (f2fs_time_over(sbi, ENABLE_TIME))
+		f2fs_info(sbi, "sync_inode_sb done, dirty_data: %lld, %lld, "
+				"skipped write: %lld, %lld, retry: %d",
+				get_pages(sbi, F2FS_DIRTY_DATA),
+				dirty_data,
+				get_pages(sbi, F2FS_SKIPPED_WRITE),
+				skipped_write, retry);
+
+		/*
+		 * sync_inodes_sb() has retry logic, so let's check dirty_data
+		 * in prior to skipped_write in case there is no dirty data.
+		 */
+		if (!get_pages(sbi, F2FS_DIRTY_DATA))
 			break;
-	}
+		if (get_pages(sbi, F2FS_SKIPPED_WRITE) == skipped_write)
+			break;
+	} while (retry--);
+
+	clear_sbi_flag(sbi, SBI_ENABLE_CHECKPOINT);
+
 	writeback = ktime_get();
 
-	sync_inodes_sb(sbi->sb);
+	if (unlikely(get_pages(sbi, F2FS_DIRTY_DATA) ||
+			get_pages(sbi, F2FS_SKIPPED_WRITE)))
+		f2fs_warn(sbi, "checkpoint=enable unwritten data: %lld, skipped data: %lld, retry: %d",
+				get_pages(sbi, F2FS_DIRTY_DATA),
+				get_pages(sbi, F2FS_SKIPPED_WRITE), retry);
 
-	if (unlikely(get_pages(sbi, F2FS_DIRTY_DATA)))
-		f2fs_warn(sbi, "checkpoint=enable has some unwritten data: %lld",
-					get_pages(sbi, F2FS_DIRTY_DATA));
+	if (get_pages(sbi, F2FS_SKIPPED_WRITE))
+		atomic_set(&sbi->nr_pages[F2FS_SKIPPED_WRITE], 0);
 
 	f2fs_down_write(&sbi->gc_lock);
 	f2fs_dirty_to_prefree(sbi);
@@ -3869,7 +3892,6 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->interval_time[DISCARD_TIME] = DEF_IDLE_INTERVAL;
 	sbi->interval_time[GC_TIME] = DEF_IDLE_INTERVAL;
 	sbi->interval_time[DISABLE_TIME] = DEF_DISABLE_INTERVAL;
-	sbi->interval_time[ENABLE_TIME] = DEF_ENABLE_INTERVAL;
 	sbi->interval_time[UMOUNT_DISCARD_TIMEOUT] =
 				DEF_UMOUNT_DISCARD_TIMEOUT;
 	clear_sbi_flag(sbi, SBI_NEED_FSCK);

@@ -888,6 +888,7 @@ void __mmdrop(struct mm_struct *mm)
 	put_user_ns(mm->user_ns);
 	mm_pasid_drop(mm);
 	kfree(mm->abi_extend);
+	trace_android_vh_mmap_lock_free(&mm->mmap_lock);
 	free_mm(mm);
 }
 EXPORT_SYMBOL_GPL(__mmdrop);
@@ -1158,7 +1159,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 
 	android_init_vendor_data(tsk, 1);
 	android_init_oem_data(tsk, 1);
-
+	android_init_dynamic_vendor_data(tsk);
 	trace_android_vh_dup_task_struct(tsk, orig);
 	return tsk;
 
@@ -1215,6 +1216,12 @@ static void mm_init_uprobes_state(struct mm_struct *mm)
 #ifdef CONFIG_UPROBES
 	mm->uprobes_state.xol_area = NULL;
 #endif
+}
+
+static void mmap_init_lock(struct mm_struct *mm)
+{
+	init_rwsem(&mm->mmap_lock);
+	trace_android_vh_mmap_lock_init(&mm->mmap_lock);
 }
 
 static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
@@ -3368,6 +3375,7 @@ int ksys_unshare(unsigned long unshare_flags)
 	struct files_struct *new_fd = NULL;
 	struct cred *new_cred = NULL;
 	struct nsproxy *new_nsproxy = NULL;
+	struct task_dma_buf_info *dmabuf_info = NULL;
 	int do_sysvsem = 0;
 	int err;
 
@@ -3452,10 +3460,22 @@ int ksys_unshare(unsigned long unshare_flags)
 			spin_unlock(&fs->lock);
 		}
 
-		if (new_fd)
+		if (new_fd) {
 			swap(current->files, new_fd);
 
+			/*
+			 * This is a new partial sharing relationship for the current task, since we
+			 * have a new files_struct (and the MM might still be shared). Since partial
+			 * sharing is not supported for dmabuf accounting, we need to remove the
+			 * accounting info from the task. Leave the mm->dmabuf_info so any existing
+			 * accounting can be unaccounted properly.
+			 */
+			dmabuf_info = current->dmabuf_info;
+			current->dmabuf_info = NULL;
+		}
+
 		task_unlock(current);
+		put_dmabuf_info(dmabuf_info);
 
 		if (new_cred) {
 			/* Install the new user namespace */
@@ -3496,6 +3516,7 @@ int unshare_files(void)
 {
 	struct task_struct *task = current;
 	struct files_struct *old, *copy = NULL;
+	struct task_dma_buf_info *dmabuf_info;
 	int error;
 
 	error = unshare_fd(CLONE_FILES, &copy);
@@ -3507,16 +3528,17 @@ int unshare_files(void)
 	task->files = copy;
 
 	/*
-	 * This is a new partial sharing relationship for task, since we have a new
-	 * files_struct (but the MM is still used). Since partial sharing is not
-	 * supported for dmabuf accounting, we need to remove the accounting info
-	 * from the task. Leave the mm->dmabuf_info so any existing accounting can
-	 * be unaccounted properly. The fixup for this new files_struct happens
-	 * externally with appropriate locking.
+	 * This is a new partial sharing relationship for the current task, since we have a new
+	 * files_struct (and the MM might still be shared). Since partial sharing is not
+	 * supported for dmabuf accounting, we need to remove the accounting info from the task.
+	 * Leave the mm->dmabuf_info so any existing accounting can be unaccounted properly. For
+	 * execs where we also have a new MM, the fixup for this new files_struct happens externally
+	 * with appropriate locking in dma_buf_begin_new_exec.
 	 */
-	put_dmabuf_info(task->dmabuf_info);
+	dmabuf_info = task->dmabuf_info;
 	task->dmabuf_info = NULL;
 	task_unlock(task);
+	put_dmabuf_info(dmabuf_info);
 	put_files_struct(old);
 	return 0;
 }

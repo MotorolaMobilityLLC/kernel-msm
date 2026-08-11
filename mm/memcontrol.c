@@ -1199,6 +1199,7 @@ out_unlock:
 
 	return memcg;
 }
+EXPORT_SYMBOL_GPL(mem_cgroup_iter);
 
 /**
  * mem_cgroup_iter_break - abort a hierarchy walk prematurely

@@ -2565,6 +2565,7 @@
   drm_mode_is_420
   drm_mode_object_get
   drm_mode_prune_invalid
+  drm_mode_get_hv_timing
   drm_mode_set_crtcinfo
   drm_modeset_lock_all
   drm_modeset_unlock_all

@@ -10,6 +10,10 @@
 
 #include <trace/hooks/vendor_hooks.h>
 
+DECLARE_HOOK(android_vh_put_super,
+	TP_PROTO(struct super_block *sb),
+	TP_ARGS(sb));
+
 DECLARE_HOOK(android_vh_ep_create_wakeup_source,
 	TP_PROTO(char *name, int len),
 	TP_ARGS(name, len));

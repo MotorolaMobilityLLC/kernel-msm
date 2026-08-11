@@ -43,6 +43,12 @@ DECLARE_HOOK(android_vh_should_continue_reclaim,
 DECLARE_HOOK(android_vh_file_is_tiny_bypass,
 	TP_PROTO(bool file_is_tiny, bool *bypass),
 	TP_ARGS(file_is_tiny, bypass));
+DECLARE_HOOK(android_vh_remove_mapping,
+	TP_PROTO(struct address_space *mapping, struct folio *folio, bool reclaimed),
+	TP_ARGS(mapping, folio, reclaimed));
+DECLARE_HOOK(android_vh_remove_mapping_failed,
+	TP_PROTO(struct address_space *mapping, struct folio *folio, bool reclaimed),
+	TP_ARGS(mapping, folio, reclaimed));
 DECLARE_HOOK(android_vh_check_folio_look_around_ref,
 	TP_PROTO(struct folio *folio, int *skip),
 	TP_ARGS(folio, skip));
@@ -70,6 +76,12 @@ DECLARE_HOOK(android_vh_inode_lru_isolate,
 DECLARE_HOOK(android_vh_invalidate_mapping_pagevec,
 	TP_PROTO(struct address_space *mapping, bool *skip),
 	TP_ARGS(mapping, skip));
+DECLARE_HOOK(android_vh_direct_reclaim_begin,
+	TP_PROTO(int *prio),
+	TP_ARGS(prio));
+DECLARE_HOOK(android_vh_direct_reclaim_end,
+	TP_PROTO(int prio),
+	TP_ARGS(prio));
 DECLARE_RESTRICTED_HOOK(android_rvh_vmscan_kswapd_wake,
 	TP_PROTO(int node_id, unsigned int highest_zoneidx, unsigned int alloc_order),
 	TP_ARGS(node_id, highest_zoneidx, alloc_order), 1);
@@ -80,6 +92,12 @@ DECLARE_RESTRICTED_HOOK(android_rvh_vmscan_kswapd_done,
 DECLARE_HOOK(android_vh_handle_trylock_failed_folio,
 	TP_PROTO(struct list_head *folio_list),
 	TP_ARGS(folio_list));
+DECLARE_HOOK(android_vh_folio_skip_activate,
+	TP_PROTO(struct folio *folio, bool *skip),
+	TP_ARGS(folio, skip));
+DECLARE_HOOK(android_vh_folio_trylock_clear_bypass,
+	TP_PROTO(struct folio *folio, bool *bypass),
+	TP_ARGS(folio, bypass));
 DECLARE_HOOK(android_vh_folio_trylock_set,
 	TP_PROTO(struct folio *folio),
 	TP_ARGS(folio));
@@ -105,6 +123,9 @@ DECLARE_HOOK(android_vh_shrink_node,
 DECLARE_HOOK(android_vh_should_memcg_bypass,
 	TP_PROTO(struct mem_cgroup *memcg, int priority, bool *bypass),
 	TP_ARGS(memcg, priority, bypass));
+DECLARE_HOOK(android_vh_isolate_folio_type,
+	TP_PROTO(int swappiness, int *type, int *tier, int *type_to_scan),
+	TP_ARGS(swappiness, type, tier, type_to_scan));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
 #include <trace/define_trace.h>

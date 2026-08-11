@@ -173,6 +173,10 @@ static void __init fpu__init_task_struct_size(void)
 	CHECK_MEMBER_AT_END_OF(struct thread_struct, fpu);
 	CHECK_MEMBER_AT_END_OF(struct task_struct, thread);
 
+	if (arch_task_struct_size > sizeof(struct task_struct)) {
+		pr_warn("WARNING: Extra space requested by android_arch_task_struct_size overwritten by %s\n",
+			__func__);
+	}
 	arch_task_struct_size = task_size;
 }
 
