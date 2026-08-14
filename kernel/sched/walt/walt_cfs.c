@@ -1599,6 +1599,42 @@ void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
 EXPORT_SYMBOL(walt_cfs_dequeue_task);
 #endif
 
+#if IS_ENABLED(CONFIG_SCHED_MOTO_UNFAIR)
+/*Safely updates the MVP priority of a task already on the WALT RQ without
+ manipulating the core CFS red-black tree. Must be called with task_rq_lock held.*/
+void walt_cfs_update_mvp_prio(struct rq *rq, struct task_struct *p)
+{
+	struct walt_rq *wrq = &per_cpu(walt_rq, cpu_of(rq));
+	struct walt_task_struct *wts = (struct walt_task_struct *)android_task_vendor_data(p);
+	int mvp_prio;
+
+	if (!walt_fair_task(p))
+		return;
+
+	if (wts->prev_on_rq != 1)
+		return;
+
+	if (!list_empty(&wts->mvp_list) && wts->mvp_list.next)
+		walt_cfs_deactivate_mvp_task(rq, p, 3); /* 3 = Update reason */
+
+	mvp_prio = walt_get_mvp_task_prio(p);
+	if (mvp_prio == WALT_NOT_MVP)
+		return;
+
+	if (wts->total_exec > __walt_cfs_mvp_task_limit(p, mvp_prio))
+		return;
+
+	wts->mvp_prio = mvp_prio;
+	walt_cfs_insert_mvp_task(wrq, wts, task_on_cpu(rq, p));
+
+	if (!wts->total_exec) {
+		wts->sum_exec_snapshot_for_total = p->se.sum_exec_runtime;
+		wts->sum_exec_snapshot_for_slice = p->se.sum_exec_runtime;
+	}
+}
+EXPORT_SYMBOL(walt_cfs_update_mvp_prio);
+#endif
+
 void walt_cfs_tick(struct rq *rq)
 {
 	struct walt_rq *wrq = &per_cpu(walt_rq, cpu_of(rq));
