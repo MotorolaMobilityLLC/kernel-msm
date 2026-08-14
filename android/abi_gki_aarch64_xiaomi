@@ -448,6 +448,10 @@
   __traceiter_android_vh_erofs_iostat_update
   __tracepoint_android_vh_erofs_iostat_submit
   __tracepoint_android_vh_erofs_iostat_update
+  __traceiter_android_vh_f2fs_iostat_submit
+  __traceiter_android_vh_f2fs_iostat_update
+  __tracepoint_android_vh_f2fs_iostat_submit
+  __tracepoint_android_vh_f2fs_iostat_update
 
 # required by mi_mem_engine.ko
   __traceiter_android_vh_tune_swappiness

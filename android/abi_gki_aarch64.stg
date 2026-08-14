@@ -329399,6 +329399,14 @@ function {
   parameter_id: 0x1a6ea392
 }
 function {
+  id: 0x9b2d9d7b
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x26ee682a
+  parameter_id: 0x6720d32f
+  parameter_id: 0x15a30023
+}
+function {
   id: 0x9b2e0ad9
   return_type_id: 0x6720d32f
   parameter_id: 0x18bd6530
@@ -329465,6 +329473,14 @@ function {
   parameter_id: 0x18bd6530
   parameter_id: 0x26e55184
   parameter_id: 0x13580d6c
+}
+function {
+  id: 0x9b312c3c
+  return_type_id: 0x6720d32f
+  parameter_id: 0x18bd6530
+  parameter_id: 0x26ee682a
+  parameter_id: 0x15a30023
+  parameter_id: 0x11cfee5a
 }
 function {
   id: 0x9b316b03
@@ -352100,6 +352116,24 @@ elf_symbol {
   full_name: "__traceiter_android_vh_exit_signal_whether_wake"
 }
 elf_symbol {
+  id: 0xbfe7cc07
+  name: "__traceiter_android_vh_f2fs_iostat_submit"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x86003151
+  type_id: 0x9b2d9d7b
+  full_name: "__traceiter_android_vh_f2fs_iostat_submit"
+}
+elf_symbol {
+  id: 0x87401888
+  name: "__traceiter_android_vh_f2fs_iostat_update"
+  is_defined: true
+  symbol_type: FUNCTION
+  crc: 0x77c36c66
+  type_id: 0x9b312c3c
+  full_name: "__traceiter_android_vh_f2fs_iostat_update"
+}
+elf_symbol {
   id: 0x150ea575
   name: "__traceiter_android_vh_fas_gpu_qos_update_tracer"
   is_defined: true
@@ -357993,6 +358027,24 @@ elf_symbol {
   crc: 0xfc31d092
   type_id: 0x18ccbd2c
   full_name: "__tracepoint_android_vh_exit_signal_whether_wake"
+}
+elf_symbol {
+  id: 0xf230d27d
+  name: "__tracepoint_android_vh_f2fs_iostat_submit"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0x4eaeaba3
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_f2fs_iostat_submit"
+}
+elf_symbol {
+  id: 0x44dac1fe
+  name: "__tracepoint_android_vh_f2fs_iostat_update"
+  is_defined: true
+  symbol_type: OBJECT
+  crc: 0xacb7abcd
+  type_id: 0x18ccbd2c
+  full_name: "__tracepoint_android_vh_f2fs_iostat_update"
 }
 elf_symbol {
   id: 0x2b59c1a7
@@ -425419,6 +425471,8 @@ interface {
   symbol_id: 0xb38eccdd
   symbol_id: 0x1f554c2a
   symbol_id: 0x343adff1
+  symbol_id: 0xbfe7cc07
+  symbol_id: 0x87401888
   symbol_id: 0x150ea575
   symbol_id: 0x93a4717b
   symbol_id: 0x6091a763
@@ -426074,6 +426128,8 @@ interface {
   symbol_id: 0xac5d150b
   symbol_id: 0x0d418d38
   symbol_id: 0x2121385f
+  symbol_id: 0xf230d27d
+  symbol_id: 0x44dac1fe
   symbol_id: 0x2b59c1a7
   symbol_id: 0x50a83025
   symbol_id: 0x0c03d499
