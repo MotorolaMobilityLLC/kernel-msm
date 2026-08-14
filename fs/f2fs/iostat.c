@@ -13,6 +13,7 @@
 #include "f2fs.h"
 #include "iostat.h"
 #include <trace/events/f2fs.h>
+#include <trace/hooks/fs.h>
 
 static struct kmem_cache *bio_iostat_ctx_cache;
 static mempool_t *bio_iostat_ctx_pool;
@@ -240,7 +241,9 @@ void iostat_update_and_unbind_ctx(struct bio *bio)
 {
 	struct bio_iostat_ctx *iostat_ctx = bio->bi_private;
 	enum iostat_lat_type lat_type;
+	bool skip = false;
 
+	trace_android_vh_f2fs_iostat_update(iostat_ctx->sbi->sb, bio, &skip);
 	if (op_is_write(bio_op(bio))) {
 		lat_type = bio->bi_opf & REQ_SYNC ?
 				WRITE_SYNC_IO : WRITE_ASYNC_IO;
@@ -250,7 +253,8 @@ void iostat_update_and_unbind_ctx(struct bio *bio)
 		bio->bi_private = iostat_ctx->post_read_ctx;
 	}
 
-	__update_iostat_latency(iostat_ctx, lat_type);
+	if (!skip)
+		__update_iostat_latency(iostat_ctx, lat_type);
 	mempool_free(iostat_ctx, bio_iostat_ctx_pool);
 }
 

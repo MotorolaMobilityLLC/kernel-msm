@@ -29,6 +29,14 @@ DECLARE_HOOK(android_vh_erofs_iostat_submit,
 DECLARE_HOOK(android_vh_erofs_iostat_update,
 	TP_PROTO(struct super_block *sb, struct bio *bio),
 	TP_ARGS(sb, bio));
+
+DECLARE_HOOK(android_vh_f2fs_iostat_submit,
+	TP_PROTO(struct super_block *sb, int type, struct bio *bio),
+	TP_ARGS(sb, type, bio));
+
+DECLARE_HOOK(android_vh_f2fs_iostat_update,
+	TP_PROTO(struct super_block *sb, struct bio *bio, bool *skip),
+	TP_ARGS(sb, bio, skip));
 #endif /* _TRACE_HOOK_FS_H */
 
 /* This part must be outside protection */
