@@ -2090,6 +2090,7 @@ static enum compact_result __compact_finished(struct compact_control *cc)
 	unsigned int order;
 	const int migratetype = cc->migratetype;
 	int ret;
+	bool bypass = false;
 
 	/* Compaction run completes if the migrate and free scanner meet */
 	if (compact_scanners_met(cc)) {
@@ -2129,6 +2130,10 @@ static enum compact_result __compact_finished(struct compact_control *cc)
 
 		goto out;
 	}
+
+	trace_android_vh_compact_bypass(cc, &bypass);
+	if (bypass)
+		return COMPACT_SUCCESS;
 
 	if (is_via_compact_memory(cc->order))
 		return COMPACT_CONTINUE;
@@ -2659,6 +2664,36 @@ enum compact_result try_to_compact_pages(gfp_t gfp_mask, unsigned int order,
 	trace_android_vh_compaction_try_to_compact_pages_exit(&rc);
 	return rc;
 }
+
+/* Compact all zones within a node with MIGRATE_ASYNC */
+void compact_node_async(int nid)
+{
+	pg_data_t *pgdat = NODE_DATA(nid);
+	int zoneid;
+	struct zone *zone;
+	struct compact_control cc = {
+		.order = -1,
+		.mode = MIGRATE_ASYNC,
+		.ignore_skip_hint = true,
+		.whole_zone = true,
+		.gfp_mask = GFP_KERNEL,
+		.proactive_compaction = false,
+	};
+
+	for (zoneid = 0; zoneid < MAX_NR_ZONES; zoneid++) {
+		zone = &pgdat->node_zones[zoneid];
+		if (!populated_zone(zone))
+			continue;
+
+		if (fatal_signal_pending(current))
+			break;
+
+		cc.zone = zone;
+
+		compact_zone(&cc, NULL);
+	}
+}
+EXPORT_SYMBOL_GPL(compact_node_async);
 
 /*
  * Compact all zones within a node till each zone's fragmentation score

@@ -165,6 +165,9 @@ void *qcom_mdt_read_metadata(struct device *dev, const struct firmware *fw, cons
 	if (!mdt_header_valid(fw))
 		return ERR_PTR(-EINVAL);
 
+	if (!mdt_header_valid(fw))
+		return ERR_PTR(-EINVAL);
+
 	ehdr = (struct elf32_hdr *)fw->data;
 	phdrs = (struct elf32_phdr *)(ehdr + 1);
 
@@ -250,7 +253,6 @@ free_metadata:
 	return ERR_PTR(ret);
 }
 EXPORT_SYMBOL_GPL(qcom_mdt_read_metadata);
-
 
 static int __qcom_mdt_load(struct device *dev, const struct firmware *fw, const char *firmware,
 			   int pas_id, void *mem_region, phys_addr_t mem_phys, size_t mem_size,
