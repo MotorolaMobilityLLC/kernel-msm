@@ -1322,7 +1322,8 @@ int begin_new_exec(struct linux_binprm * bprm)
 	 * dma_buf_begin_new_exec) for the new mm_struct.
 	 */
 	if (IS_ENABLED(CONFIG_DMA_SHARED_BUFFER)) {
-		refcount_inc(&current->dmabuf_info->refcnt);
+		if (current->dmabuf_info)
+			get_dmabuf_info(current->dmabuf_info);
 		me->mm->dmabuf_info = current->dmabuf_info;
 	}
 

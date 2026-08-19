@@ -2192,8 +2192,15 @@ static int dualshock4_parse_report(struct ps_device *ps_dev, struct hid_report *
 			size == DS4_INPUT_REPORT_USB_SIZE) {
 		struct dualshock4_input_report_usb *usb = (struct dualshock4_input_report_usb *)data;
 
+		if (usb->num_touch_reports > ARRAY_SIZE(usb->touch_reports)) {
+			hid_err(hdev, "DualShock4 USB input report has invalid num_touch_reports=%d\n",
+				usb->num_touch_reports);
+			return -EINVAL;
+		}
+
 		ds4_report = &usb->common;
-		num_touch_reports = usb->num_touch_reports;
+		num_touch_reports = min_t(u8, usb->num_touch_reports,
+					  ARRAY_SIZE(usb->touch_reports));
 		touch_reports = usb->touch_reports;
 	} else if (hdev->bus == BUS_BLUETOOTH && report->id == DS4_INPUT_REPORT_BT &&
 			size == DS4_INPUT_REPORT_BT_SIZE) {
@@ -2206,8 +2213,15 @@ static int dualshock4_parse_report(struct ps_device *ps_dev, struct hid_report *
 			return -EILSEQ;
 		}
 
+		if (bt->num_touch_reports > ARRAY_SIZE(bt->touch_reports)) {
+			hid_err(hdev, "DualShock4 BT input report has invalid num_touch_reports=%d\n",
+				bt->num_touch_reports);
+			return -EINVAL;
+		}
+
 		ds4_report = &bt->common;
-		num_touch_reports = bt->num_touch_reports;
+		num_touch_reports = min_t(u8, bt->num_touch_reports,
+					  ARRAY_SIZE(bt->touch_reports));
 		touch_reports = bt->touch_reports;
 	} else {
 		hid_err(hdev, "Unhandled reportID=%d\n", report->id);

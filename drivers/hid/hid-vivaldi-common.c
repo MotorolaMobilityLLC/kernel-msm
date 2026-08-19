@@ -84,8 +84,8 @@ void vivaldi_feature_mapping(struct hid_device *hdev,
 		report_len--;
 	}
 
-	ret = hid_report_raw_event(hdev, HID_FEATURE_REPORT, report_data,
-				   report_len, 0);
+	ret = __hid_report_raw_event(hdev, HID_FEATURE_REPORT, report_data,
+				     report_len, report_len, 0);
 	if (ret) {
 		dev_warn(&hdev->dev, "failed to report feature %d\n",
 			 field->report->id);

@@ -83,6 +83,7 @@ struct dma_buf *dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 				      u64 heap_flags)
 {
 	struct dma_buf *dma_buf;
+	u64 stime = 0;
 
 	if (fd_flags & ~DMA_HEAP_VALID_FD_FLAGS)
 		return ERR_PTR(-EINVAL);
@@ -99,8 +100,10 @@ struct dma_buf *dma_heap_buffer_alloc(struct dma_heap *heap, size_t len,
 
 	trace_android_vh_dma_heap_buffer_alloc_start(heap->name, len,
 			fd_flags, heap_flags);
+	trace_android_vh_dma_heap_buffer_alloc_lat_start(&stime);
 	dma_buf = heap->ops->allocate(heap, len, fd_flags, heap_flags);
 	trace_android_vh_dma_heap_buffer_alloc_end(heap->name, len);
+	trace_android_vh_dma_heap_buffer_alloc_lat_end(stime, len, dma_buf);
 
 	return dma_buf;
 }
