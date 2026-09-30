@@ -501,7 +501,7 @@ static void acc_complete_send_hid_event(struct usb_ep *ep,
 		return;
 	}
 
-	hid_report_raw_event(hid->hid, HID_INPUT_REPORT, req->buf, length, 1);
+	__hid_report_raw_event(hid->hid, HID_INPUT_REPORT, req->buf, length, length, 1);
 }
 
 static int acc_hid_parse(struct hid_device *hid)

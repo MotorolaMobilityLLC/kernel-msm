@@ -94,14 +94,37 @@ static void handle_pvm_entry_psci(struct pkvm_hyp_vcpu *hyp_vcpu)
 			unsigned long cpu_id = smccc_get_arg1(&hyp_vcpu->vcpu);
 			struct pkvm_hyp_vcpu *target_vcpu;
 			struct pkvm_hyp_vm *hyp_vm;
+			int prev;
 
 			hyp_vm = pkvm_hyp_vcpu_to_hyp_vm(hyp_vcpu);
 			target_vcpu = pkvm_mpidr_to_hyp_vcpu(hyp_vm, cpu_id);
 
-			if (target_vcpu && READ_ONCE(target_vcpu->power_state) == PSCI_0_2_AFFINITY_LEVEL_ON_PENDING)
-				WRITE_ONCE(target_vcpu->power_state, PSCI_0_2_AFFINITY_LEVEL_OFF);
+			/*
+			 * pvm_psci_vcpu_on() resolved this MPIDR before
+			 * forwarding and vcpus[] entries are never removed,
+			 * so a NULL here is an EL2-internal invariant
+			 * violation, not host-reachable.
+			 */
+			WARN_ON(!target_vcpu);
 
-			ret = PSCI_RET_INTERNAL_FAILURE;
+			prev = cmpxchg_relaxed(&target_vcpu->power_state,
+					       PSCI_0_2_AFFINITY_LEVEL_ON_PENDING,
+					       PSCI_0_2_AFFINITY_LEVEL_OFF);
+			/*
+			 * Rollback win (prior == ON_PENDING): target never ran.
+			 * Clear reset_state->reset so a future smp_load_acquire
+			 * doesn't pair with this cancelled cycle's release, and
+			 * report INTERNAL_FAILURE. Otherwise the target's reset
+			 * advanced past ON_PENDING (possibly on to OFF via its
+			 * own CPU_OFF), so per PSCI the guest sees SUCCESS.
+			 */
+			if (prev == PSCI_0_2_AFFINITY_LEVEL_ON_PENDING) {
+				WRITE_ONCE(target_vcpu->vcpu.arch.reset_state.reset,
+					   false);
+				ret = PSCI_RET_INTERNAL_FAILURE;
+			} else {
+				ret = PSCI_RET_SUCCESS;
+			}
 		}
 
 		break;
@@ -820,12 +843,6 @@ static struct kvm_vcpu *__get_host_hyp_vcpus(struct kvm_vcpu *arg,
 		__get_host_hyp_vcpus(__vcpu, hyp_vcpup);			\
 	})
 
-static bool is_vcpu_runnable(struct pkvm_hyp_vcpu *hyp_vcpu)
-{
-	return (!pkvm_hyp_vcpu_is_protected(hyp_vcpu) ||
-		hyp_vcpu->power_state == PSCI_0_2_AFFINITY_LEVEL_ON);
-}
-
 static void handle___kvm_vcpu_run(struct kvm_cpu_context *host_ctxt)
 {
 	struct pkvm_hyp_vcpu *hyp_vcpu;
@@ -837,11 +854,16 @@ static void handle___kvm_vcpu_run(struct kvm_cpu_context *host_ctxt)
 		goto out;
 
 	if (unlikely(hyp_vcpu)) {
-		if (hyp_vcpu->power_state == PSCI_0_2_AFFINITY_LEVEL_ON_PENDING)
-			pkvm_reset_vcpu(hyp_vcpu);
-
-		if (unlikely(!is_vcpu_runnable(hyp_vcpu)))
+		switch (READ_ONCE(hyp_vcpu->power_state)) {
+		case PSCI_0_2_AFFINITY_LEVEL_ON:
+			break;
+		case PSCI_0_2_AFFINITY_LEVEL_ON_PENDING:
+			if (pkvm_reset_vcpu(hyp_vcpu))
+				goto out;
+			break;
+		default:
 			goto out;
+		}
 
 		flush_hyp_vcpu(hyp_vcpu);
 		ret = __kvm_vcpu_run(&hyp_vcpu->vcpu);

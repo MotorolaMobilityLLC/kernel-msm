@@ -46,6 +46,17 @@
   blk_mq_free_tag_set
   blk_queue_update_dma_alignment
   blk_queue_update_dma_pad
+  alloc_workqueue_attrs
+  apply_workqueue_attrs
+  free_workqueue_attrs
+  __traceiter_android_rvh_alloc_and_link_pwqs
+  __tracepoint_android_rvh_alloc_and_link_pwqs
+  __traceiter_android_rvh_create_worker
+  __tracepoint_android_rvh_create_worker
+  __traceiter_android_vh_blk_mq_delay_run_hw_queue
+  __tracepoint_android_vh_blk_mq_delay_run_hw_queue
+  __traceiter_android_vh_blk_mq_kick_requeue_list
+  __tracepoint_android_vh_blk_mq_kick_requeue_list
   mempool_resize
   mempool_alloc_pages
   mempool_free_pages
@@ -409,6 +420,16 @@
   __tracepoint_android_rvh_update_cpus_allowed
   __traceiter_android_rvh_update_cpus_allowed
 
+#required by bcmdhd.ko
+  vfs_fsync
+  kern_path
+  dget_parent
+  vfs_unlink
+  path_put
+  nla_append
+  sdio_writew
+  sdio_readw
+
 #required by brcm_xgbe.ko
   cpumask_local_spread
   udp_tunnel_nic_ops
@@ -421,6 +442,16 @@
 
 # required by shrink memory module
   shrink_slab
+
+#required by iostat.ko
+  __traceiter_android_vh_erofs_iostat_submit
+  __traceiter_android_vh_erofs_iostat_update
+  __tracepoint_android_vh_erofs_iostat_submit
+  __tracepoint_android_vh_erofs_iostat_update
+  __traceiter_android_vh_f2fs_iostat_submit
+  __traceiter_android_vh_f2fs_iostat_update
+  __tracepoint_android_vh_f2fs_iostat_submit
+  __tracepoint_android_vh_f2fs_iostat_update
 
 # required by mi_mem_engine.ko
   __traceiter_android_vh_tune_swappiness
@@ -652,3 +683,10 @@ __tracepoint_android_vh_alloc_pages_slowpath_start
 __traceiter_android_vh_alloc_pages_slowpath_end
 __tracepoint_android_vh_alloc_pages_slowpath_end
 
+# required by custom memory policy
+__filemap_remove_folio
+inode_add_lru
+prep_new_page
+
+# required by xiaomi new symbols
+memory_cgrp_subsys_on_dfl_key
